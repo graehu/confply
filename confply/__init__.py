@@ -2,7 +2,9 @@ import os
 import sys
 import timeit
 import confply.log as log
-import confply.cpp_compiler.compiler as cpp_compiler
+import importlib
+
+import_cache = {}
 
 print("""
                      _____       .__         
@@ -37,7 +39,11 @@ class command:
         try:
             log.normal("running "+(self.config["cmd_type"])+" command")
             time_start = timeit.default_timer()
-            exec("{0}.run(self.config)".format(self.config["cmd_type"]))
+            module_name = "confply."+self.config["cmd_type"]+".command"
+            if module_name not in import_cache:
+                import_cache[module_name] = importlib.import_module(module_name)
+            command = import_cache[module_name]
+            command.run(self.config)
             time_end = timeit.default_timer()
             log.normal((self.config["cmd_type"])+" command complete.")
             s = time_end-time_start

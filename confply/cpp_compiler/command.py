@@ -16,14 +16,10 @@ def run(config):
         log.header("begin build")
         if os.system(command) == 0:
             log.linebreak()
-            log.success("build success!\n")
+            log.success("build success!")
         else:
             log.linebreak()
-            log.error("build failed.\n")
-
-
-        
-        
+            log.error("build failed.")
     else:
         log.error("no valid compiler found.")
 
