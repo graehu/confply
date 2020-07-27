@@ -1,5 +1,6 @@
 import os
 import sys
+import timeit
 import confply.log as log
 import confply.cpp_compiler.compiler as cpp_compiler
 
@@ -34,9 +35,15 @@ class command:
         old_working_dir = os.getcwd()
         os.chdir(os.path.dirname(self.file_path))
         try:
+            log.normal("running "+(self.config["cmd_type"])+" command")
+            time_start = timeit.timeit()
             exec("%s.run(self.config)" % (self.config["cmd_type"]))
-            # if self.config["cmd_type"] == "cpp_compiler":
-            #     cpp_compiler.run(self.config)
+            time_end = timeit.timeit()
+            log.normal((self.config["cmd_type"])+" command complete.")
+            s = time_end-time_start
+            m = int(s/60)
+            h = int(m/60)
+            log.normal("time elapsed: {h}:{m}:{s:2.4f}".format_map({"s":s, "m":m, "h":h}))
         except:
             log.error("failed to run config: ")
             log.normal(sys.exc_info())
@@ -57,4 +64,4 @@ class command:
                         log.normal("\t\t"+str(i))
                 else:
                     log.normal("\t"+str(k)+": "+str(v))
-        print("")
+        log.normal("")

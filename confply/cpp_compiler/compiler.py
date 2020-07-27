@@ -11,7 +11,8 @@ def run(config):
             command = clang.generate_command(config)
 
     if command is not None:
-        log.normal("final command: \n\n"+command)
+        log.success("final command:")
+        log.normal(command)
         log.header("begin build")
         if os.system(command) == 0:
             log.linebreak()
@@ -19,6 +20,10 @@ def run(config):
         else:
             log.linebreak()
             log.error("build failed.\n")
+
+
+        
+        
     else:
         log.error("no valid compiler found.")
 
