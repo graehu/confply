@@ -36,14 +36,18 @@ class command:
         os.chdir(os.path.dirname(self.file_path))
         try:
             log.normal("running "+(self.config["cmd_type"])+" command")
-            time_start = timeit.timeit()
-            exec("%s.run(self.config)" % (self.config["cmd_type"]))
-            time_end = timeit.timeit()
+            time_start = timeit.default_timer()
+            exec("{0}.run(self.config)".format(self.config["cmd_type"]))
+            time_end = timeit.default_timer()
             log.normal((self.config["cmd_type"])+" command complete.")
             s = time_end-time_start
             m = int(s/60)
             h = int(m/60)
-            log.normal("time elapsed: {h}:{m}:{s:2.4f}".format_map({"s":s, "m":m, "h":h}))
+            # time formating via format specifiers
+            # https://docs.python.org/3.8/library/string.html#formatspec
+            time = "{h:0>2.0f}:{m:0>2.0f}:{s:0>5.2f}"
+            time = time.format_map({"s":s, "m":m, "h":h})
+            log.normal("time elapsed: "+time)
         except:
             log.error("failed to run config: ")
             log.normal(sys.exc_info())
