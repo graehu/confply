@@ -1,6 +1,5 @@
-# builder type used to determine what builder to use
-# usage: Don't set it by hand.
-cmd_type = "cpp_compiler"
+from confply.config import *
+confply_command = "cpp_compiler"
 
 # used to add things to system environment variables.
 # usage: environment = { "PATH" : "c:/bin/dir/", "etc" : "c:/etc/" }
