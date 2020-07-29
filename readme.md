@@ -30,7 +30,7 @@ confply_log_topic = output_file
 
 The above config file is runnable, it will first try to run test.py with confply, then it will run itself with confply. As you can see this sets a lot of standard flags. It's final output would be:
 
-`clang -g -std=c++17 -Wall main.cpp -lstdc++ -o hello_confply`
+`clang -g -std=c++17 -Wall main.cpp -o hello_confply -lstdc++`
 
 But, if you set it's compiler to cl.exe it would update all of it's flags and setup the required MS environment for compliation. (that's the idea at least, not currently implemented)
 
