@@ -10,8 +10,8 @@ def generate_command(config):
     if config["debug_info"]:
         command += "-g "
         
-    if config["cpp_standard"] != None:
-        command += "-std=c++"+str(config["cpp_standard"]) + " "
+    if config["standard"] != None:
+        command += "-std="+str(config["standard"]) + " "
 
     if config["warnings"] != None:
         for w in config["warnings"]:

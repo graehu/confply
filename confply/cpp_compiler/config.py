@@ -32,7 +32,7 @@ debug_info = None
 
 # sets c++ standard
 # usage: cpp_standard=17
-cpp_standard = None
+standard = None
 
 # enables warnings
 # usage: warnings=["all", "etc"]
