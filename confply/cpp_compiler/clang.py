@@ -1,6 +1,6 @@
 import confply.log as log
 
-def generate_command(config):
+def generate(config):
     command = "clang "
 
     if config["include_paths"]:

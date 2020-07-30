@@ -12,6 +12,10 @@ _/ ___\/  _ \ /    \   __\\____ \|  |<   |  |
 # do not set by hand! Is set in confply type config files
 confply_command = None
 
+# sets the desired tool to be used for the command.
+# usage: confply_tool = "clang"
+confply_tool = None
+
 # sets the topic of the log, e.g. [confply] confguring commands.
 # usage: confply_log_topic = "my command"
 confply_log_topic = "confply"
