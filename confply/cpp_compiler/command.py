@@ -1,5 +1,8 @@
+import confply.config
 import confply.cpp_compiler.clang as clang
 import confply.log as log
+import subprocess
+import sys
 import os
 
 
@@ -14,7 +17,21 @@ def run(config):
         log.success("final command:")
         log.normal(command)
         log.header("begin build")
-        if os.system(command) == 0:
+
+
+        if confply.config.confply_log_file != None:
+            result = subprocess.run(command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, shell=True)
+
+            old_topic = confply.config.confply_log_topic
+            confply.config.confply_log_topic = config["compiler"]
+            for line in result.stdout.splitlines():
+                log.normal(line)
+            confply.config.confply_log_topic = old_topic
+            
+        else:
+            result = subprocess.run(command, shell=True)
+            
+        if result.returncode == 0:
             log.linebreak()
             log.success("build success!")
         else:
