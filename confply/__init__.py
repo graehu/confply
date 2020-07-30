@@ -1,10 +1,11 @@
 import os
 import sys
-import traceback
 import timeit
-import confply.log as log
-import confply.config
+import traceback
 import importlib
+import subprocess
+import confply.config
+import confply.log as log
 
 import_cache = {}
 # grab the confply config base settings here.
@@ -65,7 +66,27 @@ class command:
             if module_name not in import_cache:
                 import_cache[module_name] = importlib.import_module(module_name)
             command = import_cache[module_name]
-            command.run(self.config)
+            shell_cmd = command.generate(self.config)
+
+            if shell_cmd is not None:
+                log.normal("final command:\n\n"+shell_cmd+"\n")
+                log.header("begin build")
+                
+                if confply.config.confply_log_file != None:
+                    sys.stdout.flush()
+                    result = subprocess.run(shell_cmd, stdout=sys.stdout, stderr=subprocess.STDOUT, text=True, shell=True)
+                else:
+                    result = subprocess.run(shell_cmd, shell=True)
+                
+                if result.returncode == 0:
+                    log.linebreak()
+                    log.success("command success!")
+                else:
+                    log.linebreak()
+                    log.error("command failed.")
+            else:
+                log.error("couldn't generate valid command.")
+            
             time_end = timeit.default_timer()
             log.centered("[ "+(self.config["confply_command"])+" command complete. ]")
             s = time_end-time_start
