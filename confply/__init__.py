@@ -7,7 +7,6 @@ import subprocess
 import confply.config
 import confply.log as log
 
-import_cache = {}
 # grab the confply config base settings here.
 confply_base_config = {}
 with open(os.path.dirname(__file__) + "/config.py", 'r') as config_file:
@@ -19,6 +18,7 @@ log.linebreak()
 class command:
     def __init__(self, path):
         self.config = {}
+        self.tools = {}
         self.file_path = path
         # open the file and read the junk out of it.
         # also execs any code that may be there.
@@ -38,11 +38,49 @@ class command:
         else:
             self.load_success = False
             log.error("failed to load: "+path)
-            
+
+
+    
+
+
+    # todo: valid tools exist, have a dependency checker in clang.py, cl.py, gcc.py etc.
+    # todo: make this import one tool at a time, like previous import_cache behaviour
+    def generate(self):
+        if self.config["confply_command"] not in self.tools:
+            dir = os.path.dirname(__file__) +"/"+self.config["confply_command"]
+            if os.path.exists(dir):
+                files = os.listdir(dir)
+            else:
+                log.error(self.config["confply_command"]+" is not a valid confply_command and should not be set by users.")
+                log.normal("\tuse: 'from confply.[command].config import *' to import confply_command.")
+                return None
+
+            self.tools[self.config["confply_command"]] = {}
+            module_root = "confply."+self.config["confply_command"]+"."
+            for py in files:
+                if py.endswith(".py") and not py == "config.py":
+                    tool = py[0:-3]
+                    self.tools[self.config["confply_command"]][tool] = importlib.import_module(module_root+tool)
+
+
+        if self.config["confply_tool"] in self.tools[self.config["confply_command"]]:
+            return self.tools[self.config["confply_command"]][self.config["confply_tool"]].generate(self.config)
+        else:
+            log.error(self.config["confply_tool"]+" is not a valid "+self.config["confply_command"]+" tool. Consider:")
+            for k, v in self.tools[self.config["confply_command"]].items():
+                log.normal("\t"+k)
+        
+        return None
+    
     def run(self):
         if not self.load_success:
             log.error("failed running " + self.file_path + " command.")
             return
+        confply_path = os.path.dirname(__file__) + "/"
+        if(not os.path.exists(confply_path+self.config["confply_command"])):
+            log.error(self.config["confply_command"]+" is not a valid confply_command and should not be set by users.")
+            log.normal("\tuse: 'from confply.[command].config import *' to import confply_command.")
+            return -1
         # setting confply command configuration up
         old_log_topic = confply.config.confply_log_topic
         for key in confply_base_config.keys():
@@ -62,11 +100,7 @@ class command:
         try:
             log.centered("[ running "+(self.config["confply_command"])+" command. ]")
             time_start = timeit.default_timer()
-            module_name = "confply."+self.config["confply_command"]+".command"
-            if module_name not in import_cache:
-                import_cache[module_name] = importlib.import_module(module_name)
-            command = import_cache[module_name]
-            shell_cmd = command.generate(self.config)
+            shell_cmd = self.generate()
 
             if shell_cmd is not None:
                 log.normal("final command:\n\n"+shell_cmd+"\n")
@@ -113,18 +147,22 @@ class command:
             return
         base_config = {}
         confply_path = os.path.dirname(__file__) + "/"
-        with open(confply_path+self.config["confply_command"]+"/config.py", 'r') as config_file:
-            exec(config_file.read(), {}, base_config)
-        file_name = os.path.basename(self.file_path)
-        log.normal(file_name+" command configuration:")
-        log.normal("{")
-        for k, v in self.config.items():
-            if k in base_config and v is not base_config[k]:
-                if isinstance(v, list):
-                    log.normal("\t"+str(k)+": ")
-                    for i in v:
-                        log.normal("\t\t"+str(i))
-                else:
-                    log.normal("\t"+str(k)+": "+str(v))
-        log.normal("}")
-        log.normal("")
+        if(os.path.exists(confply_path+self.config["confply_command"])):
+            with open(confply_path+self.config["confply_command"]+"/config.py", 'r') as config_file:
+                exec(config_file.read(), {}, base_config)
+            file_name = os.path.basename(self.file_path)
+            log.normal(file_name+" command configuration:")
+            log.normal("{")
+            for k, v in self.config.items():
+                if k in base_config and v is not base_config[k]:
+                    if isinstance(v, list):
+                        log.normal("\t"+str(k)+": ")
+                        for i in v:
+                            log.normal("\t\t"+str(i))
+                    else:
+                        log.normal("\t"+str(k)+": "+str(v))
+            log.normal("}")
+            log.normal("")
+        else:
+            log.error(self.config["confply_command"]+" is not a valid confply_command and should not be set by users.")
+            log.normal("\tuse: 'from confply.[command].config import *' to import confply_command.")
