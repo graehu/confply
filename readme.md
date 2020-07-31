@@ -41,4 +41,15 @@ Confply currently supports:
 
 I'm just getting tired of complicated build systems when I want to compile some files or add a build event and have it work crossplatform. Or just testing the results with a different compiler, etc.
 
+## Todo  ##
+
+-[] Add cl.exe to cpp_compilers
+-[] Add gcc to cpp_compilers
+-[] Add more cpp_compiler options: optimisation, warnings_as_errors, etc.
+-[] Add cpp.o caching and cpp checksum cache
+-[] Add custom confply_custom_command
+-[] Add confply_tool verification (installed, on path, etc)
+-[] Add ./confply -u "{config}" arg, currently only support .py files.
+-[x] Add todo section to readme
+
 **Not fit for human consumption**
