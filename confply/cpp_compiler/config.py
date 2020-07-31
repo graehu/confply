@@ -5,10 +5,6 @@ confply_command = "cpp_compiler"
 # usage: environment = { "PATH" : "c:/bin/dir/", "etc" : "c:/etc/" }
 environment_vars = None
 
-# the tool used to compile, like cl, clang, etc
-# if it isn't set, then a default is used.
-# usage: compiler = "cl.exe"
-compiler = None
 
 # source files to compile
 # usage: source_files = ["main.cpp", "etc.cpp"]
