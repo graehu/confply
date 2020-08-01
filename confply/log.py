@@ -26,6 +26,9 @@ class format:
 def get_log_topic():
     return "[" + confply.config.confply_log_topic + "] "
 
+def confply_header():
+    print(confply.config.confply_header)
+
 def linebreak(break_char = "="):
     topic = get_log_topic()
     # magic number -1 makes logs look better in terminal editors

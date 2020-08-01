@@ -12,8 +12,61 @@ confply_base_config = {}
 with open(os.path.dirname(__file__) + "/config.py", 'r') as config_file:
     exec(config_file.read(), {}, confply_base_config)
 
-print(confply.config.confply_header)
-log.linebreak()
+launcher_str = """#!/usr/bin/env python
+#                      _____       .__         
+#   ____  ____   _____/ ____\_____ |  | ___.__.
+# _/ ___\/  _ \ /    \   __\\____ \|  |<   |  |
+# \  \__(  <_> )   |  \  |  |  |_> >  |_\___  |
+#  \___  >____/|___|  /__|  |   __/|____/ ____|
+#      \/           \/      |__|        \/
+# launcher generated using:
+# 
+# python {confply_dir}/confply.py --launcher {launcher}
+
+import sys
+sys.path.append("{confply_dir}")
+from confply import launcher
+
+# fill this with your commands
+aliases = {comment}
+
+if __name__ == "__main__":
+    launcher(sys.argv[1:], aliases)
+"""
+
+def launcher(in_args, aliases):
+    printed_header = False
+    def try_print_header():
+        nonlocal printed_header
+        if not printed_header:
+            printed_header = True
+            log.confply_header()
+            log.linebreak()
+    if len(in_args) != 0:
+        for arg in in_args:
+            if arg in aliases:
+                # todo: find a better way to do this.
+                # right now it stops you passing args in the launcher.
+                if os.path.exists(aliases[arg]):
+                    file_dir = os.path.dirname(aliases[arg])
+                    file_name = os.path.basename(aliases[arg])
+                    os.system("cd "+file_dir+"; ./"+file_name)
+                else:
+                    try_print_header()
+                    log.error("alias '"+arg+"' doesn't point to a valid file:")
+                    log.normal("\t"+aliases[arg])
+            else:
+                try_print_header()
+                log.error(arg+" is not in aliases.")
+    else:
+        if not printed_header:
+            printed_header = True
+            log.confply_header()
+            log.linebreak()
+        log.error("no arguements supplied.")
+        log.normal("no help so far, make sure to print it here")
+        log.normal("when it exists. :)")
+    log.linebreak()
 
 class command:
     def __init__(self, path):
