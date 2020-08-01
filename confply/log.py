@@ -5,8 +5,14 @@ import confply.config
 # Logging module to keep logs consistent in confply.
 # todo: add formatted() for a formatted log function
 
+try:
+    terminal_test = os.get_terminal_size()
+    valid_ioctl = True
+except:
+    valid_ioctl = False
+
 def can_format():
-    return confply.config.confply_log_file == None
+    return confply.config.confply_log_file == None and valid_ioctl
 
 class format:
     header = lambda x: '\033[95m'+x+'\033[0m' if can_format() else x
@@ -23,7 +29,10 @@ def get_log_topic():
 def linebreak(break_char = "="):
     topic = get_log_topic()
     # magic number -1 makes logs look better in terminal editors
-    terminal_size = os.get_terminal_size().columns - len(topic) -1
+    if valid_ioctl:
+        terminal_size = os.get_terminal_size().columns - len(topic) -1
+    else:
+        terminal_size = 64
     print(topic+''.center(terminal_size, break_char ))
     
 def bold(in_string):
@@ -46,7 +55,10 @@ def centered(in_string, fill_string = " "):
     topic = get_log_topic()
     ansi_delta = len(in_string) - len(escape_ansi(in_string))
     # magic number -1 makes logs look better in terminal editors
-    terminal_width = os.get_terminal_size().columns - len(topic) - 1 + ansi_delta
+    if valid_ioctl:
+        terminal_width = os.get_terminal_size().columns - len(topic) - 1 + ansi_delta
+    else:
+        terminal_width = 64
     in_string = (" "+in_string+" ").center(terminal_width, fill_string)
     print(topic+in_string)
     
