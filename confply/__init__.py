@@ -1,5 +1,6 @@
 import os
 import sys
+import stat
 import timeit
 import shlex
 import traceback
@@ -13,7 +14,7 @@ confply_base_config = {}
 with open(os.path.dirname(__file__) + "/config.py", 'r') as config_file:
     exec(config_file.read(), {}, confply_base_config)
 
-launcher_str = """#!/usr/bin/env python
+new_launcher_str = """#!/usr/bin/env python
 #                      _____       .__         
 #   ____  ____   _____/ ____\_____ |  | ___.__.
 # _/ ___\/  _ \ /    \   __\\____ \|  |<   |  |
@@ -29,7 +30,6 @@ import os
 
 # set current working directory and add confply to path
 # so we can import the launcher function
-
 os.chdir(os.path.dirname(__file__))
 sys.path.append("{confply_dir}")
 from confply import launcher
@@ -39,6 +39,10 @@ aliases = {comment}
 
 if __name__ == "__main__":
     launcher(sys.argv[1:], aliases)
+"""
+
+new_config_str = """#!{confply_dir}/confply.py
+from confply.{command_arg}.config import *
 """
 
 def launcher(in_args, aliases):
@@ -99,9 +103,6 @@ class command:
             log.error("failed to load: "+path)
 
 
-    
-
-
     # todo: valid tools exist, have a dependency checker in clang.py, cl.py, gcc.py etc.
     # todo: make this import one tool at a time, like previous import_cache behaviour
     def generate(self):
@@ -121,8 +122,11 @@ class command:
                     tool = py[0:-3]
                     self.tools[self.config["confply_command"]][tool] = importlib.import_module(module_root+tool)
 
-
-        if self.config["confply_tool"] in self.tools[self.config["confply_command"]]:
+        if self.config["confply_tool"] == None:
+            log.error("confply_tool is not a valid set. Consider:")
+            for k, v in self.tools[self.config["confply_command"]].items():
+                log.normal("\t"+k)
+        elif self.config["confply_tool"] in self.tools[self.config["confply_command"]]:
             return self.tools[self.config["confply_command"]][self.config["confply_tool"]].generate(self.config)
         else:
             log.error(self.config["confply_tool"]+" is not a valid "+self.config["confply_command"]+" tool. Consider:")
@@ -151,7 +155,7 @@ class command:
             log.normal("writing to: "+confply.config.confply_log_file+"....")
             confply.config.confply_log_topic = new_log_topic
             sys.stdout = open(confply.config.confply_log_file, "w")
-            print(confply.config.confply_header)
+            
         if confply.config.confply_log_config != False:
             self.print_config()
         old_working_dir = os.getcwd()
@@ -225,3 +229,69 @@ class command:
         else:
             log.error(self.config["confply_command"]+" is not a valid confply_command and should not be set by users.")
             log.normal("\tuse: 'from confply.[command].config import *' to import confply_command.")
+
+
+def handle_launcher_arg(in_args):
+    if len(in_args) < 1:
+        log.error("--launcher requires a value.")
+        log.normal("\t--launcher [new_launcher_file]")
+        return
+    # this seems like a bad way to get the parent dir. Consider pathlib
+    confply_dir = os.path.relpath(__file__)
+    confply_dir = os.path.dirname(confply_dir)+"/.."
+    confply_dir = os.path.relpath(confply_dir)
+    
+    arguement = in_args.pop(0)
+    launcher_path = os.path.abspath(os.path.curdir)+"/"+arguement
+    if not os.path.exists(launcher_path):
+        with open(launcher_path, "w") as launcher_file:
+            launcher_str = new_launcher_str.format_map(
+                {
+                    "confply_dir":confply_dir,
+                    "launcher":arguement,
+                    "comment":"{\n    #'mycommand':'path/to/command.py'\n}"
+                })
+            launcher_file.write(launcher_str)
+        st = os.stat(launcher_path)
+        os.chmod(launcher_path, st.st_mode | stat.S_IEXEC)
+        log.success("wrote: "+launcher_path)
+    else:
+        log.error(launcher_path+" already exists!")
+
+
+def handle_config_arg(in_args):
+    if len(in_args) < 2:
+        log.error("--config requires two values:")
+        log.normal("\t--config [confply_command] [new_config_file]")
+        return
+    
+    # this seems like a bad way to get the parent dir. Consider pathlib
+    confply_dir = os.path.relpath(__file__)
+    confply_dir = os.path.dirname(confply_dir)+"/.."
+    confply_dir = os.path.relpath(confply_dir)
+    
+    command_arg = in_args.pop(0)
+    config_arg = in_args.pop(0)
+    config_path = os.path.abspath(os.path.curdir)+"/"+config_arg
+    command_dir = os.path.dirname(os.path.relpath(__file__))+"/"+command_arg
+    if not os.path.exists(command_dir):
+        log.error(command_arg+" is not a valid command, consider:")
+        for dir_file in os.listdir(confply_dir):
+            if os.path.isdir(confply_dir+"/"+dir_file):
+                if not dir_file == "__pycache__":
+                    log.normal("\t"+dir_file)
+        return
+    
+    if not os.path.exists(config_path):
+        with open(config_path, "w") as config_file:
+            config_str = new_config_str.format_map(
+                {
+                    "confply_dir":confply_dir,
+                    "command_arg":command_arg
+                })
+            config_file.write(config_str)
+        st = os.stat(config_path)
+        os.chmod(config_path, st.st_mode | stat.S_IEXEC)
+        log.success("wrote: "+config_path)
+    else:
+        log.error(config_path+" already exists!")
