@@ -1,6 +1,7 @@
 import os
 import sys
 import timeit
+import shlex
 import traceback
 import importlib
 import subprocess
@@ -24,6 +25,12 @@ launcher_str = """#!/usr/bin/env python
 # python {confply_dir}/confply.py --launcher {launcher}
 
 import sys
+import os
+
+# set current working directory and add confply to path
+# so we can import the launcher function
+
+os.chdir(os.path.dirname(__file__))
 sys.path.append("{confply_dir}")
 from confply import launcher
 
@@ -42,15 +49,16 @@ def launcher(in_args, aliases):
             printed_header = True
             log.confply_header()
             log.linebreak()
+            
     if len(in_args) != 0:
         for arg in in_args:
             if arg in aliases:
-                # todo: find a better way to do this.
-                # right now it stops you passing args in the launcher.
-                if os.path.exists(aliases[arg]):
-                    file_dir = os.path.dirname(aliases[arg])
-                    file_name = os.path.basename(aliases[arg])
-                    os.system("cd "+file_dir+"; ./"+file_name)
+                shell = shlex.split(aliases[arg])
+                if os.path.exists(shell[0]):
+                    file_dir = os.path.dirname(shell[0])
+                    file_name = os.path.basename(shell[0])
+                    file_args = aliases[arg].replace(shell[0], "")
+                    os.system("cd "+file_dir+"; ./"+file_name+" "+file_args)
                 else:
                     try_print_header()
                     log.error("alias '"+arg+"' doesn't point to a valid file:")
@@ -60,9 +68,7 @@ def launcher(in_args, aliases):
                 log.error(arg+" is not in aliases.")
     else:
         if not printed_header:
-            printed_header = True
-            log.confply_header()
-            log.linebreak()
+            try_print_header()
         log.error("no arguements supplied.")
         log.normal("no help so far, make sure to print it here")
         log.normal("when it exists. :)")
