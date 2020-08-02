@@ -26,6 +26,10 @@ link_libraries = None
 # usage: debug_info = True
 debug_info = None
 
+# sets the optimisation level of the generated binary
+# usage: optimisation = 0
+optimisation = None
+
 # sets c++ standard
 # usage: cpp_standard=17
 standard = None

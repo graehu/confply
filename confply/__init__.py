@@ -42,6 +42,8 @@ if __name__ == "__main__":
 """
 
 new_config_str = """#!{confply_dir}/confply.py
+# generated using:
+# python {confply_dir}/confply.py --config {command_arg} {config_file}
 from confply.{command_arg}.config import *
 """
 
@@ -126,6 +128,7 @@ class command:
             log.error("confply_tool is not a valid set. Consider:")
             for k, v in self.tools[self.config["confply_command"]].items():
                 log.normal("\t"+k)
+                
         elif self.config["confply_tool"] in self.tools[self.config["confply_command"]]:
             return self.tools[self.config["confply_command"]][self.config["confply_tool"]].generate(self.config)
         else:
@@ -139,17 +142,20 @@ class command:
         if not self.load_success:
             log.error("failed running " + self.file_path + " command.")
             return
+
         confply_path = os.path.dirname(__file__) + "/"
         if(not os.path.exists(confply_path+self.config["confply_command"])):
             log.error(self.config["confply_command"]+" is not a valid confply_command and should not be set by users.")
             log.normal("\tuse: 'from confply.[command].config import *' to import confply_command.")
             return -1
+
         # setting confply command configuration up
         old_log_topic = confply.config.confply_log_topic
         for key in confply_base_config.keys():
             exec("confply.config.{0} = self.config[key]".format(key), globals(), locals())
         new_log_topic = confply.config.confply_log_topic
         old_stdout = sys.stdout
+
         if confply.config.confply_log_file != None:
             confply.config.confply_log_topic = old_log_topic
             log.normal("writing to: "+confply.config.confply_log_file+"....")
@@ -160,6 +166,7 @@ class command:
             self.print_config()
         old_working_dir = os.getcwd()
         os.chdir(os.path.dirname(self.file_path))
+        
         try:
             log.centered("[ running "+(self.config["confply_command"])+" command. ]")
             time_start = timeit.default_timer()
@@ -208,6 +215,7 @@ class command:
         if not self.load_success:
             log.error("Failed printing " + self.file_path + " config.")
             return
+        
         base_config = {}
         confply_path = os.path.dirname(__file__) + "/"
         if(os.path.exists(confply_path+self.config["confply_command"])):
@@ -216,6 +224,7 @@ class command:
             file_name = os.path.basename(self.file_path)
             log.normal(file_name+" command configuration:")
             log.normal("{")
+            
             for k, v in self.config.items():
                 if k in base_config and v is not base_config[k]:
                     if isinstance(v, list):
@@ -224,6 +233,7 @@ class command:
                             log.normal("\t\t"+str(i))
                     else:
                         log.normal("\t"+str(k)+": "+str(v))
+
             log.normal("}")
             log.normal("")
         else:
@@ -274,10 +284,11 @@ def handle_config_arg(in_args):
     config_arg = in_args.pop(0)
     config_path = os.path.abspath(os.path.curdir)+"/"+config_arg
     command_dir = os.path.dirname(os.path.relpath(__file__))+"/"+command_arg
+    
     if not os.path.exists(command_dir):
         log.error(command_arg+" is not a valid command, consider:")
-        for dir_file in os.listdir(confply_dir):
-            if os.path.isdir(confply_dir+"/"+dir_file):
+        for dir_file in os.listdir(confply_dir+"/confply/"):
+            if os.path.isdir(confply_dir+"/confply/"+dir_file):
                 if not dir_file == "__pycache__":
                     log.normal("\t"+dir_file)
         return
@@ -287,7 +298,8 @@ def handle_config_arg(in_args):
             config_str = new_config_str.format_map(
                 {
                     "confply_dir":confply_dir,
-                    "command_arg":command_arg
+                    "command_arg":command_arg,
+                    "config_file":config_arg
                 })
             config_file.write(config_str)
         st = os.stat(config_path)
