@@ -9,8 +9,8 @@ if __name__ == "__main__":
     log.confply_header()
     log.linebreak()    
     log.normal("called with args: "+str(in_args))
-    for arg in in_args:
-        if arg.startswith("--"):
+    while len(in_args) > 0:
+        if in_args[0].startswith("--"):
             option = in_args.pop(0)
             if option == "--launcher":
                 confply.handle_launcher_arg(in_args)
@@ -20,9 +20,8 @@ if __name__ == "__main__":
 
         # default assume it's a file to run.
         log.linebreak()
-        cmd = confply.command(arg)
+        cmd = confply.command(in_args)
         cmd.run()
-        in_args.pop(0)
     log.linebreak()
 
 

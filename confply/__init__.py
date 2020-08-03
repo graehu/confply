@@ -45,6 +45,9 @@ new_config_str = """#!{confply_dir}/confply.py
 # generated using:
 # python {confply_dir}/confply.py --config {command_arg} {config_file}
 from confply.{command_arg}.config import *
+def log(in_str):
+    print("[{command_arg} conf] "+in_str)
+log("confply_args: "+str(confply_args))
 """
 
 def launcher(in_args, aliases):
@@ -59,16 +62,17 @@ def launcher(in_args, aliases):
     if len(in_args) != 0:
         for arg in in_args:
             if arg in aliases:
-                shell = shlex.split(aliases[arg])
-                if os.path.exists(shell[0]):
-                    file_dir = os.path.dirname(shell[0])
-                    file_name = os.path.basename(shell[0])
-                    file_args = aliases[arg].replace(shell[0], "")
-                    os.system("cd "+file_dir+"; ./"+file_name+" "+file_args)
-                else:
-                    try_print_header()
-                    log.error("alias '"+arg+"' doesn't point to a valid file:")
-                    log.normal("\t"+aliases[arg])
+                for line in aliases[arg].split(";"):
+                    shell = shlex.split(line)
+                    if os.path.exists(shell[0]):
+                        file_dir = os.path.dirname(shell[0])
+                        file_name = os.path.basename(shell[0])
+                        file_args = line.replace(shell[0], "")
+                        os.system("cd "+file_dir+"; ./"+file_name+" "+file_args)
+                    else:
+                        try_print_header()
+                        log.error("alias '"+arg+"' doesn't point to a valid file:")
+                        log.normal("\t"+aliases[arg])
             else:
                 try_print_header()
                 log.error(arg+" is not in aliases.")
@@ -81,9 +85,21 @@ def launcher(in_args, aliases):
     log.linebreak()
 
 class command:
-    def __init__(self, path):
-        self.config = {}
+    def __init__(self, in_args):
+
+        confply_args = []
+        while len(in_args) > 0:
+            arg = in_args.pop(0)
+            if arg == ";" or arg.endswith(";"):
+                break
+            confply_args.append(arg)
+
+        confply_args = shlex.split(" ".join(confply_args))
+        path = confply_args[0]
+        confply_args.pop(0)
+
         self.tools = {}
+        self.config = {"confply_args":confply_args}
         self.file_path = path
         # open the file and read the junk out of it.
         # also execs any code that may be there.
@@ -91,8 +107,9 @@ class command:
         if os.path.exists(path):
             with open(path, 'r') as config_file:
                 try:
-                    exec(config_file.read(), {}, self.config)
+                    exec(config_file.read(), {"confply.log":log}, self.config)
                     # reset these when command class is cleaned up
+                    log.linebreak()
                     log.success("successfully loaded: "+path)
                     self.load_success = True
                 except:
