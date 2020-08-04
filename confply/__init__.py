@@ -1,13 +1,15 @@
 import os
 import sys
 import stat
-import timeit
 import shlex
+import shutil
+import timeit
 import traceback
 import importlib
 import subprocess
 import confply.config
 import confply.log as log
+
 
 # grab the confply config base settings here.
 confply_base_config = {}
@@ -125,32 +127,36 @@ class command:
     # todo: valid tools exist, have a dependency checker in clang.py, cl.py, gcc.py etc.
     # todo: make this import one tool at a time, like previous import_cache behaviour
     def generate(self):
-        if self.config["confply_command"] not in self.tools:
-            dir = os.path.dirname(__file__) +"/"+self.config["confply_command"]
+        command = self.config["confply_command"]
+        if command not in self.tools:
+            dir = os.path.dirname(__file__) +"/"+command
             if os.path.exists(dir):
                 files = os.listdir(dir)
             else:
-                log.error(self.config["confply_command"]+" is not a valid confply_command and should not be set by users.")
+                log.error(command+" is not a valid confply_command and should not be set by users.")
                 log.normal("\tuse: 'from confply.[command].config import *' to import confply_command.")
                 return None
 
-            self.tools[self.config["confply_command"]] = {}
-            module_root = "confply."+self.config["confply_command"]+"."
+            self.tools[command] = {}
+            module_root = "confply."+command+"."
             for py in files:
                 if py.endswith(".py") and not py == "config.py":
                     tool = py[0:-3]
-                    self.tools[self.config["confply_command"]][tool] = importlib.import_module(module_root+tool)
+                    self.tools[command][tool] = importlib.import_module(module_root+tool)
 
-        if self.config["confply_tool"] == None:
+        tool = self.config["confply_tool"]
+        if tool == None:
             log.error("confply_tool is not a valid set. Consider:")
-            for k, v in self.tools[self.config["confply_command"]].items():
+            for k, v in self.tools[command].items():
                 log.normal("\t"+k)
-                
-        elif self.config["confply_tool"] in self.tools[self.config["confply_command"]]:
-            return self.tools[self.config["confply_command"]][self.config["confply_tool"]].generate(self.config)
+        elif shutil.which(tool) is None:
+            log.bold(tool+" could not be found.")
+            return self.tools[command][tool].generate(self.config)
+        elif tool in self.tools[command]:
+            return self.tools[command][tool].generate(self.config)
         else:
-            log.error(self.config["confply_tool"]+" is not a valid "+self.config["confply_command"]+" tool. Consider:")
-            for k, v in self.tools[self.config["confply_command"]].items():
+            log.error(tool+" is not a valid "+command+" tool. Consider:")
+            for k, v in self.tools[command].items():
                 log.normal("\t"+k)
         
         return None
@@ -185,13 +191,12 @@ class command:
         os.chdir(os.path.dirname(self.file_path))
         
         try:
-            log.centered("[ running "+(self.config["confply_command"])+" command. ]")
             time_start = timeit.default_timer()
             shell_cmd = self.generate()
 
             if shell_cmd is not None:
                 log.normal("final command:\n\n"+shell_cmd+"\n")
-                log.header("begin build")
+                log.header("begin "+self.config["confply_tool"])
                 
                 if confply.config.confply_log_file != None:
                     sys.stdout.flush()
@@ -201,15 +206,14 @@ class command:
                 
                 if result.returncode == 0:
                     log.linebreak()
-                    log.success("command success!")
+                    log.success(self.config["confply_tool"]+" succeeded!")
                 else:
                     log.linebreak()
-                    log.error("command failed.")
+                    log.error(self.config["confply_tool"]+" failed.")
             else:
                 log.error("couldn't generate valid command.")
             
             time_end = timeit.default_timer()
-            log.centered("[ "+(self.config["confply_command"])+" command complete. ]")
             s = time_end-time_start
             m = int(s/60)
             h = int(m/60)
