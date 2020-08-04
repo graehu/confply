@@ -47,9 +47,9 @@ new_config_str = """#!{confply_dir}/confply.py
 # generated using:
 # python {confply_dir}/confply.py --config {command_arg} {config_file}
 from confply.{command_arg}.config import *
-def log(in_str):
-    print("[{command_arg} conf] "+in_str)
-log("confply_args: "+str(confply_args))
+import confply.log as log
+confply_topic = "{command_arg}"
+log.normal("loading {config_file} with confply_args: "+str(confply_args))
 """
 
 def launcher(in_args, aliases):
