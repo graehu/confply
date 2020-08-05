@@ -1,6 +1,6 @@
 # help #
 
-usage: confply.py --[options] | [config] [arguments];...
+usage: `confply.py --[options] | [config] [arguments];...`
 
 ### options ###
 
