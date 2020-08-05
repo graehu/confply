@@ -8,30 +8,33 @@ Confply is written in python and each of it's config files are just python files
 
 For now compilers will be the focus, but scope for other tool types has been considered in the design.
 
-## Example Cpp Compiler Config  ##
+## Examples/Compile_cpp.py Config  ##
 
 ``` python
 #!../confply.py
 # generated using:
 # python ../confply.py --config cpp_compiler compile_cpp.py
 from confply.cpp_compiler.config import *
-def log(in_str):
-    print("[cpp_compiler conf] "+in_str)
-log("confply_args: "+str(confply_args))
+import confply.log as log
+confply_log_topic = "compile_cpp.py"
+log.normal("loading compile_cpp.py with confply_args: "+str(confply_args))
+
+debug = False
+if "debug" in confply_args:
+    debug = True
+    log.normal("set to debug config")
+
 
 confply_tool = "clang"
 source_files = ["main.cpp"]
 output_file = "hello_confply"
 link_libraries = ["stdc++"]
-
-if "debug" in confply_args:
-	debug_info = debug
-	
+debug_info = debug
 standard = "c++17"
 warnings = ["all"]
 confply_log_config = True
-confply_log_topic = output_file
 # confply_log_file = "log.txt"
+
 ```
 
 The above config file is runnable, it runs with confply as the interpreter. As you can see this sets a lot of standard flags. It can be run `./compile_cpp.py`, which generates this:

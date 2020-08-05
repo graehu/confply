@@ -3,8 +3,8 @@
 # python ../confply.py --config cpp_compiler compile_cpp.py
 from confply.cpp_compiler.config import *
 import confply.log as log
-confply_log_topic = "cpp_compiler"
-log.normal("loading compile_cpp with confply_args: "+str(confply_args))
+confply_log_topic = "compile_cpp.py"
+log.normal("loading compile_cpp.py with confply_args: "+str(confply_args))
 
 debug = False
 if "debug" in confply_args:

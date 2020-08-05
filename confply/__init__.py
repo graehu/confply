@@ -48,7 +48,7 @@ new_config_str = """#!{confply_dir}/confply.py
 # python {confply_dir}/confply.py --config {command_arg} {config_file}
 from confply.{command_arg}.config import *
 import confply.log as log
-confply_topic = "{command_arg}"
+confply_topic = "{config_file}"
 log.normal("loading {config_file} with confply_args: "+str(confply_args))
 """
 
