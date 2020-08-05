@@ -14,4 +14,4 @@ the config file to load/run as a part of command generation.
 
 ### arguments ###
 
-arguements are passed to the config file during load/run.
+arguments are passed to the config file during load/run.
