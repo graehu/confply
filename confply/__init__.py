@@ -261,7 +261,12 @@ class command:
             log.error(self.config["confply_command"]+" is not a valid confply_command and should not be set by users.")
             log.normal("\tuse: 'from confply.[command].config import *' to import confply_command.")
 
-
+def handle_help_arg(in_args):
+    confply_dir = os.path.relpath(__file__)
+    confply_dir = os.path.dirname(confply_dir)+"/.."
+    with open(confply_dir+"/help.md", "r") as help_file:
+        print("\n"+help_file.read())
+        
 def handle_launcher_arg(in_args):
     if len(in_args) < 1:
         log.error("--launcher requires a value.")

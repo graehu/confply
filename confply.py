@@ -16,6 +16,8 @@ if __name__ == "__main__":
                 confply.handle_launcher_arg(in_args)
             elif option == "--config":
                 confply.handle_config_arg(in_args)
+            elif option == "--help":
+                confply.handle_help_arg(in_args)
             continue
 
         # default assume it's a file to run.
