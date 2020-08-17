@@ -7,8 +7,9 @@ import confply.log as log
 if __name__ == "__main__":
     in_args = sys.argv[1:]
     log.confply_header()
-    log.linebreak()    
+    log.linebreak()
     log.normal("called with args: "+str(in_args))
+    return_code = -999999
     while len(in_args) > 0:
         if in_args[0].startswith("--"):
             option = in_args.pop(0)
@@ -23,8 +24,20 @@ if __name__ == "__main__":
         # default assume it's a file to run.
         log.linebreak()
         cmd = confply.command(in_args)
-        cmd.run()
+        cmd_return = cmd.run()
+        
+        if(cmd_return > return_code and cmd_return != 0):
+            return_code = cmd_return
+        
+        # fatal error.
+        if return_code == -1:
+            log.linebreak()
+            # failed to run command
+            exit(1)
+            
+
     log.linebreak()
-
-
-
+    if(return_code != -999999):
+        exit(abs(return_code))
+    else:
+        exit(0)

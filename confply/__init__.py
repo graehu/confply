@@ -53,6 +53,7 @@ log.normal("loading {config_file} with confply_args: "+str(confply_args))
 """
 
 def launcher(in_args, aliases):
+    return_code = -999999
     printed_header = False
     def try_print_header():
         nonlocal printed_header
@@ -60,7 +61,7 @@ def launcher(in_args, aliases):
             printed_header = True
             log.confply_header()
             log.linebreak()
-            
+    
     if len(in_args) != 0:
         for arg in in_args:
             if arg in aliases:
@@ -70,21 +71,36 @@ def launcher(in_args, aliases):
                         file_dir = os.path.dirname(shell[0])
                         file_name = os.path.basename(shell[0])
                         file_args = line.replace(shell[0], "")
-                        os.system("cd "+file_dir+"; ./"+file_name+" "+file_args)
+                        # todo: handle the return codes here.
+                        system_code = os.WEXITSTATUS(os.system("cd "+file_dir+"; ./"+file_name+" "+file_args));
+                        if(system_code > return_code and system_code != 0):
+                            return_code = system_code
+                        if return_code == -1:
+                            break
                     else:
                         try_print_header()
                         log.error("alias '"+arg+"' doesn't point to a valid file:")
                         log.normal("\t"+aliases[arg])
+                        return_code = -1
+                        break
             else:
                 try_print_header()
                 log.error(arg+" is not in aliases.")
+                return_code = -1
+                break
     else:
         if not printed_header:
             try_print_header()
         log.error("no arguements supplied.")
         log.normal("no help so far, make sure to print it here")
         log.normal("when it exists. :)")
+        return_code = -1
     log.linebreak()
+
+    if(return_code != -999999):
+        exit(abs(return_code))
+    else:
+        exit(0)
 
 class command:
     def __init__(self, in_args):
@@ -106,7 +122,7 @@ class command:
         # open the file and read the junk out of it.
         # also execs any code that may be there.
         # potentially pass some things in via config.
-        if os.path.exists(path):
+        if os.path.exists(path) and os.path.isfile(path):
             with open(path, 'r') as config_file:
                 try:
                     exec(config_file.read(), {"confply.log":log}, self.config)
@@ -162,9 +178,10 @@ class command:
         return None
     
     def run(self):
+        return_code = 0
         if not self.load_success:
             log.error("failed running " + self.file_path + " command.")
-            return
+            return -1
 
         confply_path = os.path.dirname(__file__) + "/"
         if(not os.path.exists(confply_path+self.config["confply_command"])):
@@ -183,54 +200,67 @@ class command:
             confply.config.confply_log_topic = old_log_topic
             log.normal("writing to: "+confply.config.confply_log_file+"....")
             confply.config.confply_log_topic = new_log_topic
-            sys.stdout = open(confply.config.confply_log_file, "w")
-            
-        if confply.config.confply_log_config != False:
-            self.print_config()
-        old_working_dir = os.getcwd()
-        os.chdir(os.path.dirname(self.file_path))
-        
-        try:
-            time_start = timeit.default_timer()
-            shell_cmd = self.generate()
+            try:
+                sys.stdout = open(confply.config.confply_log_file, "w")
+            except:
+                log.error("couldn't open "+confply.config.confply_log_file+" for write.")
+                return_code = -1
 
-            if shell_cmd is not None:
-                log.normal("final command:\n\n"+shell_cmd+"\n")
-                log.header("begin "+self.config["confply_tool"])
-                
-                if confply.config.confply_log_file != None:
-                    sys.stdout.flush()
-                    result = subprocess.run(shell_cmd, stdout=sys.stdout, stderr=subprocess.STDOUT, text=True, shell=True)
+        if return_code >= 0:
+            if confply.config.confply_log_config != False:
+                self.print_config()
+            old_working_dir = os.getcwd()
+            os.chdir(os.path.dirname(self.file_path))
+
+            try:
+                time_start = timeit.default_timer()
+                shell_cmd = self.generate()
+
+                if shell_cmd is not None:
+                    log.normal("final command:\n\n"+shell_cmd+"\n")
+                    log.header("begin "+self.config["confply_tool"])
+
+                    if confply.config.confply_log_file != None:
+                        sys.stdout.flush()
+                        result = subprocess.run(shell_cmd, stdout=sys.stdout, stderr=subprocess.STDOUT, text=True, shell=True)
+                    else:
+                        result = subprocess.run(shell_cmd, shell=True)
+
+                    if result.returncode == 0:
+                        log.linebreak()
+                        log.success(self.config["confply_tool"]+" succeeded!")
+                    else:
+                        log.linebreak()
+                        log.error(self.config["confply_tool"]+" failed.")
+                        log.error(self.config["confply_tool"]+" return code: "+str(result.returncode))
+                        return_code = -2
                 else:
-                    result = subprocess.run(shell_cmd, shell=True)
+                    log.error("couldn't generate valid command.")
+                    return_code = -1
+
+                time_end = timeit.default_timer()
+                s = time_end-time_start
+                m = int(s/60)
+                h = int(m/60)
+                # time formating via format specifiers
+                # https://docs.python.org/3.8/library/string.html#formatspec
+                time = "{h:0>2.0f}:{m:0>2.0f}:{s:0>5.2f}"
+                time = time.format_map({"s":s, "m":m, "h":h})
+                log.normal("time elapsed: "+time)
+            except:
+                log.error("failed to run config: ")
+                log.normal(sys.exc_info())
+                return_code = -1
+            if sys.stdout != old_stdout:
+                sys.stdout.close()
+                sys.stdout = old_stdout
                 
-                if result.returncode == 0:
-                    log.linebreak()
-                    log.success(self.config["confply_tool"]+" succeeded!")
-                else:
-                    log.linebreak()
-                    log.error(self.config["confply_tool"]+" failed.")
-            else:
-                log.error("couldn't generate valid command.")
-            
-            time_end = timeit.default_timer()
-            s = time_end-time_start
-            m = int(s/60)
-            h = int(m/60)
-            # time formating via format specifiers
-            # https://docs.python.org/3.8/library/string.html#formatspec
-            time = "{h:0>2.0f}:{m:0>2.0f}:{s:0>5.2f}"
-            time = time.format_map({"s":s, "m":m, "h":h})
-            log.normal("time elapsed: "+time)
-        except:
-            log.error("failed to run config: ")
-            log.normal(sys.exc_info())
-        if sys.stdout != old_stdout:
-            sys.stdout.close()
-            sys.stdout = old_stdout
+            os.chdir(old_working_dir)
+        # This resets any confply.config back to what it was prior to running any user
+        # config. Stops state leaks between command runs as confply.config is global.
         for key in confply_base_config.keys():
             exec("confply.config.{0} = confply_base_config[key]".format(key), globals(), locals())
-        os.chdir(old_working_dir)
+        return return_code
 
     def print_config(self):
         if not self.load_success:

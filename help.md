@@ -1,6 +1,6 @@
 # help #
 
-usage: `confply.py --[options] | [config] [arguments];...`
+usage : `confply.py --[options] | [config] [arguments];...`
 
 ### options ###
 
@@ -15,3 +15,8 @@ the config file to load/run as a part of command generation.
 ### arguments ###
 
 arguments are passed to the config file during load/run.
+
+### return codes ###
+
+1 : fatal error in confply, aborted any further work.
+2 : unsuccessful tool run, see output for return codes.
