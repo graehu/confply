@@ -1,7 +1,7 @@
 import confply.log as log
 
 def generate(config):
-    command = "clang "
+    command = "clang++ "
 
     if config["include_paths"]:
         for include in config["include_paths"]:
