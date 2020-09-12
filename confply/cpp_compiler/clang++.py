@@ -20,7 +20,7 @@ def generate(config):
                 command += "-W"+w+" "
         elif isinstance(warnings, bool):
             if(not warnings):
-                command += "-w"
+                command += "-w "
         elif isinstance(warnings, str):
             command += "-W"+config["warnings"]+" "
 
