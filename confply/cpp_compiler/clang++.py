@@ -1,47 +1,62 @@
-import confply.log as log
+import os
+
+tool = "clang++"
+debug = "-g"
+include = "-I"
+standard = "-std="
+warnings = "-W"
+no_warnings = "-w"
+optimisation = "-O"
+link = "-l"
+library = "-L"
+build_object = "-c"
+output = "-o"
+
+def gen_warnings(config):
+    command = ""
+    conf_warnings = config["warnings"]
+    if isinstance(conf_warnings, list):
+        for w in config["warnings"]:
+            command += warnings+w+" "
+    elif isinstance(conf_warnings, bool):
+        if(not conf_warnings):
+            command += no_warnings+" "
+    elif isinstance(conf_warnings, str):
+        command += warnings+conf_warnings+" "
+    return command
 
 def generate(config):
-    command = "clang++ "
+    def gen_command(config, source = None):
+        command = ""
+        command += tool+" "
+        command += (" "+include+" ").join(config["include_paths"]) + " " if config["include_paths"] else ""
+        command += debug+" " if config["debug_info"] else ""
+        command += standard+config["standard"]+" " if config["standard"] else ""
+        command += gen_warnings(config) if config["warnings"] else ""
+        command += optimisation+str(config["optimisation"])+" " if config["optimisation"] else ""
+        if source is None:
+            command += " ".join(config["source_files"])+" " if config["source_files"] else ""
+            command += output+config["output_file"]+" " if config["output_file"] else ""
+            command += link+" "+(" "+link+" ").join(config["link_libraries"])+" " if config["link_libraries"] else ""
+            command += library+" "+(" "+library+" ").join(config["library_paths"])+" " if config["library_paths"] else ""
+        else:
+            command += build_object+" "+source+" "+output+" objects/"+os.path.basename(source)+".o"
+        return command
 
-    if config["include_paths"]:
-        for include in config["include_paths"]:
-            command += "-I" + include + " "
-
-    if config["debug_info"]:
-        command += "-g "
-        
-    if config["standard"] != None:
-        command += "-std="+str(config["standard"]) + " "
-
-    if config["warnings"] != None:
-        warnings = config["warnings"]
-        if isinstance(warnings, list):
-            for w in config["warnings"]:
-                command += "-W"+w+" "
-        elif isinstance(warnings, bool):
-            if(not warnings):
-                command += "-w"
-        elif isinstance(warnings, str):
-            command += "-W"+config["warnings"]+" "
-
-    if config["optimisation"] != None:
-        command += "-O"+str(int(config["optimisation"]))+" "
-
-    if config["source_files"]:
-        for source in config["source_files"]:
-            command += source + " "
-
-    if config["output_file"]:
-        command += "-o "+config["output_file"] + " "
+    if config["build_objects"]:
+        if not os.path.exists("objects/"):
+            os.mkdir("objects")
+        commands = []
+        sources = config["source_files"]
+        objects = ["objects/"+os.path.basename(x)+".o" for x in sources]
+        source_times = [os.stat(x).st_mtime.real for x in sources]
+        object_times = [os.stat(x).st_mtime.real if os.path.exists(x) else 0 for x in objects]
+        for ot, st, s in zip(object_times, source_times, sources):
+            if ot < st:
+                commands.append(gen_command(config, s))
+        config["source_files"] = objects
+        commands.append(gen_command(config))
+        config["source_files"] = sources
+        return commands
     else:
-        command += "-o app.bin"
-
-    if config["link_libraries"]:
-        for link in config["link_libraries"]:
-            command += "-l" + link + " "
-
-    if config["library_paths"]:
-        for library in config["library_paths"]:
-            command += library + " "
-
-    return command
+        return gen_command(config)

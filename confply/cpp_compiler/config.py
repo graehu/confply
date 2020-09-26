@@ -5,7 +5,6 @@ confply_command = "cpp_compiler"
 # usage: environment = { "PATH" : "c:/bin/dir/", "etc" : "c:/etc/" }
 environment_vars = None
 
-
 # source files to compile
 # usage: source_files = ["main.cpp", "etc.cpp"]
 source_files = None
@@ -38,6 +37,10 @@ standard = None
 # usage: warnings=["all", "etc"]
 warnings = None
 
+# enables building object files used for building incrementally
+# usage: build_objects = True
+build_objects = None
+
 # the final result of the build. Builds executables by default.
-# usage: output = my_app
+# usage: output_file = "my_app.bin"
 output_file = None

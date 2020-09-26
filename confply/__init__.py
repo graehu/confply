@@ -140,7 +140,6 @@ class command:
             log.error("failed to load: "+path)
 
 
-    # todo: valid tools exist, have a dependency checker in clang.py, cl.py, gcc.py etc.
     # todo: make this import one tool at a time, like previous import_cache behaviour
     def generate(self):
         command = self.config["confply_command"]
@@ -217,23 +216,31 @@ class command:
                 shell_cmd = self.generate()
 
                 if shell_cmd is not None:
-                    log.normal("final command:\n\n"+shell_cmd+"\n")
+                    log.normal("final command:\n\n"+str(shell_cmd)+"\n")
                     log.header("begin "+self.config["confply_tool"])
+                    def run_shell_cmd(shell_cmd):
+                        if confply.config.confply_log_file != None:
+                            sys.stdout.flush()
+                            result = subprocess.run(shell_cmd, stdout=sys.stdout, stderr=subprocess.STDOUT, text=True, shell=True)
+                        else:
+                            result = subprocess.run(shell_cmd, shell=True)
 
-                    if confply.config.confply_log_file != None:
-                        sys.stdout.flush()
-                        result = subprocess.run(shell_cmd, stdout=sys.stdout, stderr=subprocess.STDOUT, text=True, shell=True)
+                        if result.returncode == 0:
+                            log.linebreak()
+                            log.success(self.config["confply_tool"]+" succeeded!")
+                        else:
+                            log.linebreak()
+                            log.error(self.config["confply_tool"]+" failed.")
+                            log.error(self.config["confply_tool"]+" return code: "+str(result.returncode))
+                            return_code = -2
+                            
+                    if isinstance(shell_cmd, list):
+                        for cmd in shell_cmd:
+                            log.linebreak();
+                            log.normal(cmd)
+                            run_shell_cmd(cmd)
                     else:
-                        result = subprocess.run(shell_cmd, shell=True)
-
-                    if result.returncode == 0:
-                        log.linebreak()
-                        log.success(self.config["confply_tool"]+" succeeded!")
-                    else:
-                        log.linebreak()
-                        log.error(self.config["confply_tool"]+" failed.")
-                        log.error(self.config["confply_tool"]+" return code: "+str(result.returncode))
-                        return_code = -2
+                        run_shell_cmd(shell_cmd)
                 else:
                     log.error("couldn't generate valid command.")
                     return_code = -1
