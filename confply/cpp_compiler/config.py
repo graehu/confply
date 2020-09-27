@@ -39,7 +39,11 @@ warnings = None
 
 # enables building object files used for building incrementally
 # usage: build_objects = True
-build_objects = None
+build_objects = True
+
+# enables dependency tracking
+# usage: track_dependencies = True
+track_dependencies = True
 
 # the final result of the build. Builds executables by default.
 # usage: output_file = "my_app.bin"
