@@ -8,6 +8,13 @@ if __name__ == "__main__":
     in_args = sys.argv[1:]
     log.confply_header()
     log.linebreak()
+    version = sys.version_info
+    version = (version.major, version.minor, version.micro)
+    log.normal("python"+str(version))
+    if(version[0] < 3 or (version[0] == 3 and version[1] < 6)):
+        log.error("python version must be 3.6 or above")
+        log.linebreak()
+        exit(1)
     log.normal("called with args: "+str(in_args))
     return_code = -999999
     while len(in_args) > 0:

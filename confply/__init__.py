@@ -68,11 +68,12 @@ def launcher(in_args, aliases):
                 for line in aliases[arg].split(";"):
                     shell = shlex.split(line)
                     if os.path.exists(shell[0]):
-                        file_dir = os.path.dirname(shell[0])
-                        file_name = os.path.basename(shell[0])
+                        system_code = 0
+                        confply_dir = os.path.relpath(__file__)
+                        confply_dir = os.path.dirname(confply_dir)+"/.."
+                        confply_dir = os.path.relpath(confply_dir)+"/confply.py"
                         file_args = line.replace(shell[0], "")
-                        # todo: handle the return codes here.
-                        system_code = os.WEXITSTATUS(os.system("cd "+file_dir+"; ./"+file_name+" "+file_args));
+                        os.WEXITSTATUS(os.system("./"+confply_dir+" "+shell[0]+" "+file_args))
                         if(system_code > return_code and system_code != 0):
                             return_code = system_code
                         if return_code == -1:
