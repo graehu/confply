@@ -141,7 +141,7 @@ class command:
             log.error("failed to load: "+path)
 
 
-    # todo: make this import one tool at a time, like previous import_cache behaviour
+    # #todo: make this import one tool at a time, like previous import_cache behaviour
     def generate(self):
         command = self.config["confply_command"]
         if command not in self.tools:

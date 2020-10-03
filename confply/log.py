@@ -3,7 +3,7 @@ import re
 import confply.config
 
 # Logging module to keep logs consistent in confply.
-# todo: add formatted() for a formatted log function
+# #todo: add formatted() for a formatted log function
 
 try:
     terminal_test = os.get_terminal_size()
