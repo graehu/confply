@@ -33,7 +33,7 @@ def generate(config):
     def gen_command(config, source = None):
         command = ""
         command += tool+" "
-        command += (" "+include+" ").join(config["include_paths"]) + " " if config["include_paths"] else ""
+        command += include+" "+(" "+include+" ").join(config["include_paths"]) + " " if config["include_paths"] else ""
         command += debug+" " if config["debug_info"] else ""
         command += standard+config["standard"]+" " if config["standard"] else ""
         command += gen_warnings(config) if config["warnings"] else ""
