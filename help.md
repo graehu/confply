@@ -18,5 +18,6 @@ arguments are passed to the config file during load/run.
 
 ### return codes ###
 
+0 : successful run.
 1 : fatal error in confply, aborted any further work.
 2 : unsuccessful tool run, see output for return codes.

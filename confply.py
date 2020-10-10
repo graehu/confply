@@ -17,32 +17,38 @@ if __name__ == "__main__":
         exit(1)
     log.normal("called with args: "+str(in_args))
     return_code = -999999
-    while len(in_args) > 0:
-        if in_args[0].startswith("--"):
-            option = in_args.pop(0)
-            if option == "--launcher":
-                confply.handle_launcher_arg(in_args)
-            elif option == "--config":
-                confply.handle_config_arg(in_args)
-            elif option == "--help":
-                confply.handle_help_arg(in_args)
-            continue
+    if len(in_args) != 0:
+        while len(in_args) > 0:
+            if in_args[0].startswith("--"):
+                option = in_args.pop(0)
+                if option == "--launcher":
+                    confply.handle_launcher_arg(in_args)
+                elif option == "--config":
+                    confply.handle_config_arg(in_args)
+                elif option == "--help":
+                    confply.handle_help_arg(in_args)
+                continue
 
-        # default assume it's a file to run.
-        log.linebreak()
-        cmd = confply.command(in_args)
-        cmd_return = cmd.run()
-        
-        if(cmd_return > return_code and cmd_return != 0):
-            return_code = cmd_return
-        
-        # fatal error.
-        if return_code == -1:
+            # default assume it's a file to run.
             log.linebreak()
-            # failed to run command
-            exit(1)
-            
+            cmd = confply.command(in_args)
+            cmd_return = cmd.run()
 
+            if(cmd_return > return_code and cmd_return != 0):
+                return_code = cmd_return
+
+            # fatal error.
+            if return_code == -1:
+                log.linebreak()
+                # failed to run command
+                exit(1)
+    else:
+        log.error("no arguements supplied.")
+        confply_dir = os.path.relpath(__file__)
+        confply_dir = os.path.dirname(confply_dir)
+        return_code = -1
+        with open(confply_dir+"/help.md", "r") as help_file:
+            print("\n"+help_file.read())
     log.linebreak()
     if(return_code != -999999):
         exit(abs(return_code))

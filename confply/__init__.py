@@ -61,18 +61,21 @@ def launcher(in_args, aliases):
             printed_header = True
             log.confply_header()
             log.linebreak()
+            
+    confply_dir = os.path.relpath(__file__)
+    confply_dir = os.path.dirname(confply_dir)+"/.."
     
     if len(in_args) != 0:
         for arg in in_args:
             if arg in aliases:
                 for line in aliases[arg].split(";"):
                     shell = shlex.split(line)
+                    if len(shell) == 0:
+                        continue
                     if os.path.exists(shell[0]):
                         system_code = 0
-                        confply_dir = os.path.relpath(__file__)
-                        confply_dir = os.path.dirname(confply_dir)+"/.."
-                        confply_dir = os.path.relpath(confply_dir)+"/confply.py"
                         file_args = line.replace(shell[0], "")
+                        confply_dir = os.path.relpath(confply_dir)+"/confply.py"
                         os.WEXITSTATUS(os.system("./"+confply_dir+" "+shell[0]+" "+file_args))
                         if(system_code > return_code and system_code != 0):
                             return_code = system_code
@@ -93,8 +96,8 @@ def launcher(in_args, aliases):
         if not printed_header:
             try_print_header()
         log.error("no arguements supplied.")
-        log.normal("no help so far, make sure to print it here")
-        log.normal("when it exists. :)")
+        with open(confply_dir+"/help.md", "r") as help_file:
+            print("\n"+help_file.read())
         return_code = -1
     log.linebreak()
 
