@@ -5,6 +5,7 @@ import shlex
 tool = "clang++"
 debug = "-g"
 include = "-I"
+define = "-D"
 standard = "-std="
 warnings = "-W"
 no_warnings = "-w"
@@ -34,6 +35,7 @@ def generate(config):
         command = ""
         command += tool+" "
         command += include+" "+(" "+include+" ").join(config["include_paths"]) + " " if config["include_paths"] else ""
+        command += define+" "+(" "+define+" ").join(config["defines"])+" " if config["defines"] else ""
         command += debug+" " if config["debug_info"] else ""
         command += standard+config["standard"]+" " if config["standard"] else ""
         command += gen_warnings(config) if config["warnings"] else ""
@@ -41,8 +43,8 @@ def generate(config):
         if source is None:
             command += " ".join(config["source_files"])+" " if config["source_files"] else ""
             command += output+config["output_file"]+" " if config["output_file"] else ""
-            command += link+" "+(" "+link+" ").join(config["link_libraries"])+" " if config["link_libraries"] else ""
             command += library+" "+(" "+library+" ").join(config["library_paths"])+" " if config["library_paths"] else ""
+            command += link+" "+(" "+link+" ").join(config["link_libraries"])+" " if config["link_libraries"] else ""
         else:
             command += build_object+" "+source+" "+output+" objects/"+os.path.basename(source)+".o "
             if config["track_dependencies"]:
@@ -78,7 +80,7 @@ def generate(config):
             if ot < st or g:
                 commands.append(gen_command(config, s))
         num_commands = len(commands)
-        if num_commands > 0:
+        if num_commands > 0 and config["output_executable"]:
             log.normal(str(num_commands)+" files to compile")
             config["source_files"] = objects
             commands.append(gen_command(config))

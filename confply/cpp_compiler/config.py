@@ -5,6 +5,10 @@ confply_command = "cpp_compiler"
 # usage: environment = { "PATH" : "c:/bin/dir/", "etc" : "c:/etc/" }
 environment_vars = None
 
+# used to set preprocessor defines
+# usage: defines = ["MY_DEFINE=1", "MY_OTHER_DEF"]
+defines = None
+
 # source files to compile
 # usage: source_files = ["main.cpp", "etc.cpp"]
 source_files = None
@@ -44,6 +48,10 @@ build_objects = True
 # enables dependency tracking
 # usage: track_dependencies = True
 track_dependencies = True
+
+# if true, an executable will be generated.
+# usage: output_executable = True
+output_executable = True
 
 # the final result of the build. Builds executables by default.
 # usage: output_file = "my_app.bin"

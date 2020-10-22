@@ -6,11 +6,12 @@ import confply.log as log
 
 if __name__ == "__main__":
     in_args = sys.argv[1:]
-    log.confply_header()
-    log.linebreak()
     version = sys.version_info
     version = (version.major, version.minor, version.micro)
-    log.normal("python"+str(version))
+    if not "--no_header" in in_args:
+        log.confply_header()
+        log.linebreak()
+        log.normal("python"+str(version))
     if(version[0] < 3 or (version[0] == 3 and version[1] < 6)):
         log.error("python version must be 3.6 or above")
         log.linebreak()

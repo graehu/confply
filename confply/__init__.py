@@ -4,6 +4,7 @@ import stat
 import shlex
 import shutil
 import timeit
+import inspect
 import traceback
 import importlib
 import subprocess
@@ -16,7 +17,7 @@ confply_base_config = {}
 with open(os.path.dirname(__file__) + "/config.py", 'r') as config_file:
     exec(config_file.read(), {}, confply_base_config)
 
-new_launcher_str = """#!/usr/bin/env python
+new_launcher_str = r"""#!/usr/bin/env python
 #                      _____       .__         
 #   ____  ____   _____/ ____\_____ |  | ___.__.
 # _/ ___\/  _ \ /    \   __\\____ \|  |<   |  |
@@ -64,7 +65,7 @@ def launcher(in_args, aliases):
             
     confply_dir = os.path.relpath(__file__)
     confply_dir = os.path.dirname(confply_dir)+"/.."
-    
+    # #todo: design flaw here, the spliting should be in confply.py, not this launcher.
     if len(in_args) != 0:
         for arg in in_args:
             if arg in aliases:
@@ -75,8 +76,12 @@ def launcher(in_args, aliases):
                     if os.path.exists(shell[0]):
                         system_code = 0
                         file_args = line.replace(shell[0], "")
-                        confply_dir = os.path.relpath(confply_dir)+"/confply.py"
-                        os.WEXITSTATUS(os.system("./"+confply_dir+" "+shell[0]+" "+file_args))
+                        if not printed_header:
+                            os.WEXITSTATUS(os.system("./"+confply_dir+"/confply.py "+shell[0]+" "+file_args))
+                            printed_header = True
+                        else:
+                            os.WEXITSTATUS(os.system("./"+confply_dir+"/confply.py "+shell[0]+" "+file_args+" --no_header"))
+                            
                         if(system_code > return_code and system_code != 0):
                             return_code = system_code
                         if return_code == -1:
@@ -129,7 +134,7 @@ class command:
         if os.path.exists(path) and os.path.isfile(path):
             with open(path, 'r') as config_file:
                 try:
-                    exec(config_file.read(), {"confply.log":log}, self.config)
+                    exec(config_file.read(), {}, self.config)
                     # reset these when command class is cleaned up
                     log.linebreak()
                     log.success("successfully loaded: "+path)
@@ -267,6 +272,9 @@ class command:
                 sys.stdout = old_stdout
                 
             os.chdir(old_working_dir)
+
+        if self.config["confply_post_run"] and inspect.isfunction(self.config["confply_post_run"]):
+            self.config["confply_post_run"]()
         # This resets any confply.config back to what it was prior to running any user
         # config. Stops state leaks between command runs as confply.config is global.
         for key in confply_base_config.keys():

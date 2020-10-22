@@ -7,6 +7,7 @@ usage : `confply.py --[options] | [config] [arguments];...`
 	--help : prints this file to the console.
 	--config [command] [out_file] : generates a runnable config file for [command] at [out_file] located.
 	--launcher [out_file] : generates a runnable config launcher at [out_file] location. Set an alias to run a configs.
+	--no_header : don't print confply header
 	
 ### config ###
 

@@ -1,6 +1,6 @@
 # Header used at the top of log files and such
 # usage: confply_header = "(>'')><('')><(''<)"
-confply_header = """
+confply_header = r"""
                      _____       .__         
   ____  ____   _____/ ____\_____ |  | ___.__.
 _/ ___\/  _ \ /    \   __\\____ \|  |<   |  |
@@ -29,3 +29,7 @@ confply_log_config = None
 # default behaviour is as if unset, no logs created.
 # usage: confply_log_file = "../logs/my_command.log"
 confply_log_file = None
+
+# if set, confply will attempt to run the function.
+# usage: confply_post_run = my_function
+confply_post_run = None
