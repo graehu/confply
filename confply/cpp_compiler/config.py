@@ -49,6 +49,10 @@ build_objects = True
 # usage: track_dependencies = True
 track_dependencies = True
 
+# if set, all objects will be rebuilt when configs change
+# usage: rebuild_on_change = True
+rebuild_on_change = True
+
 # if true, an executable will be generated.
 # usage: output_executable = True
 output_executable = True

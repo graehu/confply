@@ -68,13 +68,16 @@ def generate(config):
                     gen_depends.append(False)
                     with open(x, "r") as f:
                         deps_times.append(max([os.path.getmtime(y).real for y in shlex.split(f.read()) if os.path.exists(y)]))
+                    if config["rebuild_on_change"]:
+                        deps_times[-1] = max(deps_times[-1], config["confply_modified"])
                 else:
                     gen_depends.append(True)
                     deps_times.append(0)
+
         else:
             deps_times = [os.path.getmtime(x).real for x in sources]
             gen_depends = [False for x in sources]
-            
+
         object_times = [os.path.getmtime(x).real if os.path.exists(x) else 0 for x in objects]
         for ot, st, s, g in zip(object_times, deps_times, sources, gen_depends):
             if ot < st or g:

@@ -132,6 +132,7 @@ class command:
         # also execs any code that may be there.
         # potentially pass some things in via config.
         if os.path.exists(path) and os.path.isfile(path):
+            self.config["confply_modified"] = os.path.getmtime(path).real
             with open(path, 'r') as config_file:
                 try:
                     exec(config_file.read(), {}, self.config)
