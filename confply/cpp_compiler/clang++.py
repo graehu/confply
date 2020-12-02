@@ -61,7 +61,10 @@ def generate(config):
         depends = ["objects/"+os.path.basename(x)+".d" for x in sources]
         deps_times = []
         gen_depends = []
-
+        output_time = config["output_file"] if config["output_file"] else "app.bin"
+        output_time = os.path.getmtime(output_time).real if os.path.exists(output_time) else 0
+        should_link = False
+        
         if config["track_dependencies"]:
             for x in depends:
                 if os.path.exists(x):
@@ -79,15 +82,20 @@ def generate(config):
             gen_depends = [False for x in sources]
 
         object_times = [os.path.getmtime(x).real if os.path.exists(x) else 0 for x in objects]
+        
         for ot, st, s, g in zip(object_times, deps_times, sources, gen_depends):
             if ot < st or g:
                 commands.append(gen_command(config, s))
-        num_commands = len(commands)
-        if num_commands > 0 and config["output_executable"]:
-            log.normal(str(num_commands)+" files to compile")
+                should_link = True
+            if ot > output_time:
+                should_link = True
+
+        if should_link and config["output_executable"]:
             config["source_files"] = objects
             commands.append(gen_command(config))
             config["source_files"] = sources
+            num_commands = len(commands)
+            log.normal(str(num_commands)+" files to compile")
         else:
             log.normal("no files to compile")
         return commands
