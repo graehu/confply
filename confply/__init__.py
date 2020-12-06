@@ -47,10 +47,14 @@ if __name__ == "__main__":
 new_config_str = """#!{confply_dir}/confply.py
 # generated using:
 # python {confply_dir}/confply.py --config {command_arg} {config_file}
-from confply.{command_arg}.config import *
+import sys
+sys.path.append('{confply_dir}')
+import confply.{command_arg}.config as confply
 import confply.log as log
-confply_log_topic = "{config_file}"
-log.normal("loading {config_file} with confply_args: "+str(confply_args))
+############# modify_below ################
+
+confply.confply_log_topic = "{command_arg}"
+log.normal("loading {command_arg} with confply_args: "+str(confply_args))
 """
 
 def launcher(in_args, aliases):
@@ -191,11 +195,19 @@ class command:
         if not self.load_success:
             log.error("failed running " + self.file_path + " command.")
             return -1
-
         confply_path = os.path.dirname(__file__) + "/"
+
+        if(not "confply" in self.config):
+            log.error("confply config incorrectly imported")
+            log.normal("\tuse: 'import confply.[command].config as confply'")
+            return -1
+        for k, v in vars(self.config["confply"]).items():
+            self.config[k] = v;
+        
+        
         if(not os.path.exists(confply_path+self.config["confply_command"])):
-            log.error(self.config["confply_command"]+" is not a valid confply_command and should not be set by users.")
-            log.normal("\tuse: 'from confply.[command].config import *' to import confply_command.")
+            log.error(self.config["confply_command"]+" is not a valid confply_command and should not be set directly by users.")
+            log.normal("\tuse: 'import confply.[command].config as confply' to import confply_command.")
             return -1
 
         # setting confply command configuration up
