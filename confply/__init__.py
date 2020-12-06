@@ -41,6 +41,8 @@ from confply import launcher
 aliases = {comment}
 
 if __name__ == "__main__":
+    # "all" will run all of the aliases
+    aliases["all"] = ";".join([val for key, val in aliases.items()])
     launcher(sys.argv[1:], aliases)
 """
 
