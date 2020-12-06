@@ -42,7 +42,7 @@ def generate(config):
         command += optimisation+str(config["optimisation"])+" " if config["optimisation"] else ""
         if source is None:
             command += " ".join(config["source_files"])+" " if config["source_files"] else ""
-            command += output+config["output_file"]+" " if config["output_file"] else output+" app.bin"
+            command += output+" "+config["output_file"]+" " if config["output_file"] else output+" app.bin"
             command += library+" "+(" "+library+" ").join(config["library_paths"])+" " if config["library_paths"] else ""
             command += link+" "+(" "+link+" ").join(config["link_libraries"])+" " if config["link_libraries"] else ""
         else:
