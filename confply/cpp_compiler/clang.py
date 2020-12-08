@@ -1,5 +1,5 @@
 import confply.cpp_compiler.common as common
 
 def generate(config):
-    common.tool = "g++"
+    common.tool = "clang"
     return common.generate(config)

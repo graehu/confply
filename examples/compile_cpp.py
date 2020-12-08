@@ -6,10 +6,10 @@ sys.path.append('..')
 import confply.cpp_compiler.config as confply
 import confply.log as log
 confply_log_topic = "compile_cpp.py"
-log.normal("loading compile_cpp.py with confply_args: "+str(confply_args))
+log.normal("loading compile_cpp.py with confply_args: "+str(confply.confply_args))
 
 debug = False
-if "debug" in confply_args:
+if "debug" in confply.confply_args:
     debug = True
     log.normal("set to debug config")
 

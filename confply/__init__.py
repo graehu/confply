@@ -56,7 +56,7 @@ import confply.log as log
 ############# modify_below ################
 
 confply.confply_log_topic = "{command_arg}"
-log.normal("loading {command_arg} with confply_args: "+str(confply_args))
+log.normal("loading {command_arg} with confply_args: "+str(confply.confply_args))
 """
 
 def launcher(in_args, aliases):
@@ -131,8 +131,14 @@ class command:
         path = confply_args[0]
         confply_args.pop(0)
 
+        if os.name == "nt":
+            confply.config.confply_platform = "windows"
+        elif os.name == "posix":
+            confply.config.confply_platform = "linux"
+        
         self.tools = {}
-        self.config = {"confply_args":confply_args}
+        self.config = {} # {"confply_args":confply_args}
+        confply.config.confply_args = confply_args
         self.file_path = path
         # open the file and read the junk out of it.
         # also execs any code that may be there.
@@ -171,24 +177,29 @@ class command:
             self.tools[command] = {}
             module_root = "confply."+command+"."
             for py in files:
-                if py.endswith(".py") and not py == "config.py":
+                if py.endswith(".py") and not py == "config.py" and not py == "common.py":
                     tool = py[0:-3]
                     self.tools[command][tool] = importlib.import_module(module_root+tool)
 
         tool = self.config["confply_tool"]
-        if tool == None:
-            log.error("confply_tool is not a valid set. Consider:")
+        def print_tools():
             for k, v in self.tools[command].items():
-                log.normal("\t"+k)
+                if not shutil.which(k):
+                    log.normal("\t"+k+" (not found)")
+                else:
+                    log.normal("\t"+k)
+        if tool == None:
+            log.error("confply_tool is not set. Consider:")
+            print_tools()
         elif shutil.which(tool) is None:
-            log.bold(tool+" could not be found.")
-            return self.tools[command][tool].generate(self.config)
+            log.error("'"+tool+"' could not be found is it installed? Consider:")
+            print_tools()
+            return None
         elif tool in self.tools[command]:
             return self.tools[command][tool].generate(self.config)
         else:
-            log.error(tool+" is not a valid "+command+" tool. Consider:")
-            for k, v in self.tools[command].items():
-                log.normal("\t"+k)
+            log.error("'"+tool+"' is not a valid "+command+" tool. Consider:")
+            print_tools()
         
         return None
     
@@ -323,7 +334,7 @@ class command:
             log.normal("")
         else:
             log.error(self.config["confply_command"]+" is not a valid confply_command and should not be set by users.")
-            log.normal("\tuse: 'from confply.[command].config import *' to import confply_command.")
+            log.normal("\tuse: 'import confply.[command].config as confply' to import confply_command.")
 
 def handle_help_arg(in_args):
     confply_dir = os.path.relpath(__file__)

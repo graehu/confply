@@ -33,3 +33,11 @@ confply_log_file = None
 # if set, confply will attempt to run the function.
 # usage: confply_post_run = my_function
 confply_post_run = None
+
+# platform that the command is running on
+# usage: if(confply_platform == "linux"): pass
+confply_platform = "unknown"
+
+# arguements that were passed to confply
+# usage: if "debug" in confply_args: pass
+confply_args = None
