@@ -64,3 +64,11 @@ output_executable = True
 # the final result of the build. Builds executables by default.
 # usage: output_file = "my_app.bin"
 output_file = None
+
+# appends to the end of the command
+# usage: command_append = "-something-unsupported"
+command_append = ""
+
+# prepend to the start of the command
+# usage: command_prepend_with = "-something-unsupported"
+command_prepend = ""

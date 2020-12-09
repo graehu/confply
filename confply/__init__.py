@@ -56,7 +56,7 @@ import confply.log as log
 ############# modify_below ################
 
 confply.confply_log_topic = "{command_arg}"
-log.normal("loading {command_arg} with confply_args: "+str(confply.confply_args))
+log.normal("loading {config_file} with confply_args: "+str(confply.confply_args))
 """
 
 def launcher(in_args, aliases):

@@ -35,7 +35,7 @@ def generate(config):
     def gen_command(config, source = None):
         
         command = ""
-        command += tool+" "
+        command += tool+" "+config["command_prepend"]+" "
         command += include+" "+(" "+include+" ").join(config["include_paths"]) + " " if config["include_paths"] else ""
         command += define+" "+(" "+define+" ").join(config["defines"])+" " if config["defines"] else ""
         command += debug+" " if config["debug_info"] else ""
@@ -51,7 +51,7 @@ def generate(config):
             command += build_object+" "+source+" "+output+" "+os.path.join(object_path, os.path.basename(source)+".o ")
             if config["track_dependencies"]:
                 command += dependencies+" "+dependencies_output+ " "+os.path.join(object_path, os.path.basename(source)+".d ")
-        return command
+        return command+" "+config["command_append"]
 
     if config["build_objects"]:
         os.makedirs(object_path, exist_ok=True)
