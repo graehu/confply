@@ -45,6 +45,10 @@ warnings = None
 # usage: build_objects = True
 build_objects = True
 
+# objects will be built to the provided path
+# usage: object_path = "objects/debug/"
+object_path = "objects/"
+
 # enables dependency tracking
 # usage: track_dependencies = True
 track_dependencies = True

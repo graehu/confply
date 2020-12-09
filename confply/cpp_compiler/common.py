@@ -31,7 +31,9 @@ def gen_warnings(config):
     return command
 
 def generate(config):
+    object_path = config["object_path"]
     def gen_command(config, source = None):
+        
         command = ""
         command += tool+" "
         command += include+" "+(" "+include+" ").join(config["include_paths"]) + " " if config["include_paths"] else ""
@@ -46,19 +48,20 @@ def generate(config):
             command += library+" "+(" "+library+" ").join(config["library_paths"])+" " if config["library_paths"] else ""
             command += link+" "+(" "+link+" ").join(config["link_libraries"])+" " if config["link_libraries"] else ""
         else:
-            command += build_object+" "+source+" "+output+" objects/"+os.path.basename(source)+".o "
+            command += build_object+" "+source+" "+output+" "+os.path.join(object_path, os.path.basename(source)+".o ")
             if config["track_dependencies"]:
-                command += dependencies+" "+dependencies_output+ " objects/"+os.path.basename(source)+".d"
+                command += dependencies+" "+dependencies_output+ " "+os.path.join(object_path, os.path.basename(source)+".d ")
         return command
 
     if config["build_objects"]:
-        if not os.path.exists("objects/"):
-            os.mkdir("objects")
+        os.makedirs(object_path, exist_ok=True)
+        # if not os.path.exists(object_path):
+        #     os.mkdir(object_path)
 
         commands = []
         sources = config["source_files"]
-        objects = ["objects/"+os.path.basename(x)+".o" for x in sources]
-        depends = ["objects/"+os.path.basename(x)+".d" for x in sources]
+        objects = [os.path.join(object_path, os.path.basename(x)+".o") for x in sources]
+        depends = [os.path.join(object_path, os.path.basename(x)+".d") for x in sources]
         deps_times = []
         gen_depends = []
         output_time = config["output_file"] if config["output_file"] else "app.bin"

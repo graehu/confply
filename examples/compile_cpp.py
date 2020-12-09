@@ -11,6 +11,7 @@ log.normal("loading compile_cpp.py with confply_args: "+str(confply.confply_args
 debug = False
 if "debug" in confply.confply_args:
     debug = True
+    confply.object_path = "objects/debug"
     log.normal("set to debug config")
 
 
