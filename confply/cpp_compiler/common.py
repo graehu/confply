@@ -55,9 +55,6 @@ def generate(config):
 
     if config["build_objects"]:
         os.makedirs(object_path, exist_ok=True)
-        # if not os.path.exists(object_path):
-        #     os.mkdir(object_path)
-
         commands = []
         sources = config["source_files"]
         objects = [os.path.join(object_path, os.path.basename(x)+".o") for x in sources]

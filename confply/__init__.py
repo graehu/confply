@@ -144,8 +144,10 @@ class command:
         # also execs any code that may be there.
         # potentially pass some things in via config.
         if os.path.exists(path) and os.path.isfile(path):
+            old_path = os.getcwd()
             self.config["confply_modified"] = os.path.getmtime(path).real
             with open(path, 'r') as config_file:
+                os.chdir(os.path.dirname(path))
                 try:
                     exec(config_file.read(), {}, self.config)
                     # reset these when command class is cleaned up
@@ -157,6 +159,7 @@ class command:
                     trace = traceback.format_exc().replace("<string>", path)
                     log.normal("traceback:\n\n"+trace)
                     self.load_success = False
+            os.chdir(old_path)
         else:
             self.load_success = False
             log.error("failed to load: "+path)
@@ -229,7 +232,8 @@ class command:
             exec("confply.config.{0} = self.config[key]".format(key), globals(), locals())
         new_log_topic = confply.config.confply_log_topic
         old_stdout = sys.stdout
-
+        
+        # #todo: this is probably broken, test it
         if confply.config.confply_log_file != None:
             confply.config.confply_log_topic = old_log_topic
             log.normal("writing to: "+confply.config.confply_log_file+"....")
@@ -296,11 +300,10 @@ class command:
             if sys.stdout != old_stdout:
                 sys.stdout.close()
                 sys.stdout = old_stdout
-                
-            os.chdir(old_working_dir)
 
-        if self.config["confply_post_run"] and inspect.isfunction(self.config["confply_post_run"]):
-            self.config["confply_post_run"]()
+            if self.config["confply_post_run"] and inspect.isfunction(self.config["confply_post_run"]):
+                self.config["confply_post_run"]()
+            os.chdir(old_working_dir)
         # This resets any confply.config back to what it was prior to running any user
         # config. Stops state leaks between command runs as confply.config is global.
         for key in confply_base_config.keys():
