@@ -257,6 +257,7 @@ class command:
                 if shell_cmd is not None:
                     log.normal("final command:\n\n"+str(shell_cmd)+"\n")
                     log.header("begin "+self.config["confply_tool"])
+                    sys.stdout.flush()
                     def run_shell_cmd(shell_cmd):
                         nonlocal return_code
                         if confply.config.confply_log_file != None:
