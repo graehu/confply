@@ -83,10 +83,10 @@ def launcher(in_args, aliases):
                         system_code = 0
                         file_args = line.replace(shell[0], "")
                         if not printed_header:
-                            os.WEXITSTATUS(os.system("./"+confply_dir+"/confply.py "+shell[0]+" "+file_args))
+                            system_code = os.WEXITSTATUS(os.system("./"+confply_dir+"/confply.py "+shell[0]+" "+file_args))
                             printed_header = True
                         else:
-                            os.WEXITSTATUS(os.system("./"+confply_dir+"/confply.py "+shell[0]+" "+file_args+" --no_header"))
+                            system_code = os.WEXITSTATUS(os.system("./"+confply_dir+"/confply.py "+shell[0]+" "+file_args+" --no_header"))
                             
                         if(system_code > return_code and system_code != 0):
                             return_code = system_code
@@ -258,6 +258,7 @@ class command:
                     log.normal("final command:\n\n"+str(shell_cmd)+"\n")
                     log.header("begin "+self.config["confply_tool"])
                     def run_shell_cmd(shell_cmd):
+                        nonlocal return_code
                         if confply.config.confply_log_file != None:
                             sys.stdout.flush()
                             result = subprocess.run(shell_cmd, stdout=sys.stdout, stderr=subprocess.STDOUT, text=True, shell=True)
