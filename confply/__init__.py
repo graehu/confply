@@ -72,6 +72,8 @@ def launcher(in_args, aliases):
             log.linebreak()
     confply_dir = os.path.relpath(__file__)
     confply_dir = os.path.dirname(confply_dir)+"/.."
+    confply_dir = os.path.relpath(confply_dir)
+    confply_dir = confply_dir.replace("\\", "/")
     # #todo: design flaw here, the spliting should be in confply.py, not this launcher.
     if len(in_args) != 0:
         for arg in in_args:
@@ -146,7 +148,7 @@ class command:
             confply.config.confply_platform = "linux"
         
         self.tools = {}
-        self.config = {} # {"confply_args":confply_args}
+        self.config = {}
         confply.config.confply_args = confply_args
         self.file_path = path
         # open the file and read the junk out of it.
@@ -156,7 +158,9 @@ class command:
             old_path = os.getcwd()
             self.config["confply_modified"] = os.path.getmtime(path).real
             with open(path, 'r') as config_file:
-                os.chdir(os.path.dirname(path))
+                new_path = os.path.dirname(path)
+                if not new_path == "":
+                    os.chdir(new_path)
                 try:
                     exec(config_file.read(), {}, self.config)
                     # reset these when command class is cleaned up
@@ -168,7 +172,9 @@ class command:
                     trace = traceback.format_exc().replace("<string>", path)
                     log.normal("traceback:\n\n"+trace)
                     self.load_success = False
-            os.chdir(old_path)
+
+            if not old_path == "":
+                os.chdir(old_path)
         else:
             self.load_success = False
             log.error("failed to load: "+path)
@@ -367,6 +373,7 @@ def handle_launcher_arg(in_args):
     confply_dir = os.path.relpath(__file__)
     confply_dir = os.path.dirname(confply_dir)+"/.."
     confply_dir = os.path.relpath(confply_dir)
+    confply_dir = confply_dir.replace("\\", "/")
     
     arguement = in_args.pop(0)
     launcher_path = os.path.abspath(os.path.curdir)+"/"+arguement
@@ -390,12 +397,20 @@ def handle_config_arg(in_args):
     if len(in_args) < 2:
         log.error("--config requires two values:")
         log.normal("\t--config [confply_command] [new_config_file]")
+        log.normal("")
+        log.normal("valid confply_commands:")
+        confply_dir = os.path.dirname(__file__)
+        files = os.listdir(confply_dir)
+        for dir in files:
+            if os.path.isdir(os.path.join(confply_dir, dir)) and not dir == "__pycache__":
+                log.normal("\t"+dir)
         return
     
     # this seems like a bad way to get the parent dir. Consider pathlib
     confply_dir = os.path.relpath(__file__)
     confply_dir = os.path.dirname(confply_dir)+"/.."
     confply_dir = os.path.relpath(confply_dir)
+    confply_dir = confply_dir.replace("\\", "/")
     
     command_arg = in_args.pop(0)
     config_arg = in_args.pop(0)
@@ -424,3 +439,4 @@ def handle_config_arg(in_args):
         log.success("wrote: "+config_path)
     else:
         log.error(config_path+" already exists!")
+        log.normal("aborted --config.")
