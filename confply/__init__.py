@@ -33,7 +33,9 @@ import os
 
 # set current working directory and add confply to path
 # so we can import the launcher function
-os.chdir(os.path.dirname(__file__))
+dir_name = os.path.dirname(__file__)
+if not dir_name == "":
+    os.chdir(dir_name)
 sys.path.append("{confply_dir}")
 from confply import launcher
 
@@ -68,7 +70,6 @@ def launcher(in_args, aliases):
             printed_header = True
             log.confply_header()
             log.linebreak()
-            
     confply_dir = os.path.relpath(__file__)
     confply_dir = os.path.dirname(confply_dir)+"/.."
     # #todo: design flaw here, the spliting should be in confply.py, not this launcher.
@@ -82,11 +83,19 @@ def launcher(in_args, aliases):
                     if os.path.exists(shell[0]):
                         system_code = 0
                         file_args = line.replace(shell[0], "")
-                        if not printed_header:
-                            system_code = os.WEXITSTATUS(os.system("./"+confply_dir+"/confply.py "+shell[0]+" "+file_args))
-                            printed_header = True
+                        if os.name == 'nt':
+                            # windows doesn't support os.WEXITSTATUS
+                            if not printed_header:
+                                system_code = os.system("python "+confply_dir+"/confply.py "+shell[0]+" "+file_args)
+                                printed_header = True
+                            else:
+                                system_code = os.system("python "+confply_dir+"/confply.py "+shell[0]+" "+file_args+" --no_header")
                         else:
-                            system_code = os.WEXITSTATUS(os.system("./"+confply_dir+"/confply.py "+shell[0]+" "+file_args+" --no_header"))
+                            if not printed_header:
+                                system_code = os.WEXITSTATUS(os.system("python "+confply_dir+"/confply.py "+shell[0]+" "+file_args))
+                                printed_header = True
+                            else:
+                                system_code = os.WEXITSTATUS(os.system("python "+confply_dir+"/confply.py "+shell[0]+" "+file_args+" --no_header"))
                             
                         if(system_code > return_code and system_code != 0):
                             return_code = system_code
@@ -186,7 +195,7 @@ class command:
 
         tool = self.config["confply_tool"]
         def print_tools():
-            for k, v in self.tools[command].items():
+            for k in self.tools[command].keys():
                 if not shutil.which(k):
                     log.normal("\t"+k+" (not found)")
                 else:
@@ -218,7 +227,7 @@ class command:
             log.normal("\tuse: 'import confply.[command].config as confply'")
             return -1
         for k, v in vars(self.config["confply"]).items():
-            self.config[k] = v;
+            self.config[k] = v
         
         
         if(not os.path.exists(confply_path+self.config["confply_command"])):
@@ -248,7 +257,9 @@ class command:
             if confply.config.confply_log_config != False:
                 self.print_config()
             old_working_dir = os.getcwd()
-            os.chdir(os.path.dirname(self.file_path))
+            new_working_dir = os.path.dirname(self.file_path)
+            if len(new_working_dir) > 0:
+                os.chdir(new_working_dir)
 
             try:
                 time_start = timeit.default_timer()
@@ -277,7 +288,7 @@ class command:
                             
                     if isinstance(shell_cmd, list):
                         for cmd in shell_cmd:
-                            log.linebreak();
+                            log.linebreak()
                             log.normal(cmd)
                             run_shell_cmd(cmd)
                     else:
