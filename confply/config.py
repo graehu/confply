@@ -40,4 +40,4 @@ confply_platform = "unknown"
 
 # arguements that were passed to confply
 # usage: if "debug" in confply_args: pass
-confply_args = None
+confply_args = []
