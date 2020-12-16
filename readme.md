@@ -8,7 +8,9 @@ Confply is written in python and each of it's config files are just python files
 
 For now compilers will be the focus, but scope for other tool types has been considered in the design.
 
-## Examples/Compile_cpp.py Config  ##
+## Examples
+![Linux Examples](https://github.com/graehu/confply/workflows/Linux%20Examples/badge.svg)
+### Compile_cpp.py
 
 ``` python
 #!../confply.py
