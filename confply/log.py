@@ -65,9 +65,9 @@ def centered(in_string, fill_string = " "):
     in_string = (" "+in_string+" ").center(terminal_width, fill_string)
     print(topic+in_string)
     
-def normal(in_string):
+def normal(in_string, end = "\n", flush=False):
     topic = get_log_topic()
-    print(topic+in_string)
+    print(topic+in_string, end=end, flush=flush)
     
 def error(in_string):
     topic = get_log_topic()

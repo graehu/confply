@@ -4,6 +4,7 @@ import stat
 import shlex
 import shutil
 import timeit
+import select
 import inspect
 import traceback
 import importlib
@@ -206,19 +207,46 @@ class command:
                     log.normal("\t"+k+" (not found)")
                 else:
                     log.normal("\t"+k)
-        if tool == None:
-            log.error("confply_tool is not set. Consider:")
-            print_tools()
-        elif shutil.which(tool) is None:
-            log.error("'"+tool+"' could not be found is it installed? Consider:")
-            print_tools()
+                    
+        def tool_select():
+            finished = False
+            while not finished:
+                log.normal("continue with a different tool? (Y/N): ", end="", flush=True)
+                rlist, _, _ =select.select([sys.stdin], [], [], 10)
+                if rlist:
+                    answer = sys.stdin.readline().upper().replace("\n", "")
+                    if answer == "YES" or answer == "Y":
+                        log.normal("which tool? options:")
+                        print_tools();
+                        log.normal("")
+                        log.normal("tool: ", end="", flush=True)
+                        tool = input("")
+                        if tool in self.tools[command]:
+                            self.config["confply_tool"] = tool
+                            return self.tools[command][tool].generate(self.config)
+                        else:
+                            log.error("'"+tool+"' could not be found is it installed?")
+                        finished = False
+                    elif answer == "NO" or answer == "N":
+                        finished = True
+                    elif answer == "":
+                        finished = False
+                else:
+                    print("")
+                    log.normal("timed out.")
+                    finished = True
             return None
+            
+        if tool == None:
+            log.error("confply_tool is not set.")
+            return tool_select()
+        elif shutil.which(tool) is None:
+            log.error("'"+tool+"' could not be found is it installed?")
+            return tool_select()
         elif tool in self.tools[command]:
             return self.tools[command][tool].generate(self.config)
         else:
-            log.error("'"+tool+"' is not a valid "+command+" tool. Consider:")
-            print_tools()
-        
+            log.error("'"+tool+"' is not a valid "+command+" tool.")
         return None
     
     def run(self):
@@ -300,7 +328,7 @@ class command:
                     else:
                         run_shell_cmd(shell_cmd)
                 else:
-                    log.error("couldn't generate valid command.")
+                    log.error("couldn't generate a valid command.")
                     return_code = -1
 
                 time_end = timeit.default_timer()
