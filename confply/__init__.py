@@ -241,16 +241,10 @@ class command:
                 return False
         
         if tool in self.tools[command]:
-            old_envs = os.environ.copy()
-            os.environ = self.tools[command][tool].get_environ(self.config)
-            
             if not self.tools[command][tool].is_found(self.config):
                 log.error("'"+tool+"' could not be found, is it installed?")
-                out = tool_select()
-                os.environ = old_envs
-                return out
+                return tool_select()
             else:
-                os.environ = old_envs
                 return True
         else:
             log.error("'"+str(tool)+"' is not a valid "+command+" tool.")
