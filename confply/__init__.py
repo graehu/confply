@@ -180,7 +180,7 @@ class command:
             log.error("failed to load: "+path)
 
     # #todo: make this import one tool at a time, like previous import_cache behaviour
-    def __validate_config(self):
+    def _validate_config(self):
         command = self.config["confply_command"]
         if command not in self.tools:
             dir = os.path.dirname(__file__) +"/"+command
@@ -201,7 +201,7 @@ class command:
         tool = self.config["confply_tool"]
         def print_tools():
             for k in self.tools[command].keys():
-                if not shutil.which(k):
+                if not self.tools[command][k].is_found(config):
                     log.normal("\t"+k+" (not found)")
                 else:
                     log.normal("\t"+k)
@@ -242,9 +242,9 @@ class command:
         
         if tool in self.tools[command]:
             old_envs = os.environ.copy()
-            log.normal("setting envs")
             os.environ = self.tools[command][tool].get_environ(self.config)
-            if shutil.which(tool) is None:
+            
+            if not self.tools[command][tool].is_found(config):
                 log.error("'"+tool+"' could not be found, is it installed?")
                 out = tool_select()
                 os.environ = old_envs
@@ -309,15 +309,15 @@ class command:
                 time_start = timeit.default_timer()
                 # #todo: tool selection phase should happen first.
                 # #todo: rename generate to gen_command
-                valid_tools = self.__validate_config()
+                valid_tools = self._validate_config()
                 command = self.config["confply_command"]
                 tool = self.config["confply_tool"]
                 shell_cmd = self.tools[command][tool].generate(self.config) if valid_tools else None
                 if shell_cmd is not None:
                     cmd_env = self.tools[command][tool].get_environ(self.config)
-                    
-                    log.normal("final command:\n\n"+str(shell_cmd)+"\n")
-                    log.header("begin "+tool)
+                    if len(shell_cmd) > 0:
+                        log.normal("final command:\n\n"+str(shell_cmd)+"\n")
+                        log.header("begin "+tool)
                     sys.stdout.flush()
                     def run_shell_cmd(shell_cmd):
                         nonlocal return_code
@@ -339,7 +339,8 @@ class command:
                     if isinstance(shell_cmd, list):
                         for cmd in shell_cmd:
                             log.linebreak()
-                            log.normal(cmd+"\n", flush=True)
+                            log.normal(cmd)
+                            log.normal("", flush=True)
                             run_shell_cmd(cmd)
                     else:
                         run_shell_cmd(shell_cmd)

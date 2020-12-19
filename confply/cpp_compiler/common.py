@@ -1,4 +1,5 @@
 import confply.log as log
+import shutil
 import os
 import shlex
 
@@ -105,3 +106,6 @@ def generate(config):
 
 def get_environ(config):
     return os.environ
+
+def is_found(tool):
+    return not shutil.which(tool) is None

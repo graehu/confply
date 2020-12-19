@@ -7,3 +7,7 @@ def generate(config):
 
 def get_environ(config):
     return common.get_environ(config)
+
+
+def is_found(config):
+    return common.is_found("g++")
