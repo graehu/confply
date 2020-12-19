@@ -201,7 +201,7 @@ class command:
         tool = self.config["confply_tool"]
         def print_tools():
             for k in self.tools[command].keys():
-                if not self.tools[command][k].is_found(config):
+                if not self.tools[command][k].is_found(self.config):
                     log.normal("\t"+k+" (not found)")
                 else:
                     log.normal("\t"+k)
@@ -244,7 +244,7 @@ class command:
             old_envs = os.environ.copy()
             os.environ = self.tools[command][tool].get_environ(self.config)
             
-            if not self.tools[command][tool].is_found(config):
+            if not self.tools[command][tool].is_found(self.config):
                 log.error("'"+tool+"' could not be found, is it installed?")
                 out = tool_select()
                 os.environ = old_envs

@@ -40,8 +40,10 @@ def get_environ(config):
     global _vs_tools
     cl_envs = os.environ.copy()
     cl_envs["PATH"] += ";"+_vs_tools
+    # #fixme: I think this is a hack, I feel like it should be passed like -arch
     cl_envs["VSCMD_DEBUG"] = "3"
-    vsdevcmd = 'cmd.exe /s /c "call vsdevcmd.bat && set"'
+    # #todo: add a way to set the architecture from the configs
+    vsdevcmd = 'cmd.exe /s /c "call vsdevcmd.bat -arch=x64 && set"'
     proc = subprocess.Popen(
         vsdevcmd, stdout=subprocess.PIPE, shell=True, env=cl_envs)
     lines = proc.stdout.readlines()
