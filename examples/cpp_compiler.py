@@ -19,9 +19,12 @@ if "debug" in confply.confply_args:
 confply.confply_tool = "clang++"
 
 if "-clean" in confply.confply_args:
-    log.normal("cleaning compiled objects")
-    os.system("rm -r objects/")
-    
+    if os.path.exists(confply.object_path):
+        log.normal("cleaning compiled objects")
+        os.system("rm -r "+confply.object_path)
+    else:
+        log.normal("no objects to remove")
+        
 if "-tool" in confply.confply_args:
     tool_index = confply.confply_args.index("-tool") + 1
     if tool_index < len(confply.confply_args):
