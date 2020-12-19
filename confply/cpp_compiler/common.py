@@ -101,3 +101,7 @@ def generate(config):
         return commands
     else:
         return gen_command(config)
+
+
+def get_environ(config):
+    return os.environ

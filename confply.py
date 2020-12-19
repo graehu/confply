@@ -48,7 +48,8 @@ if __name__ == "__main__":
         confply_dir = os.path.relpath(__file__)
         confply_dir = os.path.dirname(confply_dir)
         return_code = -1
-        with open(confply_dir+"/help.md", "r") as help_file:
+        
+        with open(os.path.join(confply_dir,"help.md"), "r") as help_file:
             print("\n"+help_file.read())
     log.linebreak()
     if(return_code != -999999):

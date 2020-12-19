@@ -119,7 +119,7 @@ def launcher(in_args, aliases):
         if not printed_header:
             try_print_header()
         log.error("no arguements supplied.")
-        with open(confply_dir+"/help.md", "r") as help_file:
+        with open(os.path.join(confply_dir,"help.md"), "r") as help_file:
             print("\n"+help_file.read())
         return_code = -1
     log.linebreak()
@@ -131,7 +131,6 @@ def launcher(in_args, aliases):
 
 class command:
     def __init__(self, in_args):
-
         confply_args = []
         while len(in_args) > 0:
             arg = in_args.pop(0)
@@ -180,9 +179,8 @@ class command:
             self.load_success = False
             log.error("failed to load: "+path)
 
-
     # #todo: make this import one tool at a time, like previous import_cache behaviour
-    def generate(self):
+    def __validate_config(self):
         command = self.config["confply_command"]
         if command not in self.tools:
             dir = os.path.dirname(__file__) +"/"+command
@@ -209,46 +207,58 @@ class command:
                     log.normal("\t"+k)
                     
         def tool_select():
-            finished = False
-            while not finished:
-                log.normal("continue with a different tool? (Y/N): ", end="", flush=True)
-                rlist, _, _ =select.select([sys.stdin], [], [], 10)
-                if rlist:
-                    answer = sys.stdin.readline().upper().replace("\n", "")
-                    if answer == "YES" or answer == "Y":
-                        log.normal("which tool? options:")
-                        print_tools();
-                        log.normal("")
-                        log.normal("tool: ", end="", flush=True)
-                        tool = input("")
-                        if tool in self.tools[command]:
-                            self.config["confply_tool"] = tool
-                            return self.tools[command][tool].generate(self.config)
-                        else:
-                            log.error("'"+tool+"' could not be found is it installed?")
-                        finished = False
-                    elif answer == "NO" or answer == "N":
+            if confply.config.confply_platform != "windows":
+                finished = False
+                while not finished:
+                    log.normal("continue with a different tool? (Y/N): ", end="", flush=True)
+                    rlist, _, _ = select.select([sys.stdin], [], [], 10)
+                    if rlist:
+                        answer = sys.stdin.readline().upper().replace("\n", "")
+                        if answer == "YES" or answer == "Y":
+                            log.normal("which tool? options:")
+                            print_tools()
+                            log.normal("")
+                            log.normal("tool: ", end="", flush=True)
+                            tool = input("")
+                            if tool in self.tools[command]:
+                                self.config["confply_tool"] = tool
+                                return True
+                            else:
+                                log.error("'"+tool+"' could not be found, is it installed?")
+                            finished = False
+                        elif answer == "NO" or answer == "N":
+                            finished = True
+                        elif answer == "":
+                            finished = False
+                    else:
+                        print("")
+                        log.normal("timed out.")
                         finished = True
-                    elif answer == "":
-                        finished = False
-                else:
-                    print("")
-                    log.normal("timed out.")
-                    finished = True
-            return None
-            
-        if tool == None:
-            log.error("confply_tool is not set.")
-            return tool_select()
-        elif shutil.which(tool) is None:
-            log.error("'"+tool+"' could not be found is it installed?")
-            return tool_select()
-        elif tool in self.tools[command]:
-            return self.tools[command][tool].generate(self.config)
+            else:
+                log.normal("options:")
+                print_tools()
+                log.normal("")
+                return False
+        
+        if tool in self.tools[command]:
+            old_envs = os.environ.copy()
+            log.normal("setting envs")
+            os.environ = self.tools[command][tool].get_environ(self.config)
+            if shutil.which(tool) is None:
+                log.error("'"+tool+"' could not be found, is it installed?")
+                out = tool_select()
+                os.environ = old_envs
+                return out
+            else:
+                os.environ = old_envs
+                return True
         else:
-            log.error("'"+tool+"' is not a valid "+command+" tool.")
-        return None
-    
+            log.error("'"+str(tool)+"' is not a valid "+command+" tool.")
+            return tool_select()
+
+        return False
+        
+
     def run(self):
         return_code = 0
         if not self.load_success:
@@ -297,33 +307,39 @@ class command:
 
             try:
                 time_start = timeit.default_timer()
-                shell_cmd = self.generate()
-
+                # #todo: tool selection phase should happen first.
+                # #todo: rename generate to gen_command
+                valid_tools = self.__validate_config()
+                command = self.config["confply_command"]
+                tool = self.config["confply_tool"]
+                shell_cmd = self.tools[command][tool].generate(self.config) if valid_tools else None
                 if shell_cmd is not None:
+                    cmd_env = self.tools[command][tool].get_environ(self.config)
+                    
                     log.normal("final command:\n\n"+str(shell_cmd)+"\n")
-                    log.header("begin "+self.config["confply_tool"])
+                    log.header("begin "+tool)
                     sys.stdout.flush()
                     def run_shell_cmd(shell_cmd):
                         nonlocal return_code
                         if confply.config.confply_log_file != None:
                             sys.stdout.flush()
-                            result = subprocess.run(shell_cmd, stdout=sys.stdout, stderr=subprocess.STDOUT, text=True, shell=True)
+                            result = subprocess.run(shell_cmd, stdout=sys.stdout, stderr=subprocess.STDOUT, text=True, shell=True, env=cmd_env)
                         else:
-                            result = subprocess.run(shell_cmd, shell=True)
+                            result = subprocess.run(shell_cmd, shell=True, env=cmd_env)
 
                         if result.returncode == 0:
                             log.linebreak()
-                            log.success(self.config["confply_tool"]+" succeeded!")
+                            log.success(tool+" succeeded!")
                         else:
                             log.linebreak()
-                            log.error(self.config["confply_tool"]+" failed.")
-                            log.error(self.config["confply_tool"]+" return code: "+str(result.returncode))
+                            log.error(tool+" failed.")
+                            log.error(tool+" return code: "+str(result.returncode))
                             return_code = -2
                             
                     if isinstance(shell_cmd, list):
                         for cmd in shell_cmd:
                             log.linebreak()
-                            log.normal(cmd)
+                            log.normal(cmd+"\n", flush=True)
                             run_shell_cmd(cmd)
                     else:
                         run_shell_cmd(shell_cmd)
@@ -342,8 +358,9 @@ class command:
                 log.normal("time elapsed: "+time)
             except:
                 log.error("failed to run config: ")
-                log.normal(sys.exc_info())
+                log.normal(str(sys.exc_info()))
                 return_code = -1
+
             if sys.stdout != old_stdout:
                 sys.stdout.close()
                 sys.stdout = old_stdout
@@ -389,7 +406,7 @@ class command:
 def handle_help_arg(in_args):
     confply_dir = os.path.relpath(__file__)
     confply_dir = os.path.dirname(confply_dir)+"/.."
-    with open(confply_dir+"/help.md", "r") as help_file:
+    with open(os.path.join(confply_dir,"help.md"), "r") as help_file:
         print("\n"+help_file.read())
         
 def handle_launcher_arg(in_args):
