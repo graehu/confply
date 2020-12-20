@@ -8,6 +8,16 @@ import confply.cpp_compiler.common as common
 def generate(config):
     if confply.config.confply_platform == "windows":
         common.tool = "cl"
+        common.output_obj = "-Fo"
+        common.output_exe = "-Fe"
+        common.standard = "-std:"
+        common.dependencies = ""
+        common.link = ""
+        common.library = "-LIBPATH:"
+        common.dependencies_output = "-sourceDependencies"
+        common.exception_handling = "-EHsc"
+        common.pass_to_linker = "-link"
+        common.object_ext = ".obj"
         return common.generate(config)
     else:
         log.error("cl only supports windows platforms")

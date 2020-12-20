@@ -34,7 +34,8 @@ if "-tool" in confply.confply_args:
 
 confply.source_files = ["main.cpp"]
 confply.output_file = "hello_confply"
-confply.link_libraries = ["stdc++"]
+if confply.confply_tool != "cl":
+    confply.link_libraries = ["stdc++"]
 confply.debug_info = debug
 confply.standard = "c++17"
 confply.warnings = ["all"]
