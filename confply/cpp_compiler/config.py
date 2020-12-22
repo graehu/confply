@@ -53,6 +53,10 @@ object_path = "objects/"
 # usage: track_dependencies = True
 track_dependencies = True
 
+# enables checksums generation and tracking
+# track_checksums = True
+track_checksums = True
+
 # if set, all objects will be rebuilt when configs change
 # usage: rebuild_on_change = True
 rebuild_on_change = True
