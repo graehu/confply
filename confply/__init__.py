@@ -166,6 +166,7 @@ class command:
                     # reset these when command class is cleaned up
                     log.linebreak()
                     log.success("successfully loaded: "+path)
+                    self.config["config_name"] = os.path.basename(path)
                     self.load_success = True
                 except:
                     log.error("failed to exec: "+path)

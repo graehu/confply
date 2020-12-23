@@ -74,6 +74,7 @@ def generate(config):
         should_link = False
         tracking_md5 = config["track_checksums"]
         tracking_depends = config["track_dependencies"]
+        config_name = config["config_name"] if os.path.exists(config["config_name"]) else None
 
         # generate checksums
         def md5(fname):
@@ -84,14 +85,42 @@ def generate(config):
             return hash_md5.hexdigest()
 
         tracking = {}
-
         tracking_path = os.path.join(config["object_path"], "tracking.py")
+        
         if tracking_md5 or tracking_depends:
             if os.path.exists(tracking_path):
                 with open(tracking_path, "r") as tracking_file:
                     tracking = ast.literal_eval(tracking_file.read())
+        
+        def update_tracking(file_path):
+            nonlocal tracking
+            if os.path.exists(file_path):
+                file_time = os.path.getmtime(file_path).real
+                if file_path in tracking:
+                    if file_time > tracking[file_path]["t"]:
+                        if tracking_md5:
+                            old_md5 = tracking[file_path]["h"] if "h" in tracking[file_path] else None
+                            new_md5 = md5(file_path)
+                            tracking[file_path].update({"t":file_time, "h":new_md5})
+                            return old_md5 != new_md5
+                        else:
+                            tracking[file_path].update({"t":file_time})
+                            return True
+                    else:
+                        return False
+                elif tracking_md5:
+                    tracking[file_path] = {"t":file_time, "h":md5(file_path)}
+                    return True
+                else:
+                    tracking[file_path] = {"t":file_time}
+                    return True
+                pass
+            return False
+        
+        compile_all = update_tracking(config_name) if config["rebuild_on_change"] else False
+        
         for source_path in sources:
-            should_compile = False
+            should_compile = compile_all
             if os.path.exists(source_path):
                 deps_path = os.path.join(object_path,os.path.basename(source_path+".d"))
                 obj_path = os.path.join(object_path,os.path.basename(source_path+object_ext))
@@ -100,65 +129,13 @@ def generate(config):
                 source_time = os.path.getmtime(source_path).real
                 old_source_time = tracking[source_path]["t"] if source_path in tracking else 0
                 # dependency tracking
-                # #todo: currently a file will consider itself, which causes a double evaluation of it later.
                 if os.path.exists(deps_path) and tracking_depends:
                     with open(deps_path, "r") as deps_file:
                         deps_string = deps_file.read()
                         for dep_path in shlex.split(deps_string):
-                            if os.path.exists(dep_path):
-                                dep_time = os.path.getmtime(dep_path).real
-                                if dep_path in tracking:
-                                    if tracking[dep_path]["t"] < dep_time:
-                                        # md5 dependency tracking
-                                        if tracking_md5:
-                                            current_md5 = md5(dep_path)
-                                            old_md5 = tracking[dep_path]["h"]
-                                            if old_md5 != current_md5:
-                                                should_compile = True
-                                                # print("here7")
-                                                tracking[dep_path] = {"t" : dep_time,"h" : current_md5}
-                                        else:
-                                            should_compile = True
-                                            # print("here6")
-                                            tracking[dep_path] = {"t" : dep_time, "h" : ''}
-                                            
-                                elif tracking_md5:
-                                    tracking[dep_path] = {"t" : dep_time, "h" : md5(dep_path)}
-                                    # print("here5")
-                                    should_compile = True
-                                else:
-                                    tracking[dep_path] = {"t" : dep_time, "h" : ''}
-                                    # print("here4")
-                                    should_compile = True
-
-                # md5 source tracking
-                if tracking_md5:
-                    if source_path in tracking:
-                        if  source_time > old_source_time:
-                            current_md5 = md5(source_path)
-                            old_md5 = tracking[source_path]["h"]
-                            if old_md5 != current_md5:
-                                # print("here3")
-                                should_compile = True
-                                tracking[source_path].update({"h":md5(source_path)})
-                    else:
-                        # print("here2")
-                        tracking = { "t":source_time, "h" : md5(source_path) }
-                        should_compile = True
-                        
-                # no md5 tracking
-                elif source_path in tracking:
-                    if source_time > old_source_time:
-                        tracking[source_path].update({"h" : ''})
-                        # print("here1")
-                        should_compile = True
+                            should_compile = should_compile or update_tracking(dep_path)
                 else:
-                    tracking[source_path] = {"t":source_time, "h":''}
-
-                # #todo: generate md5 for the config file here...? confply_md5? needs to go into tracking
-                if config["rebuild_on_change"] and config["confply_modified"] > output_time:
-                    # print("here8")
-                    should_compile = True
+                    should_compile = should_compile or update_tracking(source_path)
 
                 if should_compile:
                     commands.append(gen_command(config, source_path))
@@ -177,7 +154,7 @@ def generate(config):
             log.normal(str(num_commands)+" files to compile")
         else:
             log.normal("no files to compile")
-            
+
         if tracking_md5 or tracking_depends:
             with open(tracking_path, "w") as tracking_file:
                 tracking_file.write(str(tracking))
