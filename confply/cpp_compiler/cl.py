@@ -1,11 +1,20 @@
 import os
 import subprocess
+import json
 import confply.config
 import confply.log as log
 import confply.cpp_compiler.common as common
 
 
 def generate(config):
+    def _parse_deps(deps_string):
+        deps_json = json.loads(deps_string)
+        if "Data" in deps_json:
+            deps_json = deps_json["Data"]
+            out_deps = deps_json["Includes"]
+            out_deps.append(deps_json["Source"])
+            return out_deps
+        pass
     if confply.config.confply_platform == "windows":
         common.tool = "cl"
         common.output_obj = "-Fo"
@@ -18,6 +27,7 @@ def generate(config):
         common.exception_handling = "-EHsc"
         common.pass_to_linker = "-link"
         common.object_ext = ".obj"
+        common.parse_deps = _parse_deps
         return common.generate(config)
     else:
         log.error("cl only supports windows platforms")

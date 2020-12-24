@@ -132,9 +132,9 @@ def generate(config):
                     with open(deps_path, "r") as deps_file:
                         deps_string = deps_file.read()
                         for dep_path in parse_deps(deps_string):
-                            should_compile = should_compile or update_tracking(dep_path)
+                            should_compile = update_tracking(dep_path) or should_compile
                 else:
-                    should_compile = should_compile or update_tracking(source_path)
+                    should_compile = update_tracking(source_path) or should_compile
 
                 if should_compile:
                     commands.append(gen_command(config, source_path))
@@ -143,8 +143,8 @@ def generate(config):
                     should_link = True
                     
             else:
-                log.warning(source+" could not be found")
-            
+                log.warning(source_path+" could not be found")
+                
         if should_link and config["output_executable"]:
             config["source_files"] = objects
             commands.append(gen_command(config))
