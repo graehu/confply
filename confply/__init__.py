@@ -333,10 +333,19 @@ class command:
                             
                     if isinstance(shell_cmd, list):
                         for cmd in shell_cmd:
+                            cmd_time_start = timeit.default_timer()
                             log.linebreak()
                             log.normal(cmd)
                             log.normal("", flush=True)
                             run_shell_cmd(cmd)
+                            cmd_time_end = timeit.default_timer()
+                            s = cmd_time_end-cmd_time_start
+                            m = int(s/60)
+                            h = int(m/60)
+                            # time formating via format specifiers
+                            # https://docs.python.org/3.8/library/string.html#formatspec
+                            time = f"{h:0>2.0f}:{m:0>2.0f}:{s:0>5.2f}"
+                            log.normal("time elapsed: "+time)
                     else:
                         run_shell_cmd(shell_cmd)
                 else:
@@ -349,9 +358,8 @@ class command:
                 h = int(m/60)
                 # time formating via format specifiers
                 # https://docs.python.org/3.8/library/string.html#formatspec
-                time = "{h:0>2.0f}:{m:0>2.0f}:{s:0>5.2f}"
-                time = time.format_map({"s":s, "m":m, "h":h})
-                log.normal("time elapsed: "+time)
+                time = f"{h:0>2.0f}:{m:0>2.0f}:{s:0>5.2f}"
+                log.normal("total time elapsed: "+time)
             except:
                 log.error("failed to run config: ")
                 log.normal(str(sys.exc_info()))
