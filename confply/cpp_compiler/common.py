@@ -137,7 +137,7 @@ def generate(config):
                 else:
                     should_compile = update_tracking(source_path) or should_compile
 
-                if should_compile:
+                if should_compile or obj_time == 0:
                     commands.append(gen_command(config, source_path))
                     should_link = True
                 elif obj_time > output_time:
