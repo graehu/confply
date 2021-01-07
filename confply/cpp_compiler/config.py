@@ -76,3 +76,26 @@ command_append = ""
 # prepend to the start of the command
 # usage: command_prepend_with = "-something-unsupported"
 command_prepend = ""
+
+##############
+
+def _cpp_post_load():
+    import os
+    import confply.log as log
+    if "--clean" in confply.confply_args:
+        if os.path.exists(confply.object_path):
+            log.normal("cleaning compiled objects")
+            os.system("rm -r "+confply.object_path)
+        else:
+            log.normal("no objects to remove")
+
+    if "--tool" in confply.confply_args:
+        tool_index = confply.confply_args.index("--tool") + 1
+        if tool_index < len(confply.confply_args):
+            confply.confply_tool = confply.confply_args[tool_index]
+            log.normal("setting tool to "+confply.confply_tool)
+            
+    if confply.confply_tool == "cl":
+        confply.link_libraries.remove("stdc++")
+        
+confply_post_load = _cpp_post_load

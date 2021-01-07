@@ -77,44 +77,46 @@ def launcher(in_args, aliases):
     confply_dir = confply_dir.replace("\\", "/")
     # #todo: design flaw here, the spliting should be in confply.py, not this launcher.
     if len(in_args) != 0:
-        for arg in in_args:
-            if arg in aliases:
-                for line in aliases[arg].split(";"):
-                    shell = shlex.split(line)
-                    if len(shell) == 0:
-                        continue
-                    if os.path.exists(shell[0]):
-                        system_code = 0
-                        file_args = line.replace(shell[0], "")
-                        if os.name == 'nt':
-                            # windows doesn't support os.WEXITSTATUS
-                            if not printed_header:
-                                system_code = os.system("python "+confply_dir+"/confply.py "+shell[0]+" "+file_args)
-                                printed_header = True
-                            else:
-                                system_code = os.system("python "+confply_dir+"/confply.py "+shell[0]+" "+file_args+" --no_header")
+        alias = in_args[0]
+        args = " ".join(in_args[1:])
+        # for arg in in_args:
+        if alias in aliases:
+            for line in aliases[alias].split(";"):
+                shell = shlex.split(line)
+                if len(shell) == 0:
+                    continue
+                if os.path.exists(shell[0]):
+                    system_code = 0
+                    file_args = line.replace(shell[0], "")
+                    file_args += " "+args
+                    if os.name == 'nt':
+                        # windows doesn't support os.WEXITSTATUS
+                        if not printed_header:
+                            system_code = os.system("python "+confply_dir+"/confply.py "+shell[0]+" "+file_args)
+                            printed_header = True
                         else:
-                            if not printed_header:
-                                system_code = os.WEXITSTATUS(os.system("python "+confply_dir+"/confply.py "+shell[0]+" "+file_args))
-                                printed_header = True
-                            else:
-                                system_code = os.WEXITSTATUS(os.system("python "+confply_dir+"/confply.py "+shell[0]+" "+file_args+" --no_header"))
-                            
-                        if(system_code > return_code and system_code != 0):
-                            return_code = system_code
-                        if return_code == -1:
-                            break
+                            system_code = os.system("python "+confply_dir+"/confply.py "+shell[0]+" "+file_args+" --no_header")
                     else:
-                        try_print_header()
-                        log.error("alias '"+arg+"' doesn't point to a valid file:")
-                        log.normal("\t"+aliases[arg])
-                        return_code = -1
+                        if not printed_header:
+                            system_code = os.WEXITSTATUS(os.system("python "+confply_dir+"/confply.py "+shell[0]+" "+file_args))
+                            printed_header = True
+                        else:
+                            system_code = os.WEXITSTATUS(os.system("python "+confply_dir+"/confply.py "+shell[0]+" "+file_args+" --no_header"))
+
+                    if(system_code > return_code and system_code != 0):
+                        return_code = system_code
+                    if return_code == -1:
                         break
-            else:
-                try_print_header()
-                log.error(arg+" is not in aliases.")
-                return_code = -1
-                break
+                else:
+                    try_print_header()
+                    log.error("alias '"+arg+"' doesn't point to a valid file:")
+                    log.normal("\t"+aliases[arg])
+                    return_code = -1
+                    break
+        else:
+            try_print_header()
+            log.error(alias+" is not in aliases.")
+            return_code = -1
     else:
         if not printed_header:
             try_print_header()
@@ -265,9 +267,27 @@ class command:
             log.error("confply config incorrectly imported")
             log.normal("\tuse: 'import confply.[command].config as confply'")
             return -1
+
+        # #todo: this push and pop of the directory isn't great
+        # it happens later anyway.
+        old_working_dir = os.getcwd()
+        new_working_dir = os.path.dirname(self.file_path)
+        if len(new_working_dir) > 0:
+            os.chdir(new_working_dir)
+        try:
+            if self.config["confply"].confply_post_load and inspect.isfunction(self.config["confply"].confply_post_load):
+                log.normal("running post load script: "+self.config["confply"].confply_post_load.__name__)
+                exec(self.config["confply"].confply_post_load.__code__, self.config, {})
+        except:
+            log.error("failed to exec "+self.config["confply"].confply_post_load.__name__)
+            trace = traceback.format_exc()
+            log.normal("traceback:\n\n"+trace)
+        os.chdir(old_working_dir)
+        
+        # #todo: this is a hack that squashes confply into the base of the config dict.
+        # instead a variable should be set, or something similar
         for k, v in vars(self.config["confply"]).items():
             self.config[k] = v
-        
         
         if(not os.path.exists(confply_path+self.config["confply_command"])):
             log.error(self.config["confply_command"]+" is not a valid confply_command and should not be set directly by users.")
@@ -370,7 +390,13 @@ class command:
                 sys.stdout = old_stdout
 
             if self.config["confply_post_run"] and inspect.isfunction(self.config["confply_post_run"]):
-                self.config["confply_post_run"]()
+                try:
+                    log.normal("running post run script: "+self.config["confply_post_run"].__name__)
+                    exec(self.config["confply_post_run"].__code__, self.config, {})
+                except:
+                    log.error("failed to exec "+self.config["confply_post_run"].__name__)
+                    trace = traceback.format_exc()
+                    log.normal("traceback:\n\n"+trace)
             os.chdir(old_working_dir)
         # This resets any confply.config back to what it was prior to running any user
         # config. Stops state leaks between command runs as confply.config is global.
@@ -398,6 +424,11 @@ class command:
                         log.normal("\t"+str(k)+": ")
                         for i in v:
                             log.normal("\t\t"+str(i))
+                    elif inspect.isfunction(v):
+                        if v.__name__ != base_config[k].__name__:
+                            log.normal("\t"+str(k)+": "+str(v))
+                        else:
+                            pass
                     else:
                         log.normal("\t"+str(k)+": "+str(v))
 

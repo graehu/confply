@@ -30,9 +30,13 @@ confply_log_config = None
 # usage: confply_log_file = "../logs/my_command.log"
 confply_log_file = None
 
-# if set, confply will attempt to run the function.
+# if set, confply will run the function after the command runs.
 # usage: confply_post_run = my_function
 confply_post_run = None
+
+# if set, confply will run the function after the config loads.
+# usage: confply_post_load = my_function
+confply_post_load = None
 
 # platform that the command is running on
 # usage: if(confply_platform == "linux"): pass

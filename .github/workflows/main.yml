@@ -43,18 +43,18 @@ jobs:
         uses: actions/checkout@v2
       # Cpp_compiler examples
       - name: Cpp_compiler.py clang++
-        run: python confply.py examples/cpp_compiler.py -tool clang++
+        run: python confply.py examples/cpp_compiler.py --tool clang++
         if: ${{ always() }}
       # Cpp_compiler examples
       - name: Cpp_compiler.py clang
-        run: python confply.py examples/cpp_compiler.py -tool clang -clean
+        run: python confply.py examples/cpp_compiler.py --tool clang --clean
         if: ${{ always() }}
       # Cpp_compiler examples
       - name: Cpp_compiler.py g++
-        run: python confply.py examples/cpp_compiler.py -tool g++ -clean
+        run: python confply.py examples/cpp_compiler.py --tool g++ --clean
         if: ${{ always() }}
       # Cpp_compiler examples
       - name: Cpp_compiler.py gcc
-        run: python confply.py examples/cpp_compiler.py -tool gcc -clean
+        run: python confply.py examples/cpp_compiler.py --tool gcc --clean
         if: ${{ always() }}
 
