@@ -82,20 +82,24 @@ command_prepend = ""
 def _cpp_post_load():
     import os
     import confply.log as log
-    if "--clean" in confply.confply_args:
+    if "--cpp_clean" in confply.confply_args:
         if os.path.exists(confply.object_path):
             log.normal("cleaning compiled objects")
             os.system("rm -r "+confply.object_path)
         else:
             log.normal("no objects to remove")
 
-    if "--tool" in confply.confply_args:
-        tool_index = confply.confply_args.index("--tool") + 1
+    if "--cpp_tool" in confply.confply_args:
+        tool_index = confply.confply_args.index("--cpp_tool") + 1
         if tool_index < len(confply.confply_args):
             confply.confply_tool = confply.confply_args[tool_index]
             log.normal("setting tool to "+confply.confply_tool)
             
     if confply.confply_tool == "cl":
-        confply.link_libraries.remove("stdc++")
-        
+        try:
+            confply.link_libraries.remove("stdc++")
+            log.warning("removing stdc++ from link_libraries, it's not valid when using cl.exe")
+        except:
+            pass
+            
 confply_post_load = _cpp_post_load
