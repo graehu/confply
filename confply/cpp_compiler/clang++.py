@@ -1,13 +1,13 @@
 import confply.cpp_compiler.common as common
 
-def generate(config):
+def generate():
     common.tool = "clang++"
-    return common.generate(config)
+    return common.generate()
 
 
-def get_environ(config):
-    return common.get_environ(config)
+def get_environ():
+    return common.get_environ()
 
 
-def is_found(config):
-    return common.is_found("clang++")
+def is_found():
+    return common.is_found()

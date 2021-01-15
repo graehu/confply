@@ -1,4 +1,5 @@
 import confply.log as log
+import confply.cpp_compiler.config as config
 import os
 import ast
 import json
@@ -28,11 +29,11 @@ parse_deps = lambda x: shlex.split(x)
 
 
 
-def gen_warnings(config):
+def gen_warnings():
     command = ""
-    conf_warnings = config["warnings"]
+    conf_warnings = config.warnings
     if isinstance(conf_warnings, list):
-        for w in config["warnings"]:
+        for w in config.warnings:
             command += warnings+w+" "
     elif isinstance(conf_warnings, bool):
         if(not conf_warnings):
@@ -41,42 +42,42 @@ def gen_warnings(config):
         command += warnings+conf_warnings+" "
     return command
 
-def generate(config):
-    object_path = config["object_path"]
+def generate():
+    object_path = config.object_path
     def gen_command(config, source = None):
         
         command = ""
-        command += tool+" "+config["command_prepend"]+" "
-        command += include+" "+(" "+include+" ").join(config["include_paths"]) + " " if config["include_paths"] else ""
-        command += define+" "+(" "+define+" ").join(config["defines"])+" " if config["defines"] else ""
-        command += debug+" " if config["debug_info"] else ""
-        command += standard+config["standard"]+" " if config["standard"] else ""
-        command += gen_warnings(config) if config["warnings"] else ""
-        command += optimisation+str(config["optimisation"])+" " if config["optimisation"] else ""
+        command += tool+" "+config.command_prepend+" "
+        command += include+" "+(" "+include+" ").join(config.include_paths) + " " if config.include_paths else ""
+        command += define+" "+(" "+define+" ").join(config.defines)+" " if config.defines else ""
+        command += debug+" " if config.debug_info else ""
+        command += standard+config.standard+" " if config.standard else ""
+        command += gen_warnings() if config.warnings else ""
+        command += optimisation+str(config.optimisation)+" " if config.optimisation else ""
         if source is None:
-            command += " ".join(config["source_files"])+" " if config["source_files"] else ""
-            command += output_exe+config["output_file"]+" " if config["output_file"] else output_exe+"app.bin"
+            command += " ".join(config.source_files)+" " if config.source_files else ""
+            command += output_exe+config.output_file+" " if config.output_file else output_exe+"app.bin"
             command += pass_to_linker+" "
-            command += library+(" "+library).join(config["library_paths"])+" " if config["library_paths"] else ""
-            command += link+" "+(" "+link+" ").join(config["link_libraries"])+" " if config["link_libraries"] else ""
+            command += library+(" "+library).join(config.library_paths)+" " if config.library_paths else ""
+            command += link+" "+(" "+link+" ").join(config.link_libraries)+" " if config.link_libraries else ""
         else:
             command += build_object+" "+source+" "+output_obj+os.path.join(object_path, os.path.basename(source)+object_ext+" ")
             command += exception_handling+" "
-            if config["track_dependencies"]:
+            if config.track_dependencies:
                 command += dependencies+" "+dependencies_output+ " "+os.path.join(object_path, os.path.basename(source)+".d ")
-        return command+" "+config["command_append"]
+        return command+" "+config.command_append
 
-    if config["build_objects"]:
+    if config.build_objects:
         os.makedirs(object_path, exist_ok=True)
         commands = []
-        sources = config["source_files"]
+        sources = config.source_files
         objects = []
-        output_time = config["output_file"] if config["output_file"] else "app.bin"
+        output_time = config.output_file if config.output_file else "app.bin"
         output_time = os.path.getmtime(output_time).real if os.path.exists(output_time) else 0
         should_link = False
-        tracking_md5 = config["track_checksums"]
-        tracking_depends = config["track_dependencies"]
-        config_name = config["config_name"] if os.path.exists(config["config_name"]) else None
+        tracking_md5 = config.track_checksums
+        tracking_depends = config.track_dependencies
+        config_name = config.confply.config_name if os.path.exists(config.confply.config_name) else None
 
         # generate checksums
         def md5(fname):
@@ -87,7 +88,7 @@ def generate(config):
             return hash_md5.hexdigest()
 
         tracking = {}
-        tracking_path = os.path.join(config["object_path"], "tracking.py")
+        tracking_path = os.path.join(config.object_path, "tracking.py")
         
         if tracking_md5 or tracking_depends:
             if os.path.exists(tracking_path):
@@ -119,7 +120,7 @@ def generate(config):
                 pass
             return False
         
-        compile_all = update_tracking(config_name) if config["rebuild_on_change"] else False
+        compile_all = update_tracking(config_name) if config.rebuild_on_change else False
         
         for source_path in sources:
             should_compile = compile_all
@@ -146,10 +147,10 @@ def generate(config):
             else:
                 log.warning(source_path+" could not be found")
                 
-        if should_link and config["output_executable"]:
-            config["source_files"] = objects
+        if should_link and config.output_executable:
+            config.source_files = objects
             commands.append(gen_command(config))
-            config["source_files"] = sources
+            config.source_files = sources
             num_commands = len(commands)
             log.normal(str(num_commands)+" files to compile")
         else:
@@ -164,8 +165,8 @@ def generate(config):
         return gen_command(config)
 
 
-def get_environ(config):
+def get_environ():
     return os.environ
 
-def is_found(tool):
-    return not shutil.which(tool) is None
+def is_found():
+    return not shutil.which(config.confply.tool) is None

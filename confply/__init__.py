@@ -14,9 +14,9 @@ import confply.log as log
 
 
 # grab the confply config base settings here.
-confply_base_config = {}
-with open(os.path.dirname(__file__) + "/config.py", 'r') as config_file:
-    exec(config_file.read(), {}, confply_base_config)
+# confply_base_config = {}
+# with open(os.path.dirname(__file__) + "/config.py", 'r') as config_file:
+#     exec(config_file.read(), {}, confply_base_config)
 
 new_launcher_str = r"""#!/usr/bin/env python
 #                      _____       .__         
@@ -54,12 +54,12 @@ new_config_str = """#!{confply_dir}/confply.py
 # python {confply_dir}/confply.py --config {command_arg} {config_file}
 import sys
 sys.path.append('{confply_dir}')
-import confply.{command_arg}.config as confply
+import confply.{command_arg}.config as config
 import confply.log as log
 ############# modify_below ################
 
-confply.confply_log_topic = "{command_arg}"
-log.normal("loading {config_file} with confply_args: "+str(confply.confply_args))
+config.confply.log_topic = "{command_arg}"
+log.normal("loading {config_file} with confply_args: "+str(config.confply.args))
 """
 
 def launcher(in_args, aliases):
@@ -131,295 +131,23 @@ def launcher(in_args, aliases):
     else:
         exit(0)
 
-class command:
-    def __init__(self, in_args):
-        confply_args = []
-        while len(in_args) > 0:
-            arg = in_args.pop(0)
-            if arg == ";" or arg.endswith(";"):
-                break
-            confply_args.append(arg)
 
-        confply_args = shlex.split(" ".join(confply_args))
-        path = confply_args[0]
-        confply_args.pop(0)
-
-        if os.name == "nt":
-            confply.config.confply_platform = "windows"
-        elif os.name == "posix":
-            confply.config.confply_platform = "linux"
-        
-        self.tools = {}
-        self.config = {}
-        confply.config.confply_args = confply_args
-        self.file_path = path
-        # open the file and read the junk out of it.
-        # also execs any code that may be there.
-        # potentially pass some things in via config.
-        if os.path.exists(path) and os.path.isfile(path):
-            old_path = os.getcwd()
-            self.config["confply_modified"] = os.path.getmtime(path).real
-            with open(path, 'r') as config_file:
-                new_path = os.path.dirname(path)
-                if not new_path == "":
-                    os.chdir(new_path)
-                try:
-                    exec(config_file.read(), {}, self.config)
-                    # reset these when command class is cleaned up
-                    log.linebreak()
-                    log.success("successfully loaded: "+path)
-                    self.config["config_name"] = os.path.basename(path)
-                    self.load_success = True
-                except:
-                    log.error("failed to exec: "+path)
-                    trace = traceback.format_exc().replace("<string>", path)
-                    log.normal("traceback:\n\n"+trace)
-                    self.load_success = False
-
-            if not old_path == "":
-                os.chdir(old_path)
-        else:
-            self.load_success = False
-            log.error("failed to load: "+path)
-
-    # #todo: make this import one tool at a time, like previous import_cache behaviour
-    def _validate_config(self):
-        command = self.config["confply_command"]
-        if command not in self.tools:
-            dir = os.path.dirname(__file__) +"/"+command
-            if os.path.exists(dir):
-                files = os.listdir(dir)
-            else:
-                log.error(command+" is not a valid confply_command and should not be set by users.")
-                log.normal("\tuse: 'from confply.[command].config import *' to import confply_command.")
-                return None
-
-            self.tools[command] = {}
-            module_root = "confply."+command+"."
-            for py in files:
-                if py.endswith(".py") and not py == "config.py" and not py == "common.py":
-                    tool = py[0:-3]
-                    self.tools[command][tool] = importlib.import_module(module_root+tool)
-
-        tool = self.config["confply_tool"]
-        def print_tools():
-            for k in self.tools[command].keys():
-                if not self.tools[command][k].is_found(self.config):
-                    log.normal("\t"+k+" (not found)")
-                else:
-                    log.normal("\t"+k)
-                    
-        def tool_select():
-            if confply.config.confply_platform != "windows":
-                finished = False
-                while not finished:
-                    log.normal("continue with a different tool? (Y/N): ", end="", flush=True)
-                    rlist, _, _ = select.select([sys.stdin], [], [], 10)
-                    if rlist:
-                        answer = sys.stdin.readline().upper().replace("\n", "")
-                        if answer == "YES" or answer == "Y":
-                            log.normal("which tool? options:")
-                            print_tools()
-                            log.normal("")
-                            log.normal("tool: ", end="", flush=True)
-                            tool = input("")
-                            if tool in self.tools[command]:
-                                self.config["confply_tool"] = tool
-                                return True
-                            else:
-                                log.error("'"+tool+"' could not be found, is it installed?")
-                            finished = False
-                        elif answer == "NO" or answer == "N":
-                            finished = True
-                        elif answer == "":
-                            finished = False
-                    else:
-                        print("")
-                        log.normal("timed out.")
-                        finished = True
-            else:
-                log.normal("options:")
-                print_tools()
-                log.normal("")
-                return False
-        
-        if tool in self.tools[command]:
-            if not self.tools[command][tool].is_found(self.config):
-                log.error("'"+tool+"' could not be found, is it installed?")
-                return tool_select()
-            else:
-                return True
-        else:
-            log.error("'"+str(tool)+"' is not a valid "+command+" tool.")
-            return tool_select()
-
-        return False
-        
-
-    def run(self):
-        return_code = 0
-        if not self.load_success:
-            log.error("failed running " + self.file_path + " command.")
-            return -1
-        confply_path = os.path.dirname(__file__) + "/"
-
-        if(not "confply" in self.config):
-            log.error("confply config incorrectly imported")
-            log.normal("\tuse: 'import confply.[command].config as confply'")
-            return -1
-
-        # #todo: this push and pop of the directory isn't great
-        # it happens later anyway.
-        old_working_dir = os.getcwd()
-        new_working_dir = os.path.dirname(self.file_path)
-        if len(new_working_dir) > 0:
-            os.chdir(new_working_dir)
-        try:
-            if self.config["confply"].confply_post_load and inspect.isfunction(self.config["confply"].confply_post_load):
-                log.normal("running post load script: "+self.config["confply"].confply_post_load.__name__)
-                exec(self.config["confply"].confply_post_load.__code__, self.config, {})
-        except:
-            log.error("failed to exec "+self.config["confply"].confply_post_load.__name__)
-            trace = traceback.format_exc()
-            log.normal("traceback:\n\n"+trace)
-        os.chdir(old_working_dir)
-        
-        # #todo: this is a hack that squashes confply into the base of the config dict.
-        # instead a variable should be set, or something similar
-        for k, v in vars(self.config["confply"]).items():
-            self.config[k] = v
-        
-        if(not os.path.exists(confply_path+self.config["confply_command"])):
-            log.error(self.config["confply_command"]+" is not a valid confply_command and should not be set directly by users.")
-            log.normal("\tuse: 'import confply.[command].config as confply' to import confply_command.")
-            return -1
-
-        # setting confply command configuration up
-        old_log_topic = confply.config.confply_log_topic
-        for key in confply_base_config.keys():
-            exec("confply.config.{0} = self.config[key]".format(key), globals(), locals())
-        new_log_topic = confply.config.confply_log_topic
-        old_stdout = sys.stdout
-        
-        # #todo: this is probably broken, test it
-        if confply.config.confply_log_file != None:
-            confply.config.confply_log_topic = old_log_topic
-            log.normal("writing to: "+confply.config.confply_log_file+"....")
-            confply.config.confply_log_topic = new_log_topic
-            try:
-                sys.stdout = open(confply.config.confply_log_file, "w")
-            except:
-                log.error("couldn't open "+confply.config.confply_log_file+" for write.")
-                return_code = -1
-
-        if return_code >= 0:
-            if confply.config.confply_log_config != False:
-                self.print_config()
-            old_working_dir = os.getcwd()
-            new_working_dir = os.path.dirname(self.file_path)
-            if len(new_working_dir) > 0:
-                os.chdir(new_working_dir)
-
-            try:
-                time_start = timeit.default_timer()
-                # #todo: tool selection phase should happen first.
-                # #todo: rename generate to gen_command
-                valid_tools = self._validate_config()
-                command = self.config["confply_command"]
-                tool = self.config["confply_tool"]
-                shell_cmd = self.tools[command][tool].generate(self.config) if valid_tools else None
-                if shell_cmd is not None:
-                    cmd_env = self.tools[command][tool].get_environ(self.config)
-                    if len(shell_cmd) > 0:
-                        log.normal("final command:\n\n"+str(shell_cmd)+"\n")
-                        log.header("begin "+tool)
-                    sys.stdout.flush()
-                    def run_shell_cmd(shell_cmd):
-                        nonlocal return_code
-                        if confply.config.confply_log_file != None:
-                            sys.stdout.flush()
-                            result = subprocess.run(shell_cmd, stdout=sys.stdout, stderr=subprocess.STDOUT, text=True, shell=True, env=cmd_env)
-                        else:
-                            result = subprocess.run(shell_cmd, shell=True, env=cmd_env)
-
-                        if result.returncode == 0:
-                            log.linebreak()
-                            log.success(tool+" succeeded!")
-                        else:
-                            log.linebreak()
-                            log.error(tool+" failed.")
-                            log.error(tool+" return code: "+str(result.returncode))
-                            return_code = -2
-                            
-                    if isinstance(shell_cmd, list):
-                        for cmd in shell_cmd:
-                            cmd_time_start = timeit.default_timer()
-                            log.linebreak()
-                            log.normal(cmd)
-                            log.normal("", flush=True)
-                            run_shell_cmd(cmd)
-                            cmd_time_end = timeit.default_timer()
-                            s = cmd_time_end-cmd_time_start
-                            m = int(s/60)
-                            h = int(m/60)
-                            # time formating via format specifiers
-                            # https://docs.python.org/3.8/library/string.html#formatspec
-                            time = f"{h:0>2.0f}:{m:0>2.0f}:{s:0>5.2f}"
-                            log.normal("time elapsed: "+time)
-                    else:
-                        run_shell_cmd(shell_cmd)
-                else:
-                    log.error("couldn't generate a valid command.")
-                    return_code = -1
-
-                time_end = timeit.default_timer()
-                s = time_end-time_start
-                m = int(s/60)
-                h = int(m/60)
-                # time formating via format specifiers
-                # https://docs.python.org/3.8/library/string.html#formatspec
-                time = f"{h:0>2.0f}:{m:0>2.0f}:{s:0>5.2f}"
-                log.normal("total time elapsed: "+time)
-            except:
-                log.error("failed to run config: ")
-                log.normal(str(sys.exc_info()))
-                return_code = -1
-
-            if sys.stdout != old_stdout:
-                sys.stdout.close()
-                sys.stdout = old_stdout
-
-            if self.config["confply_post_run"] and inspect.isfunction(self.config["confply_post_run"]):
-                try:
-                    log.normal("running post run script: "+self.config["confply_post_run"].__name__)
-                    exec(self.config["confply_post_run"].__code__, self.config, {})
-                except:
-                    log.error("failed to exec "+self.config["confply_post_run"].__name__)
-                    trace = traceback.format_exc()
-                    log.normal("traceback:\n\n"+trace)
-            os.chdir(old_working_dir)
-        # This resets any confply.config back to what it was prior to running any user
-        # config. Stops state leaks between command runs as confply.config is global.
-        for key in confply_base_config.keys():
-            exec("confply.config.{0} = confply_base_config[key]".format(key), globals(), locals())
-        return return_code
-
-    def print_config(self):
-        if not self.load_success:
-            log.error("Failed printing " + self.file_path + " config.")
-            return
-        
+# #todo: make this import one tool at a time, like previous import_cache behaviour
+def run_config(in_args):
+    # private functions
+    def _print_config():
+        nonlocal file_path
         base_config = {}
         confply_path = os.path.dirname(__file__) + "/"
-        if(os.path.exists(confply_path+self.config["confply_command"])):
-            with open(confply_path+self.config["confply_command"]+"/config.py", 'r') as config_file:
+
+        if(os.path.exists(confply_path+confply.config._command)):
+            with open(confply_path+confply.config._command+"/config.py", 'r') as config_file:
                 exec(config_file.read(), {}, base_config)
-            file_name = os.path.basename(self.file_path)
+            file_name = os.path.basename(file_path)
             log.normal(file_name+" command configuration:")
             log.normal("{")
-            
-            for k, v in self.config.items():
-                if k in base_config and v is not base_config[k]:
+            for k, v in config.__dict__.items():
+                if k in base_config and v != base_config[k]:
                     if isinstance(v, list):
                         log.normal("\t"+str(k)+": ")
                         for i in v:
@@ -435,8 +163,273 @@ class command:
             log.normal("}")
             log.normal("")
         else:
-            log.error(self.config["confply_command"]+" is not a valid confply_command and should not be set by users.")
+            log.error(confply.config_command+" is not a valid confply_command and should not be set by users.")
             log.normal("\tuse: 'import confply.[command].config as confply' to import confply_command.")
+            
+    ##########
+    def _validate_config():
+        nonlocal tools
+        command = confply.config._command
+        if command not in tools:
+            dir = os.path.dirname(__file__) +"/"+command
+            if os.path.exists(dir):
+                files = os.listdir(dir)
+            else:
+                log.error(command+" is not a valid confply_command and should not be set by users.")
+                log.normal("\tuse: 'from confply.[command].config import *' to import confply_command.")
+                return None
+
+            tools[command] = {}
+            module_root = "confply."+command+"."
+            for py in files:
+                if py.endswith(".py") and not py == "config.py" and not py == "common.py":
+                    tool = py[0:-3]
+                    tools[command][tool] = importlib.import_module(module_root+tool)
+
+        tool = confply.config.tool
+        def _print_tools():
+            for k in tools[command].keys():
+                if not tools[command][k].is_found():
+                    log.normal("\t"+k+" (not found)")
+                else:
+                    log.normal("\t"+k)
+        ##########
+        def _tool_select():
+            if confply.config.confply_platform != "windows":
+                finished = False
+                while not finished:
+                    log.normal("continue with a different tool? (Y/N): ", end="", flush=True)
+                    rlist, _, _ = select.select([sys.stdin], [], [], 10)
+                    if rlist:
+                        answer = sys.stdin.readline().upper().replace("\n", "")
+                        if answer == "YES" or answer == "Y":
+                            log.normal("which tool? options:")
+                            print_tools()
+                            log.normal("")
+                            log.normal("tool: ", end="", flush=True)
+                            tool = input("")
+                            if tool in tools[command]:
+                                confply.config_tool = tool
+                                return True
+                            else:
+                                log.error("'"+tool+"' could not be found, is it installed?")
+                                finished = False
+                        elif answer == "NO" or answer == "N":
+                            finished = True
+                        elif answer == "":
+                            finished = False
+                    else:
+                        print("")
+                        log.normal("timed out.")
+                        finished = True
+            else:
+                log.normal("options:")
+                print_tools()
+                log.normal("")
+                return False
+        #######
+        if tool in tools[command]:
+            if not tools[command][tool].is_found():
+                log.error("'"+tool+"' could not be found, is it installed?")
+                return _tool_select()
+            else:
+                return True
+        else:
+            log.error("'"+str(tool)+"' is not a valid "+command+" tool.")
+            return _tool_select()
+
+        return False
+    ########
+    return_code = 0
+    confply_args = []
+    while len(in_args) > 0:
+        arg = in_args.pop(0)
+        if arg == ";" or arg.endswith(";"):
+            break
+        confply_args.append(arg)
+
+    confply_args = shlex.split(" ".join(confply_args))
+    path = confply_args[0]
+    confply_args.pop(0)
+
+    if os.name == "nt":
+        confply.config.confply_platform = "windows"
+    elif os.name == "posix":
+        confply.config.confply_platform = "linux"
+
+    tools = {}
+    config_locals = {}
+    confply.config.args = confply_args
+    file_path = path
+    # open the file and read the junk out of it.
+    # also execs any code that may be there.
+    # potentially pass some things in via config.
+    if os.path.exists(path) and os.path.isfile(path):
+        config_name = os.path.basename(path)
+        confply.config.config_name = config_name
+        confply.config.modified = os.path.getmtime(path).real
+        old_path = os.getcwd()
+        with open(path, 'r') as config_file:
+            new_path = os.path.dirname(path)
+            if not new_path == "":
+                os.chdir(new_path)
+            try:
+                exec(config_file.read(), {}, config_locals)
+                # reset these when command class is cleaned up
+                log.linebreak()
+                log.success("successfully loaded: "+path)
+            except:
+                log.error("failed to exec: "+path)
+                trace = traceback.format_exc().replace("<string>", path)
+                log.normal("traceback:\n\n"+trace)
+                return -1
+
+        if not old_path == "":
+            os.chdir(old_path)
+    else:
+        log.error("failed to load: "+path)
+        return -1
+
+    confply_path = os.path.dirname(__file__) + "/"
+
+    if(not "config" in config_locals):
+        log.error("confply config incorrectly imported")
+        log.normal("\tuse: 'import confply.[command].config as config'")
+        importlib.reload(confply.config)
+        return -1
+    config = config_locals["config"]
+
+    # #todo: this push and pop of the directory isn't great
+    # it happens later anyway.
+    old_working_dir = os.getcwd()
+    new_working_dir = os.path.dirname(file_path)
+    if len(new_working_dir) > 0:
+        os.chdir(new_working_dir)
+    try:
+        if confply.config.post_load and inspect.isfunction(confply.config.post_load):
+            log.normal("running post load script: "+confply.config.post_load.__name__)
+            exec(confply.config.post_load.__code__, config_locals, {})
+    except:
+        log.error("failed to exec "+confply.config.post_load.__name__)
+        trace = traceback.format_exc()
+        log.normal("traceback:\n\n"+trace)
+    os.chdir(old_working_dir)
+
+    if(not os.path.exists(confply_path+confply.config._command)):
+        log.error(confply.config_command+" is not a valid _command and should not be set directly by users.")
+        log.normal("\tuse: 'import confply.[command].config as config' to import _command.")
+        importlib.reload(confply.config)
+        importlib.reload(config)
+        return -1
+
+    # setting confply command configuration up
+    old_stdout = sys.stdout
+
+    # #todo: this is probably broken, test it
+    # #todo: another awkward directory push pop that doesn't need to exist
+    if len(new_working_dir) > 0:
+        os.chdir(new_working_dir)
+    if confply.config.log_file != None:
+        log.normal("writing to: "+confply.config.log_file+"....")
+        try:
+            sys.stdout = open(confply.config.log_file, "w")
+        except:
+            log.error("couldn't open "+confply.config.log_file+" for write.")
+            return_code = -1
+            
+    os.chdir(old_working_dir)
+    if return_code >= 0:
+        if confply.config.log_config != False:
+            _print_config()
+        old_working_dir = os.getcwd()
+        new_working_dir = os.path.dirname(file_path)
+        if len(new_working_dir) > 0:
+            os.chdir(new_working_dir)
+
+        try:
+            time_start = timeit.default_timer()
+            # #todo: tool selection phase should happen first.
+            # #todo: rename generate to gen_command
+            valid_tools = _validate_config()
+            command = confply.config._command
+            tool = confply.config.tool
+            shell_cmd = tools[command][tool].generate() if valid_tools else None
+            if shell_cmd is not None:
+                cmd_env = tools[command][tool].get_environ()
+                if len(shell_cmd) > 0:
+                    log.normal("final command:\n\n"+str(shell_cmd)+"\n")
+                    log.header("begin "+tool)
+                sys.stdout.flush()
+                def _run_shell_cmd(shell_cmd):
+                    nonlocal return_code
+                    if confply.config.log_file != None:
+                        sys.stdout.flush()
+                        result = subprocess.run(shell_cmd, stdout=sys.stdout, stderr=subprocess.STDOUT, text=True, shell=True, env=cmd_env)
+                    else:
+                        result = subprocess.run(shell_cmd, shell=True, env=cmd_env)
+
+                    if result.returncode == 0:
+                        log.linebreak()
+                        log.success(tool+" succeeded!")
+                    else:
+                        log.linebreak()
+                        log.error(tool+" failed.")
+                        log.error(tool+" return code: "+str(result.returncode))
+                        return_code = -2
+
+                if isinstance(shell_cmd, list):
+                    for cmd in shell_cmd:
+                        cmd_time_start = timeit.default_timer()
+                        log.linebreak()
+                        log.normal(cmd)
+                        log.normal("", flush=True)
+                        _run_shell_cmd(cmd)
+                        cmd_time_end = timeit.default_timer()
+                        s = cmd_time_end-cmd_time_start
+                        m = int(s/60)
+                        h = int(m/60)
+                        # time formating via format specifiers
+                        # https://docs.python.org/3.8/library/string.html#formatspec
+                        time = f"{h:0>2.0f}:{m:0>2.0f}:{s:0>5.2f}"
+                        log.normal("time elapsed: "+time)
+                else:
+                    _run_shell_cmd(shell_cmd)
+            else:
+                log.error("couldn't generate a valid command.")
+                return_code = -1
+
+            time_end = timeit.default_timer()
+            s = time_end-time_start
+            m = int(s/60)
+            h = int(m/60)
+            # time formating via format specifiers
+            # https://docs.python.org/3.8/library/string.html#formatspec
+            time = f"{h:0>2.0f}:{m:0>2.0f}:{s:0>5.2f}"
+            log.normal("total time elapsed: "+time)
+        except:
+            log.error("failed to run config: ")
+            trace = traceback.format_exc()
+            log.normal("traceback:\n\n"+trace)
+
+            return_code = -1
+
+        if sys.stdout != old_stdout:
+            sys.stdout.close()
+            sys.stdout = old_stdout
+
+        if confply.config.post_run and inspect.isfunction(confply.config.post_run):
+            try:
+                log.normal("running post run script: "+confply.config.post_run.__name__)
+                exec(confply.config.post_run.__code__, config_locals, {})
+            except:
+                log.error("failed to exec "+confply.config.post_run.__name__)
+                trace = traceback.format_exc()
+                log.normal("traceback:\n\n"+trace)
+        os.chdir(old_working_dir)
+    # This resets any confply.config back to what it was prior to running any user
+    importlib.reload(confply.config)
+    importlib.reload(config)
+    return return_code
 
 def handle_help_arg(in_args):
     confply_dir = os.path.relpath(__file__)

@@ -12,7 +12,7 @@ except:
     valid_ioctl = False
 
 def can_format():
-    return confply.config.confply_log_file == None and valid_ioctl
+    return confply.config.log_file == None and valid_ioctl
 
 class format:
     header = lambda x: '\033[95m'+x+'\033[0m' if can_format() else x
@@ -24,10 +24,10 @@ class format:
     underline = lambda x: '\033[4m'+x+'\033[0m' if can_format() else x
     
 def get_log_topic():
-    return "[" + confply.config.confply_log_topic + "] "
+    return "[" + confply.config.log_topic + "] "
 
 def confply_header():
-    print(confply.config.confply_header)
+    print(confply.config.header)
 
 def linebreak(break_char = "="):
     topic = get_log_topic()

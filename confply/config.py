@@ -1,6 +1,6 @@
 # Header used at the top of log files and such
-# usage: confply_header = "(>'')><('')><(''<)"
-confply_header = r"""
+# usage: header = "(>'')><('')><(''<)"
+header = r"""
                      _____       .__         
   ____  ____   _____/ ____\_____ |  | ___.__.
 _/ ___\/  _ \ /    \   __\\____ \|  |<   |  |
@@ -10,38 +10,38 @@ _/ ___\/  _ \ /    \   __\\____ \|  |<   |  |
 """
 
 # do not set by hand! Is set in confply type config files
-confply_command = None
+_command = None
 
 # sets the desired tool to be used for the command.
-# usage: confply_tool = "clang"
-confply_tool = None
+# usage: tool = "clang"
+tool = None
 
 # sets the topic of the log, e.g. [confply] confguring commands.
-# usage: confply_log_topic = "my command"
-confply_log_topic = "confply"
+# usage: log_topic = "my command"
+log_topic = "confply"
 
 # if true, confply will log it's config.
 # default behaviour is as if true.
-# usage: confply_log_config = False
-confply_log_config = None
+# usage: log_config = False
+log_config = None
 
 # if set, confply will save it's output to the file
 # default behaviour is as if unset, no logs created.
-# usage: confply_log_file = "../logs/my_command.log"
-confply_log_file = None
+# usage: log_file = "../logs/my_command.log"
+log_file = None
 
 # if set, confply will run the function after the command runs.
-# usage: confply_post_run = my_function
-confply_post_run = None
+# usage: post_run = my_function
+post_run = None
 
 # if set, confply will run the function after the config loads.
-# usage: confply_post_load = my_function
-confply_post_load = None
+# usage: post_load = my_function
+post_load = None
 
 # platform that the command is running on
-# usage: if(confply_platform == "linux"): pass
-confply_platform = "unknown"
+# usage: if(platform == "linux"): pass
+platform = "unknown"
 
 # arguements that were passed to confply
-# usage: if "debug" in confply_args: pass
-confply_args = []
+# usage: if "debug" in args: pass
+args = []

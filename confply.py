@@ -28,12 +28,12 @@ if __name__ == "__main__":
                     confply.handle_config_arg(in_args)
                 elif option == "--help":
                     confply.handle_help_arg(in_args)
+                # #todo: add --overrides="{confply.tool:derp}"
                 continue
 
             # default assume it's a file to run.
             log.linebreak()
-            cmd = confply.command(in_args)
-            cmd_return = cmd.run()
+            cmd_return = confply.run_config(in_args)
 
             if(cmd_return > return_code and cmd_return != 0):
                 return_code = cmd_return

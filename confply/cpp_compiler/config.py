@@ -1,6 +1,6 @@
-from confply.config import *
-confply_command = "cpp_compiler"
-
+# from confply.config import *
+import confply.config as confply
+confply._command = "cpp_compiler"
 # used to add things to system environment variables.
 # usage: environment = { "PATH" : "c:/bin/dir/", "etc" : "c:/etc/" }
 environment_vars = None
@@ -81,25 +81,25 @@ command_prepend = ""
 
 def _cpp_post_load():
     import os
-    import confply.log as log
-    if "--cpp_clean" in confply.confply_args:
-        if os.path.exists(confply.object_path):
+
+    if "--cpp_clean" in config.confply.args:
+        if os.path.exists(config.object_path):
             log.normal("cleaning compiled objects")
-            os.system("rm -r "+confply.object_path)
+            os.system("rm -r "+config.object_path)
         else:
             log.normal("no objects to remove")
 
-    if "--cpp_tool" in confply.confply_args:
-        tool_index = confply.confply_args.index("--cpp_tool") + 1
-        if tool_index < len(confply.confply_args):
-            confply.confply_tool = confply.confply_args[tool_index]
-            log.normal("setting tool to "+confply.confply_tool)
+    if "--cpp_tool" in config.confply.args:
+        tool_index = config.confply.args.index("--cpp_tool") + 1
+        if tool_index < len(config.confply.args):
+            config.confply.tool = config.confply.args[tool_index]
+            log.normal("setting tool to "+config.confply.tool)
             
-    if confply.confply_tool == "cl":
+    if config.confply.tool == "cl":
         try:
-            confply.link_libraries.remove("stdc++")
+            config.link_libraries.remove("stdc++")
             log.warning("removing stdc++ from link_libraries, it's not valid when using cl.exe")
         except:
             pass
             
-confply_post_load = _cpp_post_load
+confply.post_load = _cpp_post_load

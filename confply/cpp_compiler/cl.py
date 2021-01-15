@@ -6,7 +6,7 @@ import confply.log as log
 import confply.cpp_compiler.common as common
 
 
-def generate(config):
+def generate():
     def _parse_deps(deps_string):
         deps_json = json.loads(deps_string)
         if "Data" in deps_json:
@@ -28,7 +28,7 @@ def generate(config):
         common.pass_to_linker = "-link"
         common.object_ext = ".obj"
         common.parse_deps = _parse_deps
-        return common.generate(config)
+        return common.generate()
     else:
         log.error("cl only supports windows platforms")
         return None
@@ -58,7 +58,7 @@ if os.path.exists(_vswhere_exe):
     else:
         log.error("VisualStudio.Component.VC.Tools.x86.x64 not installed")
 
-def get_environ(config):
+def get_environ():
     global _vs_tools
     if _cl_found:
         cl_envs = os.environ.copy()
@@ -80,7 +80,7 @@ def get_environ(config):
         return os.environ
 
     
-def is_found(config):
+def is_found():
     return _cl_found
 
 
