@@ -30,8 +30,9 @@ if __name__ == "__main__":
                     confply.handle_help_arg(in_args)
                 # #todo: add --config "{'confply':{'tool':'gcc'}, 'warnings':None}"
                 elif option == "--config":
-                    confply.handle_config_arg(in_args)
-                    pass
+                    confply.handle_config_dict_arg(in_args)
+                elif option.startswith("--config."):
+                    confply.handle_config_arg(option, in_args)
                 continue
 
             # default assume it's a file to run.

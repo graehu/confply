@@ -13,8 +13,12 @@ _/ ___\/  _ \ /    \   __\\____ \|  |<   |  |
 _command = None
 
 # config elements overriden by the commandline
-# usage: don't set this from configs see --overrides in help
-_overrides = None
+# usage: don't set this from configs see --config in help
+_override_dict = {"confply":{}}
+
+# config elements overriden by the commandline
+# usage: don't set this from configs see --config in help
+_override_list = []
 
 # sets the desired tool to be used for the command.
 # usage: tool = "clang"

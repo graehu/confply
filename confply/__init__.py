@@ -10,8 +10,10 @@ import inspect
 import traceback
 import importlib
 import subprocess
+import collections
 import confply.config
 import confply.log as log
+
 
 
 # grab the confply config base settings here.
@@ -159,7 +161,7 @@ def run_config(in_args):
                         else:
                             pass
                     else:
-                        log.normal("\t"+str(k)+": "+str(v))
+                        log.normal("\t"+"-"+str(k)+": "+str(v))
 
             log.normal("}")
             log.normal("")
@@ -298,16 +300,20 @@ def run_config(in_args):
         log.normal("\tuse: 'import confply.[command].config as config'")
         importlib.reload(confply.config)
         return -1
+    
     config = config_locals["config"]
+    # #note: attempting to stop people calling builtin functions
+    del config.__dict__["__builtins__"]
+    
+    if isinstance(confply.config._override_dict, dict):
+        confply_dict = confply.config._override_dict
+        config.confply.__dict__.update(confply_dict["confply"])
+        del confply_dict["confply"]
+        config.__dict__.update(confply_dict)
 
-    if confply.config._overrides != None:
-        if isinstance(confply.config._overrides, dict):
-            confply_dict = confply.config._overrides["confply"] if "confply" in confply.config._overrides else None
-            if confply_dict:
-                del confply.config._overrides["confply"]
-                config.confply.__dict__.update(confply_dict)
-                # del confply_dict
-            config.__dict__.update(confply.config._overrides)
+    if isinstance(confply.config._override_list, list):
+        for k, v in confply.config._override_list:
+            exec("{0} = v".format(k), globals(), locals())
         
     # #todo: this push and pop of the directory isn't great
     # it happens later anyway.
@@ -524,10 +530,59 @@ def handle_gen_config_arg(in_args):
         log.error(config_path+" already exists!")
         log.normal("aborted --gen_config.")
 
-def handle_config_arg(in_args):
+def handle_config_dict_arg(in_args):
     if len(in_args) < 1:
         log.error("--config requires a value.")
         log.normal("\t--config \"{'confply':{'tool':'cl'}}\"")
         return
+    overide_dict = None
+    try:
+        overide_dict = ast.literal_eval(in_args.pop(0))
+        if not isinstance(overide_dict, dict):
+            log.error("--config must be a dictionary.")
+            log.normal("\t--config \"{'confply':{'tool':'cl'}}\"")
+            return
+        elif "confply" in overide_dict:
+            if not isinstance(overide_dict["confply"], dict):
+                log.error("--config.confply must be a dictionary.")
+                log.normal("\t--config \"{'confply':{'tool':'cl'}}\"")
+                return
+        else:
+            overide_dict["confply"] = {}
+    except:
+        log.error("--config failed to parse argument as a dictionary")
+        return
     
-    confply.config._overrides = ast.literal_eval(in_args.pop(0))
+    confply.config._override_dict.update(overide_dict)
+    
+def handle_config_arg(option, in_args):
+    if len(in_args) < 1:
+        log.error("--config requires a value.")
+        log.normal("\t--config.confply.tool \"cl\"")
+        return
+
+    path = option.split(".")[1:]
+    if len(path) == 0:
+        log.error("--config invalid path.")
+        log.normal("\t--config.confply.tool \"cl\"")
+        return
+    
+    if path[0] == "confply" and len(path) == 1:
+        log.error("--config invalid path, cannot set confply")
+        log.normal("\t--config.confply.tool \"cl\"")
+        return
+    # #todo: this is pretty shit, it doesn't solve the general case at all, but I'm being lazy
+    #        you should be able to set values in a deep dictionary, but you can't.
+    arg = in_args.pop(0)
+    value = None
+    try:
+        value = ast.literal_eval(arg)
+    except:
+        value = arg
+
+
+    if isinstance(value, str):
+        log.normal(""+option[2:]+" = \""+str(value)+"\" <"+type(value).__name__+">")
+    else:
+        log.normal(""+option[2:]+" = "+str(value)+" <"+type(value).__name__+">")
+    confply.config._override_list.append([option[2:], value ])
