@@ -24,11 +24,14 @@ if __name__ == "__main__":
                 option = in_args.pop(0)
                 if option == "--launcher":
                     confply.handle_launcher_arg(in_args)
-                elif option == "--config":
-                    confply.handle_config_arg(in_args)
+                elif option == "--gen_config":
+                    confply.handle_gen_config_arg(in_args)
                 elif option == "--help":
                     confply.handle_help_arg(in_args)
-                # #todo: add --overrides="{confply.tool:derp}"
+                # #todo: add --config "{'confply':{'tool':'gcc'}, 'warnings':None}"
+                elif option == "--config":
+                    confply.handle_config_arg(in_args)
+                    pass
                 continue
 
             # default assume it's a file to run.

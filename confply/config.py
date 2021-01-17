@@ -12,6 +12,10 @@ _/ ___\/  _ \ /    \   __\\____ \|  |<   |  |
 # do not set by hand! Is set in confply type config files
 _command = None
 
+# config elements overriden by the commandline
+# usage: don't set this from configs see --overrides in help
+_overrides = None
+
 # sets the desired tool to be used for the command.
 # usage: tool = "clang"
 tool = None
@@ -45,3 +49,5 @@ platform = "unknown"
 # arguements that were passed to confply
 # usage: if "debug" in args: pass
 args = []
+
+

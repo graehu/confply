@@ -1,5 +1,6 @@
 import os
 import sys
+import ast
 import stat
 import shlex
 import shutil
@@ -109,8 +110,8 @@ def launcher(in_args, aliases):
                         break
                 else:
                     try_print_header()
-                    log.error("alias '"+arg+"' doesn't point to a valid file:")
-                    log.normal("\t"+aliases[arg])
+                    log.error("alias '"+alias+"' doesn't point to a valid file:")
+                    log.normal("\t"+aliases[alias])
                     return_code = -1
                     break
         else:
@@ -299,6 +300,15 @@ def run_config(in_args):
         return -1
     config = config_locals["config"]
 
+    if confply.config._overrides != None:
+        if isinstance(confply.config._overrides, dict):
+            confply_dict = confply.config._overrides["confply"] if "confply" in confply.config._overrides else None
+            if confply_dict:
+                del confply.config._overrides["confply"]
+                config.confply.__dict__.update(confply_dict)
+                # del confply_dict
+            config.__dict__.update(confply.config._overrides)
+        
     # #todo: this push and pop of the directory isn't great
     # it happens later anyway.
     old_working_dir = os.getcwd()
@@ -466,10 +476,10 @@ def handle_launcher_arg(in_args):
         log.error(launcher_path+" already exists!")
 
 
-def handle_config_arg(in_args):
+def handle_gen_config_arg(in_args):
     if len(in_args) < 2:
         log.error("--config requires two values:")
-        log.normal("\t--config [confply_command] [new_config_file]")
+        log.normal("\t--gen_config [confply_command] [new_config_file]")
         log.normal("")
         log.normal("valid confply_commands:")
         confply_dir = os.path.dirname(__file__)
@@ -512,4 +522,12 @@ def handle_config_arg(in_args):
         log.success("wrote: "+config_path)
     else:
         log.error(config_path+" already exists!")
-        log.normal("aborted --config.")
+        log.normal("aborted --gen_config.")
+
+def handle_config_arg(in_args):
+    if len(in_args) < 1:
+        log.error("--config requires a value.")
+        log.normal("\t--config \"{'confply':{'tool':'cl'}}\"")
+        return
+    
+    confply.config._overrides = ast.literal_eval(in_args.pop(0))

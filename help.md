@@ -5,7 +5,8 @@ usage : `confply.py --[options] | [config] [arguments];...`
 ### options ###
 
 	--help : prints this file to the console.
-	--config [command] [out_file] : generates a runnable config file for [command] at [out_file] located.
+	--gen_config [command] [out_file] : generates a runnable config file for [command] at [out_file] located.
+	--config {overrides} : pass a dictionary of attributes to override e.g.: "{'confply':{'tool':'cl'}, 'warnings':None}"
 	--launcher [out_file] : generates a runnable config launcher at [out_file] location. Set an alias to run a configs.
 	--no_header : don't print confply header
 	
