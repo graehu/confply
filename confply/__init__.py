@@ -10,7 +10,6 @@ import inspect
 import traceback
 import importlib
 import subprocess
-import collections
 import confply.config
 import confply.log as log
 
@@ -48,7 +47,7 @@ aliases = {comment}
 
 if __name__ == "__main__":
     # "all" will run all of the aliases
-    aliases["all"] = ";".join([val for key, val in aliases.items()])
+    aliases["all"] = " -- ".join([val for key, val in aliases.items()])
     launcher(sys.argv[1:], aliases)
 """
 
@@ -67,62 +66,33 @@ log.normal("loading {config_file} with confply_args: "+str(config.confply.args))
 
 def launcher(in_args, aliases):
     return_code = -999999
-    printed_header = False
-    def try_print_header():
-        nonlocal printed_header
-        if not printed_header:
-            printed_header = True
-            log.confply_header()
-            log.linebreak()
+    def print_header():
+        log.confply_header()
+        log.linebreak()
     confply_dir = os.path.relpath(__file__)
     confply_dir = os.path.dirname(confply_dir)+"/.."
     confply_dir = os.path.relpath(confply_dir)
     confply_dir = confply_dir.replace("\\", "/")
-    # #todo: design flaw here, the spliting should be in confply.py, not this launcher.
     if len(in_args) != 0:
         alias = in_args[0]
         args = " ".join(in_args[1:])
         # for arg in in_args:
         if alias in aliases:
-            for line in aliases[alias].split(";"):
-                shell = shlex.split(line)
-                if len(shell) == 0:
-                    continue
-                if os.path.exists(shell[0]):
-                    system_code = 0
-                    file_args = line.replace(shell[0], "")
-                    file_args += " "+args
-                    if os.name == 'nt':
-                        # windows doesn't support os.WEXITSTATUS
-                        if not printed_header:
-                            system_code = os.system("python "+confply_dir+"/confply.py "+shell[0]+" "+file_args)
-                            printed_header = True
-                        else:
-                            system_code = os.system("python "+confply_dir+"/confply.py "+shell[0]+" "+file_args+" --no_header")
-                    else:
-                        if not printed_header:
-                            system_code = os.WEXITSTATUS(os.system("python "+confply_dir+"/confply.py "+shell[0]+" "+file_args))
-                            printed_header = True
-                        else:
-                            system_code = os.WEXITSTATUS(os.system("python "+confply_dir+"/confply.py "+shell[0]+" "+file_args+" --no_header"))
-
-                    if(system_code > return_code and system_code != 0):
-                        return_code = system_code
-                    if return_code == -1:
-                        break
-                else:
-                    try_print_header()
-                    log.error("alias '"+alias+"' doesn't point to a valid file:")
-                    log.normal("\t"+aliases[alias])
-                    return_code = -1
-                    break
+            system_code = 0
+            if os.name == 'nt':
+                # windows doesn't support os.WEXITSTATUS
+                system_code = os.system("python "+confply_dir+"/confply.py "+aliases[alias].replace(" -- ", " "+args+" -- "))
+            else:
+                system_code = os.WEXITSTATUS(os.system("python "+confply_dir+"/confply.py "+aliases[alias].replace(" -- ", " "+args+" -- ")))
+                
+            if (system_code > return_code) and (system_code != 0):
+                return_code = system_code            
         else:
-            try_print_header()
+            print_header()
             log.error(alias+" is not in aliases.")
             return_code = -1
     else:
-        if not printed_header:
-            try_print_header()
+        print_header()
         log.error("no arguements supplied.")
         with open(os.path.join(confply_dir,"help.md"), "r") as help_file:
             print("\n"+help_file.read())
@@ -137,6 +107,8 @@ def launcher(in_args, aliases):
 
 # #todo: make this import one tool at a time, like previous import_cache behaviour
 def run_config(in_args):
+    log.header("run config")
+    log.linebreak()
     # private functions
     def _print_config():
         nonlocal file_path
@@ -247,7 +219,7 @@ def run_config(in_args):
     confply_args = []
     while len(in_args) > 0:
         arg = in_args.pop(0)
-        if arg == ";" or arg.endswith(";"):
+        if arg == "--":
             break
         confply_args.append(arg)
 

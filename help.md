@@ -1,6 +1,6 @@
 # help #
 
-usage : `confply.py --[options] | [config] [arguments];...`
+usage : `confply.py --[options] [config] [arguments] -- ...`
 
 ### options ###
 
@@ -10,6 +10,7 @@ usage : `confply.py --[options] | [config] [arguments];...`
 	--config.{path} [value] : set or add a config value directly, e.g.: --config.confply.tool "cl"
 	--launcher [out_file] : generates a runnable config launcher at [out_file] location. Set an alias to run a configs.
 	--no_header : don't print confply header
+	-- : separates config runs
 	
 ### config ###
 

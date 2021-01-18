@@ -25,8 +25,3 @@ config.standard = "c++17"
 config.warnings = ["all"]
 config.confply.log_config = True
 # config.confply.log_file = "log.txt"
-
-########### testing
-# config.confply.header = "reeeee"
-# config.confply.post_load = lambda: log.normal("hello! "+config.confply.tool)
-# config.confply.post_run = lambda: print("hello! "+config.confply.tool)
