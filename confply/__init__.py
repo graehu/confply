@@ -81,12 +81,12 @@ def launcher(in_args, aliases):
             system_code = 0
             if os.name == 'nt':
                 # windows doesn't support os.WEXITSTATUS
-                system_code = os.system("python "+confply_dir+"/confply.py "+aliases[alias].replace(" -- ", " "+args+" -- "))
+                system_code = os.system(("python "+confply_dir+"/confply.py "+aliases[alias]+" "+args).replace(" -- ", " "+args+" -- "))
             else:
-                system_code = os.WEXITSTATUS(os.system("python "+confply_dir+"/confply.py "+aliases[alias].replace(" -- ", " "+args+" -- ")))
+                system_code = os.WEXITSTATUS(os.system(("python "+confply_dir+"/confply.py "+aliases[alias]+" "+args).replace(" -- ", " "+args+" -- ")))
                 
             if (system_code > return_code) and (system_code != 0):
-                return_code = system_code            
+                return_code = system_code
         else:
             print_header()
             log.error(alias+" is not in aliases.")
@@ -285,7 +285,13 @@ def run_config(in_args):
 
     if isinstance(confply.config._override_list, list):
         for k, v in confply.config._override_list:
-            exec("{0} = v".format(k), globals(), locals())
+            try:
+                exec("{0} = v".format(k), globals(), locals())
+            except:
+                log.warning("failed to exec "+"{0} = {1}:".format(k, v))
+                log.normal("\t\tcheck calling option  --"+k)
+                # trace = traceback.format_exc()
+                # log.normal("traceback:\n\n"+trace)
         
     # #todo: this push and pop of the directory isn't great
     # it happens later anyway.
