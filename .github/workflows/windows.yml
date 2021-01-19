@@ -38,13 +38,13 @@ jobs:
         uses: actions/checkout@v2
       # Cpp_compiler examples
       - name: Cpp_compiler.py cl
-        run: python confply.py examples/cpp_compiler.py --cpp_tool cl --cpp_clean
+        run: python test.py cl
         if: ${{ always() }}
       # Cpp_compiler examples
       - name: Cpp_compiler.py gcc
-        run: python confply.py examples/cpp_compiler.py --cpp_tool gcc --cpp_clean
+        run: python test.py gcc
         if: ${{ always() }}
       # Cpp_compiler examples
       - name: Cpp_compiler.py g++
-        run: python confply.py examples/cpp_compiler.py --cpp_tool g++ --cpp_clean
+        run: python test.py g++
         if: ${{ always() }}
