@@ -23,16 +23,19 @@ if __name__ == "__main__":
             if in_args[0].startswith("--"):
                 option = in_args.pop(0)
                 if option == "--launcher":
-                    confply.handle_launcher_arg(in_args)
+                    confply._handle_launcher_arg(in_args)
                 elif option == "--gen_config":
-                    confply.handle_gen_config_arg(in_args)
+                    confply._handle_gen_config_arg(in_args)
                 elif option == "--help":
-                    confply.handle_help_arg(in_args)
-                # #todo: add --config "{'confply':{'tool':'gcc'}, 'warnings':None}"
+                    confply._handle_help_arg(in_args)
+                elif option.startswith("--help."):
+                    confply._handle_help_config_arg(option, in_args)
+                elif option == "--version":
+                    confply._handle_version_arg(in_args)
                 elif option == "--config":
-                    confply.handle_config_dict_arg(in_args)
+                    confply._handle_config_dict_arg(in_args)
                 elif option.startswith("--config."):
-                    confply.handle_config_arg(option, in_args)
+                    confply._handle_config_arg(option, in_args)
                 continue
 
             # default assume it's a file to run.

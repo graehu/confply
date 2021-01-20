@@ -13,13 +13,12 @@ import subprocess
 import confply.config
 import confply.log as log
 
-
-
-# grab the confply config base settings here.
-# confply_base_config = {}
-# with open(os.path.dirname(__file__) + "/config.py", 'r') as config_file:
-#     exec(config_file.read(), {}, confply_base_config)
-
+__version__ = "0.0.1"
+__doc__ = """
+Confply is an abstraction layer for other commandline tools.
+It lets you write a consistent config file & commandline interface for tools that have similar functions.
+More to come.
+"""
 new_launcher_str = r"""#!/usr/bin/env python
 #                      _____       .__         
 #   ____  ____   _____/ ____\_____ |  | ___.__.
@@ -425,18 +424,43 @@ def run_config(in_args):
     importlib.reload(config)
     return return_code
 
-def handle_help_arg(in_args):
+def _handle_help_arg(in_args):
     confply_dir = os.path.relpath(__file__)
     confply_dir = os.path.dirname(confply_dir)+"/.."
     with open(os.path.join(confply_dir,"help.md"), "r") as help_file:
         print("\n"+help_file.read())
         
-def handle_launcher_arg(in_args):
+def _handle_help_config_arg(option, in_args):
+    confply_dir = os.path.relpath(__file__)
+    confply_dir = os.path.dirname(confply_dir)
+    help_path = option.split(".")[1]
+    help_path = os.path.join(confply_dir, help_path)
+    print(help_path)
+    if os.path.exists(help_path):
+        help_path = os.path.join(help_path, "help.md")
+        if os.path.exists(help_path):
+            with open(help_path, "r") as help_file:
+                print("\n"+help_file.read())
+        else:
+            log.error(option+" does not have an associated help file")
+    else:
+        log.error(option+" is not a valid command type")
+
+def _handle_version_arg(in_args):
+    log.linebreak()
+    log.normal("Confply "+confply.__version__)
+    log.normal("Copyright (C) 2021 Graham Hughes.")
+    log.normal("License MIT.")
+    log.normal("This is free software; you are free to change and redistribute it.")
+    log.normal("There is NO WARRANTY, to the extent permitted by law.")
+
+        
+def _handle_launcher_arg(in_args):
     if len(in_args) < 1:
         log.error("--launcher requires a value.")
         log.normal("\t--launcher [new_launcher_file]")
         return
-    # this seems like a bad way to get the parent dir. Consider pathlib
+    # #todo: this seems like a bad way to get the parent dir. Consider pathlib
     confply_dir = os.path.relpath(__file__)
     confply_dir = os.path.dirname(confply_dir)+"/.."
     confply_dir = os.path.relpath(confply_dir)
@@ -460,7 +484,7 @@ def handle_launcher_arg(in_args):
         log.error(launcher_path+" already exists!")
 
 
-def handle_gen_config_arg(in_args):
+def _handle_gen_config_arg(in_args):
     if len(in_args) < 2:
         log.error("--config requires two values:")
         log.normal("\t--gen_config [confply_command] [new_config_file]")
@@ -508,7 +532,7 @@ def handle_gen_config_arg(in_args):
         log.error(config_path+" already exists!")
         log.normal("aborted --gen_config.")
 
-def handle_config_dict_arg(in_args):
+def _handle_config_dict_arg(in_args):
     if len(in_args) < 1:
         log.error("--config requires a value.")
         log.normal("\t--config \"{'confply':{'tool':'cl'}}\"")
@@ -533,7 +557,7 @@ def handle_config_dict_arg(in_args):
     
     confply.config._override_dict.update(overide_dict)
     
-def handle_config_arg(option, in_args):
+def _handle_config_arg(option, in_args):
     if len(in_args) < 1:
         log.error("--config requires a value.")
         log.normal("\t--config.confply.tool \"cl\"")
