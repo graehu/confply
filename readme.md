@@ -1,78 +1,127 @@
 # Confply #
 
-The goal: One config file, one job, many tools & platforms.
+Confply lets you write config files that can be shared between multiple commandline tools with similar functionality. The config files are written in python and executed when confply loads them. This allows them to be dynamically populated. Essentially, confply translates config files into tool appropriate shell commands.
 
-If you've ever been frustraited by tools that do the same thing but have different interfaces, then you've come to the right place. The goal of confply is to make tools that do the same job, comply to one interface.
+For now compilers are the focus, but you can add another tool type like so:
+> `./confply.py --new_tool_type my_tool_type`
 
-Confply is written in python and each of it's config files are just python files that are executed to fillout predefined arguements for a specific type of tool. E.g. a compiler.
+That will add the following files:
 
-For now compilers will be the focus, but scope for other tool types has been considered in the design.
+* /confply/my_tool_type/**help.md**
+* /confply/my_tool_type/**common.py**
+* /confply/my_tool_type/**config.py**
+
+**help.md** is printed when users invoke config specific help, like so:
+> `./confply.py --help.my_tool_type`
+
+**config.py** is where you store all of the tool settings. <br>
+**common.py** is where all of the shared code goes.
+
+Now you add a file to that folder for every tool you want to configure. (e.g. g++.py, clang++.py, cl.py) <br>
+Look at /confply/cpp_compiler/ as an example you can copy.
+
+For further information on confply commandline options, take a look at [help.md](https://github.com/graehu/confply/blob/master/help.md)
 
 ## Examples
 ![Linux Examples](https://github.com/graehu/confply/workflows/Linux%20Examples/badge.svg)
+![Windows Examples](https://github.com/graehu/confply/workflows/Windows%20Examples/badge.svg)
+
+You can view the above tests in the [actions](https://github.com/graehu/confply/actions) tab of github. The .yml responsible for running the tests is here: 
+
+> https://github.com/graehu/confply/tree/master/.github/workflows
+
+Below are the config files that are run and their outputs.
+
 ### Compile_cpp.py
 
+#### Config
 ``` python
 #!../confply.py
 # generated using:
 # python ../confply.py --config cpp_compiler compile_cpp.py
 import sys
+import os
 sys.path.append('..')
-import confply.cpp_compiler.config as confply
+import confply.cpp_compiler.config as config
 import confply.log as log
-confply_log_topic = "compile_cpp.py"
-log.normal("loading compile_cpp.py with confply_args: "+str(confply.confply_args))
+config.confply.log_topic = "cpp_compiler"
+log.normal("loading cpp_compiler with confply_args: "+str(config.confply.args))
 
 debug = False
-if "debug" in confply.confply_args:
+if "debug" in config.confply.args:
     debug = True
-    confply.object_path = "objects/debug"
+    config.object_path = "objects/debug"
     log.normal("set to debug config")
 
-
-confply.confply_tool = "clang++"
-confply.source_files = ["main.cpp"]
-confply.output_file = "hello_confply"
-confply.link_libraries = ["stdc++"]
-confply.debug_info = debug
-confply.standard = "c++17"
-confply.warnings = ["all"]
-confply.confply_log_config = True
-# confply.confply_log_file = "log.txt"
+# default tool is clang++
+config.confply.tool = "clang++"
+config.source_files = ["main.cpp"]
+config.output_file = "hello_confply"
+config.link_libraries = ["stdc++"]
+config.debug_info = debug
+config.standard = "c++17"
+config.warnings = ["all"]
+config.confply.log_config = True
+# config.confply.log_file = "log.txt"
 
 ```
+#### Output
 
-The above config file is runnable, it runs with confply as the interpreter. As you can see this sets a lot of standard flags. It can be run `./compile_cpp.py`, which generates this:
+```log
+                     _____       .__         
+  ____  ____   _____/ ____\_____ |  | ___.__.
+_/ ___\/  _ \ /    \   __\\____ \|  |<   |  |
+\  \__(  <_> )   |  \  |  |  |_> >  |_\___  |
+ \___  >____/|___|  /__|  |   __/|____/ ____|
+     \/           \/      |__|        \/     
 
-`clang++ -std=c++17 -Wall main.cpp -o hello_confply -lstdc++`
+[confply] ================================================================
+[confply] python(3, 8, 6)
+[confply] called with args: ['--config.confply.tool', 'clang++', 'examples/cpp_compiler.py', '--cpp_clean']
+[confply] config.confply.tool = "clang++" <str>
+[confply] ================================================================
+[confply] =========================  run config  =========================
+[confply] ================================================================
+[cpp_compiler] loading cpp_compiler with confply_args: ['--cpp_clean']
+[cpp_compiler] ================================================================
+[cpp_compiler] successfully loaded: examples/cpp_compiler.py
+[cpp_compiler] running post load script: _cpp_post_load
+[cpp_compiler] cleaning compiled objects
+[cpp_compiler] cpp_compiler.py configuration:
+[cpp_compiler] {
+[cpp_compiler] 	source_files: 
+[cpp_compiler] 		main.cpp
+[cpp_compiler] 	link_libraries: 
+[cpp_compiler] 		stdc++
+[cpp_compiler] 	-debug_info: False
+[cpp_compiler] 	-standard: c++17
+[cpp_compiler] 	warnings: 
+[cpp_compiler] 		all
+[cpp_compiler] 	-output_file: hello_confply
+[cpp_compiler] }
+[cpp_compiler] 
+[cpp_compiler] 2 files to compile
+[cpp_compiler] final command:
 
-or like this, `./compile_cpp.py debug` which generates:
+['clang++  -std=c++17 -Wall -c main.cpp -o objects/main.cpp.o  -MMD -MF objects/main.cpp.d  ', 'clang++  -std=c++17 -Wall objects/main.cpp.o -o hello_confply  -l stdc++  ']
 
-`clang++ -g -std=c++17 -Wall main.cpp -o hello_confply -lstdc++`
+[cpp_compiler] =======================  begin clang++  ========================
+[cpp_compiler] ================================================================
+[cpp_compiler] clang++  -std=c++17 -Wall -c main.cpp -o objects/main.cpp.o  -MMD -MF objects/main.cpp.d  
+[cpp_compiler] 
+[cpp_compiler] ================================================================
+[cpp_compiler] clang++ succeeded!
+[cpp_compiler] time elapsed: 00:00:00.46
+[cpp_compiler] ================================================================
+[cpp_compiler] clang++  -std=c++17 -Wall objects/main.cpp.o -o hello_confply  -l stdc++  
+[cpp_compiler] 
+[cpp_compiler] ================================================================
+[cpp_compiler] clang++ succeeded!
+[cpp_compiler] time elapsed: 00:00:00.08
+[cpp_compiler] total time elapsed: 00:00:00.54
+[confply] ================================================================
+[confply] ================================================================
 
-But, if you set it's compiler to cl.exe it would update all of it's flags and setup the required MS environment for compliation. (that's the idea at least, not currently implemented)
-
-The file was generated by running `python ../confply.py --config cpp_compiler compile_cpp.py` which'll give you the first 7 lines. The file is automatically runnable.
-
-Confply currently supports:
-
-* c++ compilers. (only clang++ on linux atm)
-* nothing else because it's very early days.
-
-## Reason this exists?  ##
-
-I'm just getting tired of complicated build systems when I want to compile some files or add a build event and have it work crossplatform. Or just testing the results with a different compiler, etc.
-
-## Todo  ##
-
-- [ ] Add cl.exe to cpp_compilers
-- [x] Add g++ to cpp_compilers
-- [ ] Add more cpp_compiler options: optimisation, warnings_as_errors, etc.
-- [x] Add cpp.o caching
-- [ ] Add cpp checksum cache
-- [ ] Add custom confply_custom_command
-- [x] Add confply_tool verification (installed, on path, etc)
-- [ ] Add ./confply -u "{config}" arg, currently only support .py files.
-- [x] Add todo section to readme
+```
 
 **Not fit for human consumption**

@@ -36,6 +36,8 @@ if __name__ == "__main__":
                     confply._handle_config_dict_arg(in_args)
                 elif option.startswith("--config."):
                     confply._handle_config_arg(option, in_args)
+                elif option == "--new_tool_type":
+                    confply._handle_new_tool_type(in_args)
                 continue
 
             # default assume it's a file to run.

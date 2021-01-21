@@ -10,7 +10,7 @@ _/ ___\/  _ \ /    \   __\\____ \|  |<   |  |
 """
 
 # do not set by hand! Is set in confply type config files
-_command = None
+_tool_type = None
 
 # config elements overriden by the commandline
 # usage: don't set this from configs see --config in help
