@@ -350,7 +350,13 @@ def run_config(in_args):
             if shell_cmd is not None:
                 cmd_env = tools[tool_type][tool].get_environ()
                 if len(shell_cmd) > 0:
-                    log.normal("final command:\n\n"+str(shell_cmd)+"\n")
+                    if isinstance(shell_cmd, list):
+                        log.normal("final commands:\n")
+                        for shell_str in shell_cmd:
+                            print(shell_str)
+                        print("")
+                    else:
+                        log.normal("final command:\n\n"+str(shell_cmd)+"\n")
                     log.header("begin "+tool)
                 sys.stdout.flush()
                 def _run_shell_cmd(shell_cmd):
