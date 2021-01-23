@@ -86,7 +86,7 @@ _/ ___\/  _ \ /    \   __\\____ \|  |<   |  |
 [cpp_compiler] ================================================================
 [cpp_compiler] successfully loaded: examples/cpp_compiler.py
 [cpp_compiler] running post load script: _cpp_post_load
-[cpp_compiler] no objects to remove
+[cpp_compiler] cleaning compiled objects
 [cpp_compiler] cpp_compiler.py configuration:
 [cpp_compiler] {
 [cpp_compiler] 	source_files: 
@@ -100,6 +100,7 @@ _/ ___\/  _ \ /    \   __\\____ \|  |<   |  |
 [cpp_compiler] 	-output_file: hello_confply
 [cpp_compiler] }
 [cpp_compiler] 
+[cpp_compiler] clang++ found: /usr/bin/clang++
 [cpp_compiler] 2 files to compile
 [cpp_compiler] final commands:
 
@@ -112,7 +113,7 @@ clang++  -std=c++17 -Wall objects/main.cpp.o -o hello_confply  -l stdc++
 [cpp_compiler] 
 [cpp_compiler] ================================================================
 [cpp_compiler] clang++ succeeded!
-[cpp_compiler] time elapsed: 00:00:00.45
+[cpp_compiler] time elapsed: 00:00:00.46
 [cpp_compiler] ================================================================
 [cpp_compiler] clang++  -std=c++17 -Wall objects/main.cpp.o -o hello_confply  -l stdc++  
 [cpp_compiler] 
@@ -124,5 +125,14 @@ clang++  -std=c++17 -Wall objects/main.cpp.o -o hello_confply  -l stdc++
 [confply] ================================================================
 
 ```
+### Supported Compilers
+
+* cl.py
+* clang++.py
+* clang.py
+* em++.py
+* emcc.py
+* g++.py
+* gcc.py
 
 **Not fit for human consumption**

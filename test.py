@@ -27,7 +27,9 @@ aliases = {
     "g++" : "--config.confply.tool g++ examples/cpp_compiler.py --cpp_clean",
     "gcc" : "--config.confply.tool gcc  examples/cpp_compiler.py --cpp_clean",
     "clang" : "--config.confply.tool clang  examples/cpp_compiler.py --cpp_clean",
-    "clang++" : "--config.confply.tool clang++  examples/cpp_compiler.py --cpp_clean"
+    "clang++" : "--config.confply.tool clang++  examples/cpp_compiler.py --cpp_clean",
+    "emcc" : "--config.confply.tool emcc  examples/cpp_compiler.py --cpp_clean",
+    "em++" : "--config.confply.tool em++  examples/cpp_compiler.py --cpp_clean"
 }
 
 

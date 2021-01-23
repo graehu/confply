@@ -169,5 +169,10 @@ def get_environ():
     return os.environ
 
 def is_found():
-    return not shutil.which(config.confply.tool) is None
+    path = shutil.which(config.confply.tool)
+    if path != None:
+        log.success(config.confply.tool+" found: "+path)
+        return True
+    else:
+        return False
 

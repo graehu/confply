@@ -38,6 +38,8 @@ _vswhere = os.path.expandvars(_vswhere).replace("/", "\\")
 _vswhere_exe = _vswhere+"\\vswhere.exe"
 _vs_tools = ""
 _cl_found = False
+_cl_path = ""
+
 if os.path.exists(_vswhere_exe):
     envs = os.environ.copy()
     envs["PATH"] += ";"+_vswhere
@@ -52,9 +54,9 @@ if os.path.exists(_vswhere_exe):
         if os.path.exists(version_path):
             with open(version_path, "r") as version_file:
                 version = version_file.read().rstrip()
-                cl_path = installation_path+"/VC/Tools/MSVC/"+version+"/bin/HostX64/x64/cl.exe"
-                cl_path.replace("/", "\\")
-                _cl_found = os.path.exists(cl_path)
+                _cl_path = installation_path+"/VC/Tools/MSVC/"+version+"/bin/HostX64/x64/cl.exe"
+                _cl_path.replace("/", "\\")
+                _cl_found = os.path.exists(_cl_path)
     else:
         log.error("VisualStudio.Component.VC.Tools.x86.x64 not installed")
 
@@ -81,6 +83,8 @@ def get_environ():
 
     
 def is_found():
+    if _cl_found:
+        log.success("cl found: "+_cl_path)
     return _cl_found
 
 
