@@ -1,4 +1,4 @@
-import confply.cpp_compiler.common as common
+import confply.{tool_type}.common as common
 
 tool_name = common.os.path.basename(__file__)[:-3]
 

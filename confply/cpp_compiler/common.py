@@ -168,11 +168,11 @@ def generate():
 def get_environ():
     return os.environ
 
-def is_found():
-    path = shutil.which(config.confply.tool)
-    if path != None:
-        log.success(config.confply.tool+" found: "+path)
-        return True
-    else:
-        return False
 
+def is_found(in_tool=None):
+    if in_tool == None:
+        if config.confply.tool != None:
+            return not shutil.which(config.confply.tool) is None
+    else:
+        return not shutil.which(in_tool) is None
+    return False

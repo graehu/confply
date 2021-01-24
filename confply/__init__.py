@@ -56,6 +56,7 @@ new_config_str = """#!{confply_dir}/confply.py
 import sys
 sys.path.append('{confply_dir}')
 import confply.{tool_type_arg}.config as config
+import confply.{tool_type_arg}.options as options
 import confply.log as log
 ############# modify_below ################
 
@@ -178,12 +179,12 @@ def run_config(in_args):
                         answer = sys.stdin.readline().upper().replace("\n", "")
                         if answer == "YES" or answer == "Y":
                             log.normal("which tool? options:")
-                            print_tools()
+                            _print_tools()
                             log.normal("")
                             log.normal("tool: ", end="", flush=True)
                             tool = input("")
                             if tool in tools[tool_type]:
-                                confply.config_tool = tool
+                                config.confply.tool = tool
                                 return True
                             else:
                                 log.error("'"+tool+"' could not be found, is it installed?")
@@ -198,7 +199,7 @@ def run_config(in_args):
                         finished = True
             else:
                 log.normal("options:")
-                print_tools()
+                _print_tools()
                 log.normal("")
                 return False
         #######
@@ -473,12 +474,14 @@ def _handle_new_tool_type(in_args):
     if not os.path.exists(tool_type_dir):
         confply_dir = os.path.join(confply_dir, "new_tool_type")
         os.mkdir(tool_type_dir)
-        files = ["help.md", "common.py", "config.py"]
+        files = ["help.md", "common.py", "config.py", "echo.py", "options/__init__.py", "options/defaults.py"]
         for file_name in files:
             with open(os.path.join(confply_dir, file_name), "r") as in_file:
                 file_str = in_file.read()
                 file_str = file_str.format_map({"tool_type":tool_type})
-                with open(os.path.join(tool_type_dir, file_name), "w") as out_file:
+                tool_file = os.path.join(tool_type_dir, file_name)
+                os.makedirs(os.path.dirname(tool_file), exist_ok=True)
+                with open(tool_file, "w") as out_file:
                     out_file.write(file_str)
         log.success("created "+tool_type+" tool_type!")
         log.normal("generate a config file by calling './confply.py --gen_config "+tool_type+" my_config.py'")
