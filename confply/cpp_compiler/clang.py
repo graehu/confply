@@ -1,15 +1,15 @@
-import confply.cpp_compiler.common as common
+import confply.cpp_compiler as cpp_compiler
 
-tool_name = common.os.path.basename(__file__)[:-3]
+tool_name = cpp_compiler.os.path.basename(__file__)[:-3]
 
 def generate():
-    common.tool = tool_name
-    return common.generate()
+    cpp_compiler.tool = tool_name
+    return cpp_compiler.generate()
 
 
 def get_environ():
-    return common.get_environ()
+    return cpp_compiler.get_environ()
 
 
 def is_found():
-    return common.is_found(tool_name)
+    return cpp_compiler.is_found(tool_name)

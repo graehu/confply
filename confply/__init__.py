@@ -13,6 +13,7 @@ import subprocess
 import confply.config
 import confply.log as log
 
+
 __version__ = "0.0.1"
 __doc__ = """
 Confply is an abstraction layer for other commandline tools.
@@ -144,6 +145,7 @@ def run_config(in_args):
     ##########
     def _validate_config():
         nonlocal tools
+        nonlocal tool_type_module
         tool_type = confply.config._tool_type
         if tool_type not in tools:
             dir = os.path.dirname(__file__) +"/"+tool_type
@@ -155,11 +157,12 @@ def run_config(in_args):
                 return None
 
             tools[tool_type] = {}
-            module_root = "confply."+tool_type+"."
+            module_path = "confply."+tool_type+"."
+            tool_type_module = importlib.import_module("confply."+tool_type)
             for py in files:
-                if py.endswith(".py") and not py == "config.py" and not py == "common.py":
+                if py.endswith(".py") and not py == "config.py" and not py == "__init__.py":
                     tool = py[0:-3]
-                    tools[tool_type][tool] = importlib.import_module(module_root+tool)
+                    tools[tool_type][tool] = importlib.import_module(module_path+tool)
 
         tool = confply.config.tool
         def _print_tools():
@@ -233,6 +236,7 @@ def run_config(in_args):
         confply.config.confply_platform = "linux"
 
     tools = {}
+    tool_type_module = None
     config_locals = {}
     confply.config.args = confply_args
     file_path = path
@@ -312,6 +316,7 @@ def run_config(in_args):
     if(not os.path.exists(confply_path+confply.config._tool_type)):
         log.error(confply.config_tool_type+" is not a valid _tool_type and should not be set directly by users.")
         log.normal("\tuse: 'import confply.[tool_type].config as config' to import _tool_type.")
+        importlib.reload(tool_type_module)
         importlib.reload(confply.config)
         importlib.reload(config)
         return -1
@@ -427,6 +432,7 @@ def run_config(in_args):
                 log.normal("traceback:\n\n"+trace)
         os.chdir(old_working_dir)
     # This resets any confply.config back to what it was prior to running any user
+    importlib.reload(tool_type_module)
     importlib.reload(confply.config)
     importlib.reload(config)
     return return_code
@@ -474,7 +480,7 @@ def _handle_new_tool_type(in_args):
     if not os.path.exists(tool_type_dir):
         confply_dir = os.path.join(confply_dir, "new_tool_type")
         os.mkdir(tool_type_dir)
-        files = ["help.md", "common.py", "config.py", "echo.py", "options/__init__.py", "options/defaults.py"]
+        files = ["help.md", "__init__.py", "config.py", "echo.py", "options/__init__.py", "options/defaults.py"]
         for file_name in files:
             with open(os.path.join(confply_dir, file_name), "r") as in_file:
                 file_str = in_file.read()

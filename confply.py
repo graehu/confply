@@ -12,8 +12,8 @@ if __name__ == "__main__":
         log.confply_header()
         log.linebreak()
         log.normal("python"+str(version))
-    if(version[0] < 3 or (version[0] == 3 and version[1] < 6)):
-        log.error("python version must be 3.6 or above")
+    if(version[0] < 3 or (version[0] == 3 and version[1] < 8)):
+        log.error("python version must be 3.8 or above")
         log.linebreak()
         exit(1)
     log.normal("called with args: "+str(in_args))

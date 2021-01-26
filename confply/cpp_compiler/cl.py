@@ -3,8 +3,7 @@ import subprocess
 import json
 import confply.config
 import confply.log as log
-import confply.cpp_compiler.common as common
-
+import confply.cpp_compiler as cpp_compiler
 
 def generate():
     def _parse_deps(deps_string):
@@ -16,19 +15,20 @@ def generate():
             return out_deps
         pass
     if confply.config.confply_platform == "windows":
-        common.tool = "cl"
-        common.output_obj = "-Fo"
-        common.output_exe = "-Fe"
-        common.standard = "-std:"
-        common.dependencies = ""
-        common.link = ""
-        common.library = "-LIBPATH:"
-        common.dependencies_output = "-sourceDependencies"
-        common.exception_handling = "-EHsc"
-        common.pass_to_linker = "-link"
-        common.object_ext = ".obj"
-        common.parse_deps = _parse_deps
-        return common.generate()
+        cpp_compiler.tool = "cl"
+        cpp_compiler.output_obj = "-Fo"
+        cpp_compiler.output_exe = "-Fe"
+        cpp_compiler.standard = "-std:"
+        cpp_compiler.dependencies = ""
+        cpp_compiler.link = ""
+        cpp_compiler.library = "-LIBPATH:"
+        cpp_compiler.dependencies_output = "-sourceDependencies"
+        cpp_compiler.exception_handling = "-EHsc"
+        cpp_compiler.pass_to_linker = "-link"
+        cpp_compiler.object_ext = ".obj"
+        cpp_compiler.parse_deps = _parse_deps
+        cpp_compiler.debug = "-Zi"
+        return cpp_compiler.generate()
     else:
         log.error("cl only supports windows platforms")
         return None
