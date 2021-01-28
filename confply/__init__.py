@@ -63,6 +63,7 @@ import confply.log as log
 
 config.confply.log_topic = "{tool_type_arg}"
 log.normal("loading {config_file} with confply_args: "+str(config.confply.args))
+config.confply.tool = options.defaults.tool
 """
 
 def launcher(in_args, aliases):
@@ -114,27 +115,41 @@ def run_config(in_args):
     def _print_config():
         nonlocal file_path
         base_config = {}
+        compare_config = {}
         confply_path = os.path.dirname(__file__) + "/"
 
-        if(os.path.exists(confply_path+confply.config._tool_type)):
-            with open(confply_path+confply.config._tool_type+"/config/__init__.py", 'r') as config_file:
+        if(os.path.exists(confply_path+confply.config.__tool_type)):
+            with open(confply_path+confply.config.__tool_type+"/config/__init__.py", 'r') as config_file:
                 exec(config_file.read(), {}, base_config)
+            with open(confply_path+"config.py", 'r') as config_file:
+                exec(config_file.read(), {}, compare_config)
+
             file_name = os.path.basename(file_path)
             log.normal(file_name+" configuration:")
             log.normal("{")
-            for k, v in config.__dict__.items():
+
+            for k, v in compare_config.items():
+                base_config["confply."+k] = v
+
+            compare_config = {
+                **{"confply."+k : v for k,v in confply.config.__dict__.items()},
+                **config.__dict__
+            }
+            
+            for k, v in compare_config.items():
+                if k.startswith("__") or k.startswith("confply.__"): continue
                 if k in base_config and v != base_config[k]:
                     if isinstance(v, list):
                         log.normal("\t"+str(k)+": ")
                         for i in v:
                             log.normal("\t\t"+str(i))
                     elif inspect.isfunction(v):
-                        if v.__name__ != base_config[k].__name__:
-                            log.normal("\t"+str(k)+": "+str(v))
+                        if base_config[k] == None or v.__name__ != base_config[k].__name__:
+                            log.normal("\t"+str(k)+": "+v.__name__)
                         else:
                             pass
                     else:
-                        log.normal("\t"+"-"+str(k)+": "+str(v))
+                        log.normal("\t"+str(k)+": "+str(v))
 
             log.normal("}")
             log.normal("")
@@ -146,7 +161,7 @@ def run_config(in_args):
     def _validate_config():
         nonlocal tools
         nonlocal tool_type_module
-        tool_type = confply.config._tool_type
+        tool_type = confply.config.__tool_type
         if tool_type not in tools:
             dir = os.path.dirname(__file__) +"/"+tool_type
             if os.path.exists(dir):
@@ -281,14 +296,14 @@ def run_config(in_args):
     # #note: attempting to stop people calling builtin functions
     del config.__dict__["__builtins__"]
     
-    if isinstance(confply.config._override_dict, dict):
-        confply_dict = confply.config._override_dict
+    if isinstance(confply.config.__override_dict, dict):
+        confply_dict = confply.config.__override_dict
         config.confply.__dict__.update(confply_dict["confply"])
         del confply_dict["confply"]
         config.__dict__.update(confply_dict)
 
-    if isinstance(confply.config._override_list, list):
-        for k, v in confply.config._override_list:
+    if isinstance(confply.config.__override_list, list):
+        for k, v in confply.config.__override_list:
             try:
                 exec("{0} = v".format(k), globals(), locals())
             except:
@@ -313,7 +328,7 @@ def run_config(in_args):
         log.normal("traceback:\n\n"+trace)
     os.chdir(old_working_dir)
 
-    if(not os.path.exists(confply_path+confply.config._tool_type)):
+    if(not os.path.exists(confply_path+confply.config.__tool_type)):
         log.error(confply.config_tool_type+" is not a valid _tool_type and should not be set directly by users.")
         log.normal("\tuse: 'import confply.[tool_type].config as config' to import _tool_type.")
         importlib.reload(tool_type_module)
@@ -350,7 +365,7 @@ def run_config(in_args):
             # #todo: tool selection phase should happen first.
             # #todo: rename generate to gen_tool_type
             valid_tools = _validate_config()
-            tool_type = confply.config._tool_type
+            tool_type = confply.config.__tool_type
             tool = confply.config.tool
             shell_cmd = tools[tool_type][tool].generate() if valid_tools else None
             if shell_cmd is not None:
@@ -595,7 +610,7 @@ def _handle_config_dict_arg(in_args):
         log.error("--config failed to parse argument as a dictionary")
         return
     
-    confply.config._override_dict.update(overide_dict)
+    confply.config.__override_dict.update(overide_dict)
     
 def _handle_config_arg(option, in_args):
     if len(in_args) < 1:
@@ -627,4 +642,4 @@ def _handle_config_arg(option, in_args):
         log.normal(""+option[2:]+" = \""+str(value)+"\" <"+type(value).__name__+">")
     else:
         log.normal(""+option[2:]+" = "+str(value)+" <"+type(value).__name__+">")
-    confply.config._override_list.append([option[2:], value ])
+    confply.config.__override_list.append([option[2:], value ])

@@ -10,15 +10,15 @@ _/ ___\/  _ \ /    \   __\\____ \|  |<   |  |
 """
 
 # do not set by hand! Is set in confply type config files
-_tool_type = None
+__tool_type = None
 
 # config elements overriden by the commandline
 # usage: don't set this from configs see --config in help
-_override_dict = {"confply":{}}
+__override_dict = {"confply":{}}
 
 # config elements overriden by the commandline
 # usage: don't set this from configs see --config in help
-_override_list = []
+__override_list = []
 
 # sets the desired tool to be used for the command.
 # usage: tool = "clang"

@@ -48,3 +48,13 @@ jobs:
       - name: Cpp_compiler.py g++
         run: python test.py g++
         if: ${{ always() }}
+      # Test --new_tool_type
+      - name: --new_tool_type
+        run: python confply.py --new_tool_type new_tool
+        if: ${{ always() }}
+      - name: --gen_config
+        run: python confply.py --gen_config new_tool new_tool.py
+        if: ${{ always() }}
+      - name: Run new_tool
+        run: python confply.py new_tool.py
+        if: ${{ always() }}

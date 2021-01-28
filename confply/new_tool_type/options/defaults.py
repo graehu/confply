@@ -1,1 +1,2 @@
-from confply.{tool_type}.config import *
+# change this line
+tool = "echo"
