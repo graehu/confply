@@ -170,9 +170,14 @@ def get_environ():
 
 
 def is_found(in_tool=None):
+    path = None
     if in_tool == None:
         if config.confply.tool != None:
-            return not shutil.which(config.confply.tool) is None
+            path = shutil.which(config.confply.tool)
     else:
-        return not shutil.which(in_tool) is None
-    return False
+        path = shutil.which(in_tool)
+    if path == None:
+        return False
+    else:
+        log.success(in_tool+" found: "+path)
+        return True
