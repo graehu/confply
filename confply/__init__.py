@@ -117,7 +117,7 @@ def run_config(in_args):
         confply_path = os.path.dirname(__file__) + "/"
 
         if(os.path.exists(confply_path+confply.config._tool_type)):
-            with open(confply_path+confply.config._tool_type+"/config.py", 'r') as config_file:
+            with open(confply_path+confply.config._tool_type+"/config/__init__.py", 'r') as config_file:
                 exec(config_file.read(), {}, base_config)
             file_name = os.path.basename(file_path)
             log.normal(file_name+" configuration:")
@@ -160,7 +160,7 @@ def run_config(in_args):
             module_path = "confply."+tool_type+"."
             tool_type_module = importlib.import_module("confply."+tool_type)
             for py in files:
-                if py.endswith(".py") and not py == "config.py" and not py == "__init__.py":
+                if py.endswith(".py") and not py == "__init__.py":
                     tool = py[0:-3]
                     tools[tool_type][tool] = importlib.import_module(module_path+tool)
 
@@ -480,7 +480,7 @@ def _handle_new_tool_type(in_args):
     if not os.path.exists(tool_type_dir):
         confply_dir = os.path.join(confply_dir, "new_tool_type")
         os.mkdir(tool_type_dir)
-        files = ["help.md", "__init__.py", "config.py", "echo.py", "options/__init__.py", "options/defaults.py"]
+        files = ["help.md", "__init__.py", "config/__init__.py", "echo.py", "options/__init__.py", "options/defaults.py"]
         for file_name in files:
             with open(os.path.join(confply_dir, file_name), "r") as in_file:
                 file_str = in_file.read()

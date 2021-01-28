@@ -1,4 +1,3 @@
-# from confply.config import *
 import confply.config as confply
 confply._tool_type = "cpp_compiler"
 # used to add things to system environment variables.
