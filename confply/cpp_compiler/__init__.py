@@ -177,7 +177,9 @@ def is_found(in_tool=None):
     else:
         path = shutil.which(in_tool)
     if path == None:
+        # log.error(in_tool+" not found")
         return False
     else:
-        log.success(in_tool+" found: "+path)
+        # #todo: something like this is needed, just not here
+        # log.success(in_tool+" found: "+path)
         return True

@@ -1,0 +1,8 @@
+echo = "echo"
+gcc = "gcc"
+gpp = "g++"
+emcc = "emcc"
+empp = "em++"
+cl = "cl"
+clang = "clang"
+clangpp = "clang++"

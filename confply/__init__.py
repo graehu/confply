@@ -495,7 +495,15 @@ def _handle_new_tool_type(in_args):
     if not os.path.exists(tool_type_dir):
         confply_dir = os.path.join(confply_dir, "new_tool_type")
         os.mkdir(tool_type_dir)
-        files = ["help.md", "__init__.py", "config/__init__.py", "echo.py", "options/__init__.py", "options/defaults.py"]
+        files = [
+            "__init__.py",
+            "help.md",
+            "echo.py",
+            "config/__init__.py",
+            "options/__init__.py",
+            "options/defaults.py",
+            "options/tools.py"
+        ]
         for file_name in files:
             with open(os.path.join(confply_dir, file_name), "r") as in_file:
                 file_str = in_file.read()
