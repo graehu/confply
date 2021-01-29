@@ -1,4 +1,4 @@
 all = "all"
 pedantic = "pedantic"
 extra = "extra"
-everything = "everything"
+all_warnings = [all, pedantic, extra]

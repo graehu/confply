@@ -1,12 +1,12 @@
 import os
 import subprocess
 import json
-import confply.config
 import confply.log as log
 import confply.cpp_compiler as cpp_compiler
+import confply.cpp_compiler.config as config
 
 def generate():
-    def _parse_deps(deps_string):
+    def __parse_deps(deps_string):
         deps_json = json.loads(deps_string)
         if "Data" in deps_json:
             deps_json = deps_json["Data"]
@@ -14,7 +14,25 @@ def generate():
             out_deps.append(deps_json["Source"])
             return out_deps
         pass
-    if confply.config.confply_platform == "windows":
+
+    try:
+        config.link_libraries.remove("stdc++")
+        log.warning("removing stdc++ from link_libraries, it's not valid when using cl.exe")
+    except:
+        pass
+    try:
+        config.warnings.remove("pedantic")
+        log.warning("removing pedantic from warnings, it's not valid when using cl.exe")
+    except:
+        pass
+    try:
+        config.warnings.remove("extra")
+        log.warning("removing extra from warnings, it's not valid when using cl.exe")
+    except:
+        pass
+        
+
+    if config.confply.platform == "windows":
         cpp_compiler.tool = "cl"
         cpp_compiler.output_obj = "-Fo"
         cpp_compiler.output_exe = "-Fe"
@@ -26,7 +44,7 @@ def generate():
         cpp_compiler.exception_handling = "-EHsc"
         cpp_compiler.pass_to_linker = "-link"
         cpp_compiler.object_ext = ".obj"
-        cpp_compiler.parse_deps = _parse_deps
+        cpp_compiler.parse_deps = __parse_deps
         cpp_compiler.debug = "-Zi"
         return cpp_compiler.generate()
     else:

@@ -22,6 +22,6 @@ config.output_file = "hello_confply"
 config.link_libraries = ["stdc++"]
 config.debug_info = debug
 config.standard = options.standards.cpp17
-config.warnings = [options.warnings.everything]
+config.warnings = options.warnings.all_warnings
 config.confply.log_config = True
 # config.confply.log_file = "log.txt"

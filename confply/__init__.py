@@ -188,7 +188,7 @@ def run_config(in_args):
                     log.normal("\t"+k)
         ##########
         def _tool_select():
-            if confply.config.confply_platform != "windows":
+            if confply.config.platform != "windows":
                 finished = False
                 while not finished:
                     log.normal("continue with a different tool? (Y/N): ", end="", flush=True)
@@ -246,9 +246,9 @@ def run_config(in_args):
     confply_args.pop(0)
 
     if os.name == "nt":
-        confply.config.confply_platform = "windows"
+        confply.config.platform = "windows"
     elif os.name == "posix":
-        confply.config.confply_platform = "linux"
+        confply.config.platform = "linux"
 
     tools = {}
     tool_type_module = None

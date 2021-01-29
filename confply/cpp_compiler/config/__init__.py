@@ -78,7 +78,7 @@ command_prepend = ""
 
 ##############
 
-def _cpp_post_load():
+def __cpp_post_load():
     import os
 
     if "--cpp_clean" in config.confply.args:
@@ -87,18 +87,5 @@ def _cpp_post_load():
             os.system("rm -r "+config.object_path)
         else:
             log.normal("no objects to remove")
-
-    if "--cpp_tool" in config.confply.args:
-        tool_index = config.confply.args.index("--cpp_tool") + 1
-        if tool_index < len(config.confply.args):
-            config.confply.tool = config.confply.args[tool_index]
-            log.normal("setting tool to "+config.confply.tool)
-            
-    if config.confply.tool == "cl":
-        try:
-            config.link_libraries.remove("stdc++")
-            log.warning("removing stdc++ from link_libraries, it's not valid when using cl.exe")
-        except:
-            pass
-            
-confply.post_load = _cpp_post_load
+# #todo: make confply.post_load into an array of functions            
+confply.post_load = __cpp_post_load
