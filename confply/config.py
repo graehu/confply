@@ -54,4 +54,6 @@ platform = "unknown"
 # usage: if "debug" in args: pass
 args = []
 
-
+# path to the root of the git repository
+# usage: log_file = git_root+"/logs/my_log.log"
+git_root = "."

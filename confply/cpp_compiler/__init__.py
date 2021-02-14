@@ -52,7 +52,7 @@ def generate():
         command += define+" "+(" "+define+" ").join(config.defines)+" " if config.defines else ""
         command += debug+" " if config.debug_info else ""
         command += standard+config.standard+" " if config.standard else ""
-        command += gen_warnings() if config.warnings else ""
+        command += gen_warnings()
         command += optimisation+str(config.optimisation)+" " if config.optimisation else ""
         if source is None:
             command += " ".join(config.source_files)+" " if config.source_files else ""
@@ -88,7 +88,7 @@ def generate():
             return hash_md5.hexdigest()
 
         tracking = {}
-        tracking_path = os.path.join(config.object_path, "tracking.py")
+        tracking_path = os.path.join(object_path, "tracking.py")
         
         if tracking_md5 or tracking_depends:
             if os.path.exists(tracking_path):

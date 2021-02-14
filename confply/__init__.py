@@ -233,6 +233,7 @@ def run_config(in_args):
 
         return False
     ########
+    # setup config run
     return_code = 0
     confply_args = []
     while len(in_args) > 0:
@@ -244,6 +245,13 @@ def run_config(in_args):
     confply_args = shlex.split(" ".join(confply_args))
     path = confply_args[0]
     confply_args.pop(0)
+    
+
+    try:
+        git_root = subprocess.check_output(['git', 'rev-parse', '--show-toplevel'])
+    except CalledProcessError:
+        raise IOError('Current working directory is not a git repository')
+    confply.config.git_root = git_root.decode('utf-8').strip()
 
     if os.name == "nt":
         confply.config.platform = "windows"
