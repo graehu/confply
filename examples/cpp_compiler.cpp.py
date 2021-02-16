@@ -6,6 +6,8 @@ sys.path.append('..')
 import confply.cpp_compiler.config as config
 import confply.cpp_compiler.options as options
 import confply.log as log
+############# modify_below ################
+
 config.confply.log_topic = "cpp_compiler"
 log.normal("loading cpp_compiler with confply_args: "+str(config.confply.args))
 
@@ -25,3 +27,4 @@ config.standard = options.standards.cpp17
 config.warnings = options.warnings.all_warnings
 config.confply.log_config = True
 # config.confply.log_file = "log.txt"
+

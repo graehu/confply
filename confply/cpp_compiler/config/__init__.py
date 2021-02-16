@@ -1,28 +1,29 @@
 import confply.config as confply
 confply.__tool_type = "cpp_compiler"
+confply.__imported_configs.append("cpp_compiler")
 # used to add things to system environment variables.
 # usage: environment = { "PATH" : "c:/bin/dir/", "etc" : "c:/etc/" }
-environment_vars = None
+environment_vars = {}
 
 # used to set preprocessor defines
 # usage: defines = ["MY_DEFINE=1", "MY_OTHER_DEF"]
-defines = None
+defines = []
 
 # source files to compile
 # usage: source_files = ["main.cpp", "etc.cpp"]
-source_files = None
+source_files = []
 
 # include directorie paths, searched by compilers
 # usage: include_paths = ["c:/path/to/include/files/", "etc."]
-include_paths = None
+include_paths = []
 
 # library directory paths, searched by compilers (linkers)
 # usage: library_paths = ["c:/path/to/library/dir/", "etc."]
-library_paths = None
+library_paths = []
 
 # link flags passed to the linker by the compiler e.g. -lopengl for opengl
 # usage: ["opengl", "etc."]
-link_libraries = None
+link_libraries = []
 
 # causes debug info to be generated, like -g in clang
 # usage: debug_info = True
@@ -77,7 +78,7 @@ command_append = ""
 command_prepend = ""
 
 ##############
-
+# #todo: this should go somewhere else.
 def __cpp_post_load():
     import os
 

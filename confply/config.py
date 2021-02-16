@@ -9,8 +9,13 @@ _/ ___\/  _ \ /    \   __\\____ \|  |<   |  |
      \/           \/      |__|        \/     
 """
 
-# do not set by hand! Is set in confply type config files
+# the tool type to run with after loading the config
+# usage: don't set this, it's set on config import
 __tool_type = None
+
+# the number of configs imported so far
+# usage: don't set this, it's set on config import
+__imported_configs = []
 
 # config elements overriden by the commandline
 # usage: don't set this from configs see --config in help
