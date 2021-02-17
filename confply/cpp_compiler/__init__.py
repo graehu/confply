@@ -42,7 +42,17 @@ def gen_warnings():
         command += warnings+conf_warnings+" "
     return command
 
+def __handle_args():
+    if "--cpp_clean" in config.confply.args:
+        if os.path.exists(config.object_path):
+            log.normal("cleaning compiled objects")
+            os.system("rm -r "+config.object_path)
+        else:
+            log.normal("no objects to remove")
+            
 def generate():
+    # #todo: this should go somewhere else, perhaps it's own common function
+    __handle_args()
     object_path = config.object_path
     def gen_command(config, source = None):
         

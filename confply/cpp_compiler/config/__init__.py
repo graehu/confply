@@ -76,17 +76,3 @@ command_append = ""
 # prepend to the start of the command
 # usage: command_prepend_with = "-something-unsupported"
 command_prepend = ""
-
-##############
-# #todo: this should go somewhere else.
-def __cpp_post_load():
-    import os
-
-    if "--cpp_clean" in config.confply.args:
-        if os.path.exists(config.object_path):
-            log.normal("cleaning compiled objects")
-            os.system("rm -r "+config.object_path)
-        else:
-            log.normal("no objects to remove")
-# #todo: make confply.post_load into an array of functions            
-confply.post_load = __cpp_post_load
