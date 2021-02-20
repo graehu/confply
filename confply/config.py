@@ -59,6 +59,10 @@ platform = "unknown"
 # usage: if "debug" in args: pass
 args = []
 
+# list of configs the current config depends on
+# usage: dependencies = ["config.py"]
+dependencies = []
+
 # path to the root of the git repository
 # usage: log_file = git_root+"/logs/my_log.log"
 git_root = "."

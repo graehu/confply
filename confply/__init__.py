@@ -66,6 +66,8 @@ config.confply.log_topic = "{tool_type_arg}"
 log.normal("loading {config_file} with confply_args: "+str(config.confply.args))
 config.confply.tool = options.defaults.tool
 """
+# list of configs that have already been run
+__configs_run = []
 
 def launcher(in_args, aliases):
     return_code = -999999
@@ -249,14 +251,13 @@ def run_config(in_args):
     confply_args = shlex.split(" ".join(confply_args))
     path = confply_args[0]
     confply_args.pop(0)
-    
 
     try:
         git_root = subprocess.check_output(['git', 'rev-parse', '--show-toplevel'])
+        confply.config.git_root = git_root.decode('utf-8').strip()
     except CalledProcessError:
-        raise IOError('Current working directory is not a git repository')
-    confply.config.git_root = git_root.decode('utf-8').strip()
-
+        log.warning('git_root not found')
+        
     if os.name == "nt":
         confply.config.platform = "windows"
     elif os.name == "posix":
@@ -415,11 +416,34 @@ def run_config(in_args):
         try:
             time_start = timeit.default_timer()
             # #todo: tool selection phase should happen first.
-            # #todo: rename generate to gen_tool_type
+            # #todo: rename generate to gen_tool_type.
             valid_tools = _validate_config()
             tool_type = confply.config.__tool_type
             tool = confply.config.tool
             shell_cmd = tools[tool_type][tool].generate() if valid_tools else None
+
+            dependencies = confply.config.dependencies
+            if len(dependencies) > 0:
+                old_topic = confply.config.log_topic
+                for m in config_modules: del sys.modules[m.__name__]
+                importlib.reload(confply.config)
+                for d in dependencies:
+                    if not d in __configs_run:
+                        confply.config.log_topic = old_topic
+                        log.normal("running dependency: "+str(d))
+                        confply.config.log_topic = "confply"
+                        log.linebreak()
+                        # #todo: this way of running dependencies limits --config.[options]
+                        # it would be better if the commandline options could be parsed outside of "../confply.py"
+                        __configs_run.append(d)
+                        depends_return = run_config([d])
+                        if depends_return < 0:
+                            confply.config.log_topic = old_topic
+                            log.error("failed to run: "+str(d))
+                            log.normal("\taborting final commands")
+                            return depends_return
+                confply.config.log_topic = old_topic
+                
             if shell_cmd is not None:
                 cmd_env = tools[tool_type][tool].get_environ()
                 if len(shell_cmd) > 0:
@@ -499,8 +523,9 @@ def run_config(in_args):
                 log.normal("traceback:\n\n"+trace)
         os.chdir(old_working_dir)
     # This resets any confply.config back to what it was prior to running any user
-    for m in config_modules: del sys.modules[m.__name__]
-    importlib.reload(confply.config)
+    if len(dependencies) == 0:
+        for m in config_modules: del sys.modules[m.__name__]
+        importlib.reload(confply.config)
     return return_code
 
 def _handle_help_arg(in_args):
