@@ -1,28 +1,101 @@
-# Confply #
+Confply
+----------
 
-Confply lets you write config files that can be shared between multiple commandline tools with similar functionality. The config files are written in python and executed when confply loads them. This allows them to be dynamically populated. Essentially, confply translates config files into tool appropriate shell commands.
+Essentially, confply translates config files into shell commands. The config files are written in python and executed when confply loads them. This allows them to be dynamically populated. The config files can be shared between multiple command-line tools with the same functionality. e.g. c++ compilers.
 
-For now compilers are the focus, but you can add another tool type like so:
+For now compilers are the focus, but confply is extendable.
+
+## Key Features
+
+### Python Configs
+
+Write python to fill your config or branch in specific conditions. The python files are [exec][exec]'d to populate the tool_type/config prior to command generation and run.
+
+[exec]: https://docs.python.org/3.8/library/functions.html#exec
+
+### Auto completion
+
+Because it's Python auto-completion works with minimal setup. The `config` and `options` imports make it easy to find your tools available features.
+
+![](https://github.com/graehu/hosting/blob/main/screenshots/confply/auto-complete.png)
+
+### Command-line 
+
+Command-line output is designed to be instructional, making debugging simple. In non-fatal error cases, confply queries the user for input. Information on confply command-line options can be found here: [help.md][help]
+
+![](https://github.com/graehu/hosting/blob/main/screenshots/confply/command-line.png)
+
+[help]: https://github.com/graehu/confply/blob/master/help.md
+
+### Lightweight Install
+
+Confply uses pure python 3.8, there are no additional modules to install. It's designed to sit inside your repository, rather than being installed system wide. This makes it easier to control the version you use for your projects.
+
+### Extendable
+
+Confply allows you to create your own tool types, like so:
 > `./confply.py --new_tool_type my_tool_type`
 
-That will add the following files:
+This adds the following files:
 
-* /confply/my_tool_type/**help.md**
-* /confply/my_tool_type/**__init__.py**
-* /confply/my_tool_type/**config/__init__.py**
-* /confply/my_tool_type/**options/__init__.py**
+* /confply/my\_tool\_type/**help.md**
+* /confply/my\_tool\_type/**\_\_init\_\_.py**
+* /confply/my\_tool\_type/**config/\_\_init\_\_.py**
+* /confply/my\_tool\_type/**options/\_\_init\_\_.py**
 
 **help.md** is printed when users invoke config specific help, like so:
 > `./confply.py --help.my_tool_type`
 
-**__init__.py** is where all of the shared code goes. <br>
-**config/__init__.py** is where you store all of the tool settings. <br>
-**options/__init__.py** is where config options go, store valid values here.
+**\_\_init\_\_.py** is where all of the shared code goes. <br>
+**config/\_\_init\_\_.py** is where you store all of the tool settings. <br>
+**options/\_\_init\_\_.py** is where config options go, store valid values here.
 
 Now you add a file to that folder for every tool you want to configure. (e.g. g++.py, clang++.py, cl.py) <br>
-Look at /confply/cpp_compiler/ as an example you can copy.
+Look at `/confply/cpp_compiler/` as an example you can copy.
 
-For further information on confply commandline options, take a look at [help.md](https://github.com/graehu/confply/blob/master/help.md)
+### Command-line Overrides
+
+You can override any field within a config from the command-line using `--config.{field}`. It's very easy to modify the behaviour of your config externally. Here's an example:
+
+``` bash
+python confply.py --config.confply.tool g++ examples/cpp_compiler.cpp.py
+python confply.py --config.confply.tool cl examples/cpp_compiler.cpp.py
+```
+
+Which generates:
+
+``` bash
+g++  -std=c++17 -Wall -Wpedantic -Wextra -c main.cpp -o objects/main.cpp.o  -MMD -MF objects/main.cpp.d
+g++  -std=c++17 -Wall -Wpedantic -Wextra objects/main.cpp.o -o hello_confply  -l stdc++
+```
+``` bash
+cl  -std:c++17 -Wall -c main.cpp -Foobjects/main.cpp.obj -EHsc  -sourceDependencies objects/main.cpp.d
+cl  -std:c++17 -Wall objects/main.cpp.obj -Fehello_confply -link
+```
+
+### Config Dependencies
+
+Setting `config.confply.dependencies` allows you to list configs that must be run prior to the current config's final commands.
+
+### Config Groups
+
+If you name your config `my_config.my_group.py` confply will search for `confply.my_group.py` in your parent directories. `confply.my_group.py` will be run first, allowing you to write a base configuration file that can be shared among any files in the same group. see `confply.cpp.py` and `examples/cpp_compiler.cpp.py` for an example of how you might use it.
+
+### Config Arguments
+
+Any arguments passed to confply after a config file will be added to `confply.config.args` allowing you to branch certain behaviours. Here's an example:
+
+``` python
+# set debug_info from command-line args
+debug = False
+if "debug" in config.confply.args:
+    debug = True
+    config.object_path = "objects/debug"
+    log.normal("set to debug config")
+
+config.debug_info = debug
+```
+
 
 ## Examples
 ![Linux Examples](https://github.com/graehu/confply/workflows/Linux%20Examples/badge.svg)
@@ -110,7 +183,6 @@ _/ ___\/  _ \ /    \   __\\____ \|  |<   |  |
 [cpp_compiler] 	confply.tool: clang++
 [cpp_compiler] 	confply.log_topic: cpp_compiler
 [cpp_compiler] 	confply.log_config: True
-[cpp_compiler] 	confply.post_load: __cpp_post_load
 [cpp_compiler] 	confply.platform: linux
 [cpp_compiler] 	confply.git_root: /home/graehu/Projects/C++/framework/tools/confply
 [cpp_compiler] 	source_files: 

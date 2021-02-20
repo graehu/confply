@@ -440,8 +440,28 @@ def run_config(in_args):
                         if depends_return < 0:
                             confply.config.log_topic = old_topic
                             log.error("failed to run: "+str(d))
-                            log.normal("\taborting final commands")
-                            return depends_return
+                            continue_exec = False
+                            if confply.config.platform != "windows":
+                                finished = False
+                                while not finished:
+                                    log.normal("continue execution? (Y/N): ", end="", flush=True)
+                                    rlist, _, _ = select.select([sys.stdin], [], [], 10)
+                                    if rlist:
+                                        answer = sys.stdin.readline().upper().replace("\n", "")
+                                        if answer == "YES" or answer == "Y":
+                                            continue_exec = True
+                                            finished = True
+                                        elif answer == "NO" or answer == "N":
+                                            continue_exec = True
+                                            finished = True
+                                    else:
+                                        finished = True
+                                        print("")
+                            if not continue_exec:
+                                log.normal("aborting final commands")
+                                return depends_return
+                            else:
+                                log.normal("continuing execution.")
                 confply.config.log_topic = old_topic
                 
             if shell_cmd is not None:
@@ -491,7 +511,7 @@ def run_config(in_args):
                 else:
                     _run_shell_cmd(shell_cmd)
             else:
-                log.error("couldn't generate a valid command.")
+                log.error("failed to generate a valid command.")
                 return_code = -1
 
             time_end = timeit.default_timer()
@@ -695,8 +715,10 @@ def _handle_config_dict_arg(in_args):
         return
     
     confply.config.__override_dict.update(overide_dict)
-    
+
+logged_overrides = False
 def _handle_config_arg(option, in_args):
+    global logged_overrides
     if len(in_args) < 1:
         log.error("--config requires a value.")
         log.normal("\t--config.confply.tool \"cl\"")
@@ -721,9 +743,13 @@ def _handle_config_arg(option, in_args):
     except:
         value = arg
 
-
+    # #todo: this logging section is lazy af. this should be done prior to running the config. not now.
+    if not logged_overrides:
+        logged_overrides = True
+        log.normal("overrides:")
+        
     if isinstance(value, str):
-        log.normal(""+option[2:]+" = \""+str(value)+"\" <"+type(value).__name__+">")
+        log.normal("\t"+option[2:]+" = \""+str(value)+"\" <"+type(value).__name__+">")
     else:
-        log.normal(""+option[2:]+" = "+str(value)+" <"+type(value).__name__+">")
+        log.normal("\t"+option[2:]+" = "+str(value)+" <"+type(value).__name__+">")
     confply.config.__override_list.append([option[2:], value ])

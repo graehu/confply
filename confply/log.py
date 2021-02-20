@@ -4,6 +4,7 @@ import confply.config
 
 # Logging module to keep logs consistent in confply.
 # #todo: add formatted() for a formatted log function
+# #todo: fix formating inside of log files
 
 try:
     terminal_test = os.get_terminal_size()
