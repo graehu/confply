@@ -29,7 +29,7 @@ aliases = {
     "clang++" : "--config.confply.tool clang++  examples/cpp_compiler.cpp.py --cpp_clean",
     "emcc" : "--config.confply.tool emcc  examples/cpp_compiler.cpp.py --cpp_clean",
     "em++" : "--config.confply.tool em++  examples/cpp_compiler.cpp.py --cpp_clean",
-        "cl" : "--config.confply.tool cl examples/cpp_compiler.cpp.py --cpp_clean",
+    "cl" : "--config.confply.tool cl examples/cpp_compiler.cpp.py --cpp_clean",
     "echo" : "--config.confply.tool echo  examples/cpp_compiler.cpp.py --cpp_clean"
 }
 
