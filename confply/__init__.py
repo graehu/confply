@@ -7,10 +7,12 @@ import shlex
 import timeit
 import select
 import inspect
+import smtplib
 import pathlib
 import traceback
 import importlib
 import subprocess
+import email.message
 import confply.config
 import confply.log as log
 
@@ -485,6 +487,12 @@ def run_config(in_args):
         clean_modules()
         return -1
 
+    # setup mail
+    mail_message = email.message.EmailMessage()
+    mail_message["Subject"] = (pathlib.Path(confply.config.git_root).name)
+    mail_message["From"] = confply.config.mail_from
+    mail_message["To"] = confply.config.mail_to
+
     # setting confply command configuration up
     old_stdout = sys.stdout
 
@@ -519,6 +527,7 @@ def run_config(in_args):
                     shell_cmd = None
 
                 old_topic = confply.config.log_topic
+                mail_login = confply.config.mail_login
                 clean_modules()
                 dependencies = confply.config.dependencies
                 if len(dependencies) > 0:
@@ -616,10 +625,18 @@ def run_config(in_args):
                 # https://docs.python.org/3.8/library/string.html#formatspec
                 time = f"{h:0>2.0f}:{m:0>2.0f}:{s:0>5.2f}"
                 log.normal("total time elapsed: "+time)
+                message_str = "Hello,\n\n"
+                message_str += "" if return_code == 0 else "un"
+                message_str += "successfully ran "+file_path
+                message_str += " "+" ".join(confply_args) +"\n"
+                message_str += "total time elapsed: "+time+"\n"
+                message_str += "\nThanks,\nConfply"
+                mail_message.set_content(message_str)
             except Exception:
                 log.error("failed to run config: ")
                 trace = traceback.format_exc()
                 log.normal("traceback:\n\n"+trace)
+                mail_message.set_content("failed to run "+file_path)
 
                 return_code = -1
 
@@ -639,6 +656,12 @@ def run_config(in_args):
                     trace = traceback.format_exc()
                     log.normal("traceback:\n\n"+trace)
 
+    if mail_login:
+        server = smtplib.SMTP_SSL('smtp.gmail.com')
+        server.ehlo()
+        server.login(*mail_login)
+        server.send_message(mail_message)
+        server.quit()
     return return_code
 
 

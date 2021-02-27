@@ -1,12 +1,12 @@
 # Header used at the top of log files and such
 # usage: header = "(>'')><('')><(''<)"
 header = r"""
-                     _____       .__         
+                     _____       .__
   ____  ____   _____/ ____\_____ |  | ___.__.
 _/ ___\/  _ \ /    \   __\\____ \|  |<   |  |
 \  \__(  <_> )   |  \  |  |  |_> >  |_\___  |
  \___  >____/|___|  /__|  |   __/|____/ ____|
-     \/           \/      |__|        \/     
+     \/           \/      |__|        \/
 """
 
 # the tool type to run with after loading the config
@@ -19,7 +19,7 @@ __imported_configs = []
 
 # config elements overriden by the commandline
 # usage: don't set this from configs see --config in help
-__override_dict = {"confply":{}}
+__override_dict = {"confply": {}}
 
 # config elements overriden by the commandline
 # usage: don't set this from configs see --config in help
@@ -66,3 +66,15 @@ dependencies = []
 # path to the root of the git repository
 # usage: log_file = git_root+"/logs/my_log.log"
 git_root = "."
+
+# mail server login details
+# usage: mail_from = "confply@github.com"
+mail_from = None
+
+# send messages to email address
+# usage: mail_to = "graehu@github.com"
+mail_to = None
+
+# mail server login details
+# usage: mail_login = ("username", "password")
+mail_login = None
