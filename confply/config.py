@@ -79,6 +79,10 @@ mail_to = None
 # usage: mail_login = ("username", "password")
 mail_login = None
 
+# mail hosting server
+# usage: mail_host = ""
+mail_host = "smtp.gmail.com"
+
 # file attachments for the mail
 # usage: mail_attachments = ["path/to/attachment.txt"]
 mail_attachments = []

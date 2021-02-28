@@ -569,6 +569,7 @@ def run_config(in_args):
 
                 old_topic = confply.config.log_topic
                 mail_login = confply.config.mail_login
+                mail_host = confply.config.mail_host
                 mail_attachments = confply.config.mail_attachments
                 if confply.config.log_file is not None:
                     mail_attachments.append(confply.config.log_file)
@@ -726,7 +727,7 @@ def run_config(in_args):
                     log.normal("traceback:\n\n"+trace)
 
     if mail_login:
-        server = smtplib.SMTP_SSL('smtp.gmail.com')
+        server = smtplib.SMTP_SSL(mail_host)
         server.ehlo()
         server.login(*mail_login)
         server.send_message(mail_message)
