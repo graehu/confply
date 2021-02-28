@@ -1,8 +1,11 @@
-# help #
+# help
 
-usage : `confply.py --[options] [config] [arguments] -- ...`
+confply lets your write config files in python.
 
-### options ###
+usage : `./confply.py [config_file] --[options] [arguments] -- ...`
+
+
+### options
 
 	--help : prints this file to the console.
 	--help.{tool_type} : prints the help file associated with the tool_type
@@ -14,16 +17,17 @@ usage : `confply.py --[options] [config] [arguments] -- ...`
 	--no_header : don't print confply header
 	--version : print version information
 	-- : separates config runs
-	
-### config ###
+
+
+### config_file
 
 the config file to load/run as a part of command generation.
 
-### arguments ###
+### arguments
 
 arguments are passed to the config file during load/run.
 
-### return codes ###
+### return codes
 
 0 : successful run.
 1 : fatal error in confply, aborted any further work.

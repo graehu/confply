@@ -8,7 +8,7 @@ if __name__ == "__main__":
     in_args = sys.argv[1:]
     version = sys.version_info
     version = (version.major, version.minor, version.micro)
-    if not "--no_header" in in_args:
+    if "--no_header" not in in_args:
         log.confply_header()
         log.linebreak()
         log.normal("python"+str(version))
@@ -16,32 +16,11 @@ if __name__ == "__main__":
         log.error("python version must be 3.8 or above")
         log.linebreak()
         exit(1)
+
     log.normal("called with args: "+str(in_args))
     return_code = -999999
     if len(in_args) != 0:
         while len(in_args) > 0:
-            if in_args[0].startswith("--"):
-                option = in_args.pop(0)
-                if option == "--launcher":
-                    confply._handle_launcher_arg(in_args)
-                elif option == "--gen_config":
-                    confply._handle_gen_config_arg(in_args)
-                elif option == "--help":
-                    confply._handle_help_arg(in_args)
-                elif option.startswith("--help."):
-                    confply._handle_help_config_arg(option, in_args)
-                elif option == "--version":
-                    confply._handle_version_arg(in_args)
-                elif option == "--config":
-                    confply._handle_config_dict_arg(in_args)
-                elif option.startswith("--config."):
-                    confply._handle_config_arg(option, in_args)
-                elif option == "--new_tool_type":
-                    confply._handle_new_tool_type(in_args)
-                continue
-
-            # default assume it's a file to run.
-            log.linebreak()
             cmd_return = confply.run_config(in_args)
 
             if(cmd_return > return_code and cmd_return != 0):
@@ -57,8 +36,8 @@ if __name__ == "__main__":
         confply_dir = os.path.relpath(__file__)
         confply_dir = os.path.dirname(confply_dir)
         return_code = -1
-        
-        with open(os.path.join(confply_dir,"help.md"), "r") as help_file:
+
+        with open(os.path.join(confply_dir, "help.md")) as help_file:
             print("\n"+help_file.read())
     log.linebreak()
     if(return_code != -999999):

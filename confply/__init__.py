@@ -3,7 +3,6 @@ import sys
 import ast
 import stat
 import types
-import shlex
 import timeit
 import select
 import inspect
@@ -271,6 +270,17 @@ def launcher(in_args, aliases):
 # #todo: make this import one tool at a time,
 # like previous import_cache behaviour
 def run_config(in_args):
+    """
+    runs the confply config, with supplied arguements.
+    confply reservered options will be stripped. e.g. --help
+    see help.md
+
+    usage: run_config(["path_to_config", "optional", "arguements"])
+    """
+    in_args = _strip_confply_args(in_args)
+    if len(in_args) == 0:
+        return 0
+    log.linebreak()
     log.header("run config")
     log.linebreak()
     ##########
@@ -321,18 +331,7 @@ def run_config(in_args):
 
     # setup config run
     return_code = 0
-    confply_args = []
-
-    # #todo: this looks like it shouldn't happen here.
-    while len(in_args) > 0:
-        arg = in_args.pop(0)
-        if arg == "--":
-            break
-        confply_args.append(arg)
-
-    confply_args = shlex.split(" ".join(confply_args))
-    path = confply_args[0]
-    confply_args.pop(0)
+    path = in_args.pop(0)
 
     # find the git root
     # #todo: extend this to other version control?
@@ -351,7 +350,7 @@ def run_config(in_args):
 
     tools = {}
     config_locals = {}
-    confply.config.args = confply_args
+    confply.config.args = in_args
     file_path = path
     directory_paths = []
     config_modules = []
@@ -537,9 +536,6 @@ def run_config(in_args):
                             log.normal("running dependency: "+str(d))
                             confply.config.log_topic = "confply"
                             log.linebreak()
-                            # #todo: this limits --config.[options] usage
-                            # it would be better if the commandline options
-                            # could be parsed outside of "../confply.py"
                             __configs_run.append(d)
                             depends_return = run_config([d])
                             if depends_return < 0:
@@ -628,7 +624,7 @@ def run_config(in_args):
                 message_str = "Hello,\n\n"
                 message_str += "" if return_code == 0 else "un"
                 message_str += "successfully ran "+file_path
-                message_str += " "+" ".join(confply_args) +"\n"
+                message_str += " "+" ".join(in_args) + "\n"
                 message_str += "total time elapsed: "+time+"\n"
                 message_str += "\nThanks,\nConfply"
                 mail_message.set_content(message_str)
@@ -663,6 +659,40 @@ def run_config(in_args):
         server.send_message(mail_message)
         server.quit()
     return return_code
+
+
+def _strip_confply_args(in_args):
+    commandline = []
+    in_len = len(in_args)
+    for i in range(0, in_len):
+        if not len(in_args) > 0:
+            break
+        option = in_args.pop(0)
+        if option.startswith("--"):
+            if option == "--launcher":
+                confply._handle_launcher_arg(in_args)
+            elif option == "--gen_config":
+                confply._handle_gen_config_arg(in_args)
+            elif option == "--help":
+                confply._handle_help_arg(in_args)
+            elif option.startswith("--help."):
+                confply._handle_help_config_arg(option, in_args)
+            elif option == "--version":
+                confply._handle_version_arg(in_args)
+            elif option == "--config":
+                confply._handle_config_dict_arg(in_args)
+            elif option.startswith("--config."):
+                confply._handle_config_arg(option, in_args)
+            elif option == "--new_tool_type":
+                confply._handle_new_tool_type(in_args)
+            elif option == "--":
+                break
+            else:
+                commandline.append(option)
+            continue
+        else:
+            commandline.append(option)
+    return commandline
 
 
 def _handle_help_arg(in_args):
