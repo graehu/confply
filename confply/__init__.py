@@ -1,6 +1,7 @@
 import os
 import sys
 import ast
+import json
 import stat
 import types
 import timeit
@@ -11,9 +12,11 @@ import pathlib
 import traceback
 import importlib
 import subprocess
-import email.message
 import confply.config
+import email.mime.text
 import confply.log as log
+import email.mime.multipart
+import email.mime.application
 
 __version__ = "0.0.1"
 __doc__ = """
@@ -72,6 +75,10 @@ __configs_run = []
 __directory_stack = []
 
 
+class SafeDict(dict):
+    def __missing__(self, key):
+        return '{' + key + '}'
+
 class pushd:
     """
     push a directory, use it like so:
@@ -129,6 +136,7 @@ def print_config(config_name, config):
     compare_config = {}
     confply_path = os.path.dirname(__file__) + "/"
     tool_type_path = confply_path+confply.config.__tool_type
+
     if(os.path.exists(tool_type_path)):
         tool_type_path += "/config/__init__.py"
         with open(tool_type_path) as config_file:
@@ -147,11 +155,13 @@ def print_config(config_name, config):
                 k: v for k, v in confply.config.__dict__.items()},
             **config.__dict__
         }
-
+        out_config = {}
         for k, v in compare_config.items():
-            if k.startswith("__") or k.startswith("confply.__"):
+            if (k.startswith("__") or k.startswith("confply.__") or
+                    k == "confply.mail_login"):
                 continue
             if k in base_config and v != base_config[k]:
+                out_config[k] = v
                 if isinstance(v, list):
                     log.normal("\t"+str(k)+": ")
                     for i in v:
@@ -173,6 +183,37 @@ def print_config(config_name, config):
                   " and should not be set by users.")
         log.normal("\tuse: 'import confply.[tool_type].config" +
                    " as confply' to import confply_tool_type.")
+
+
+def get_diff_config(config):
+    base_config = {}
+    compare_config = {}
+    diff_config = {}
+    confply_path = os.path.dirname(__file__) + "/"
+    tool_type_path = confply_path+confply.config.__tool_type
+
+    if(os.path.exists(tool_type_path)):
+        tool_type_path += "/config/__init__.py"
+        with open(tool_type_path) as config_file:
+            exec(config_file.read(), {}, base_config)
+        with open(confply_path+"config.py") as config_file:
+            exec(config_file.read(), {}, compare_config)
+
+        for k, v in compare_config.items():
+            base_config["confply."+k] = v
+
+        compare_config = {
+            **{"confply." +
+                k: v for k, v in confply.config.__dict__.items()},
+            **config.__dict__
+        }
+        for k, v in compare_config.items():
+            if (k.startswith("__") or k.startswith("confply.__") or
+                    k == "confply.mail_login"):
+                continue
+            if k in base_config and v != base_config[k]:
+                diff_config[k] = v
+    return diff_config
 
 
 def tool_select(in_tools):
@@ -487,8 +528,9 @@ def run_config(in_args):
         return -1
 
     # setup mail
-    mail_message = email.message.EmailMessage()
-    mail_message["Subject"] = (pathlib.Path(confply.config.git_root).name)
+    mail_message = email.mime.multipart.MIMEMultipart('html')
+    mail_message["Subject"] = (pathlib.Path(confply.config.git_root).name +
+                               ": " + file_path)
     mail_message["From"] = confply.config.mail_from
     mail_message["To"] = confply.config.mail_to
 
@@ -527,6 +569,11 @@ def run_config(in_args):
 
                 old_topic = confply.config.log_topic
                 mail_login = confply.config.mail_login
+                mail_attachments = confply.config.mail_attachments
+                if confply.config.log_file is not None:
+                    mail_attachments.append(confply.config.log_file)
+                diff_config = get_diff_config(config)
+
                 clean_modules()
                 dependencies = confply.config.dependencies
                 if len(dependencies) > 0:
@@ -621,19 +668,44 @@ def run_config(in_args):
                 # https://docs.python.org/3.8/library/string.html#formatspec
                 time = f"{h:0>2.0f}:{m:0>2.0f}:{s:0>5.2f}"
                 log.normal("total time elapsed: "+time)
-                message_str = "Hello,\n\n"
-                message_str += "" if return_code == 0 else "un"
-                message_str += "successfully ran "+file_path
-                message_str += " "+" ".join(in_args) + "\n"
-                message_str += "total time elapsed: "+time+"\n"
-                message_str += "\nThanks,\nConfply"
-                mail_message.set_content(message_str)
+                html_file = os.path.dirname(__file__)
+                html_file = os.path.join(html_file, "mail.html")
+
+                with open(html_file) as mail_file:
+                    message_str = mail_file.read()
+                    html_replace = {
+                        "config": file_path,
+                        "success": ("successfully" if
+                                    return_code == 0 else "unsuccessfully"),
+                        "config_json": json.dumps(diff_config, indent=4),
+                        "time": time
+                    }
+                    for key, val in html_replace.items():
+                        message_str = message_str.replace("{"+key+"}", str(val))
+
+                    message_mime = email.mime.text.MIMEText(message_str, 'html')
+                    mail_message.attach(message_mime)
+                    for f in mail_attachments:
+                        if f is None or (not os.path.exists(f)):
+                            log.error("failed to send attachment: "+str(f))
+                            continue
+                        with open(f, "rb") as fil:
+                            part = email.mime.application.MIMEApplication(
+                                fil.read(),
+                                Name=os.path.basename(f)
+                            )
+                        # After the file is closed
+                        part['Content-Disposition'] = (
+                            'attachment; filename="%s"'
+                            % os.path.basename(f)
+                        )
+                        mail_message.attach(part)
+
             except Exception:
                 log.error("failed to run config: ")
                 trace = traceback.format_exc()
                 log.normal("traceback:\n\n"+trace)
-                mail_message.set_content("failed to run "+file_path)
-
+                # mail_message.set_content("failed to run "+file_path)
                 return_code = -1
 
             if sys.stdout != old_stdout:
@@ -646,6 +718,7 @@ def run_config(in_args):
                     log.normal("running post run script: " +
                                confply.config.post_run.__name__)
                     exec(confply.config.post_run.__code__, config_locals, {})
+
                 except Exception:
                     log.error("failed to exec " +
                               confply.config.post_run.__name__)

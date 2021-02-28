@@ -22,6 +22,8 @@ if "debug" in config.confply.args:
 config.debug_info = debug
 config.confply.mail_to = "graehu@gmail.com"
 config.confply.mail_from = "confply.dev@gmail.com"
+attach_path = os.path.abspath("confply.log")
+config.confply.mail_attachments.append(attach_path)
 mail_login = None
 if os.path.exists("details.py"):
     with open("details.py") as details_file:

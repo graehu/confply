@@ -78,3 +78,7 @@ mail_to = None
 # mail server login details
 # usage: mail_login = ("username", "password")
 mail_login = None
+
+# file attachments for the mail
+# usage: mail_attachments = ["path/to/attachment.txt"]
+mail_attachments = []
