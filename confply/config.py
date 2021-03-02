@@ -29,6 +29,10 @@ __override_list = []
 # usage: tool = "clang"
 tool = None
 
+# sets whether to run the resulting commands or not
+# usage: run = True
+run = True
+
 # sets the topic of the log, e.g. [confply] confguring commands.
 # usage: log_topic = "my command"
 log_topic = "confply"

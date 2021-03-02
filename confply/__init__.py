@@ -420,7 +420,7 @@ def run_config(in_args):
         pass
 
     directory_paths.append(file_path)
-
+    should_run = confply.config.run
     # load and execute the config files
     for path in directory_paths:
         if path is None:
@@ -471,6 +471,10 @@ def run_config(in_args):
         else:
             log.error("failed to load: "+path)
             return -1
+
+    # ensure we don't run if should_run was EVER false
+    if should_run is not True:
+        confply.config.run = should_run
 
     confply_path = os.path.dirname(__file__) + "/"
     if("config" not in config_locals):
@@ -561,6 +565,7 @@ def run_config(in_args):
                 valid_tools = _validate_config()
                 tool_type = confply.config.__tool_type
                 tool = confply.config.tool
+                should_run = confply.config.run
                 if valid_tools:
                     shell_cmd = tools[tool_type][tool]
                     shell_cmd = shell_cmd.generate() if valid_tools else None
@@ -574,8 +579,8 @@ def run_config(in_args):
                 if confply.config.log_file is not None:
                     mail_attachments.append(confply.config.log_file)
                 diff_config = get_diff_config(config)
-
                 clean_modules()
+                confply.config.run = should_run
                 dependencies = confply.config.dependencies
                 if len(dependencies) > 0:
                     for d in dependencies:
@@ -609,7 +614,8 @@ def run_config(in_args):
                             log.normal("final command:\n\n" +
                                        str(shell_cmd) +
                                        "\n")
-                        log.header("begin "+tool)
+                        if should_run:
+                            log.header("begin "+tool)
                     sys.stdout.flush()
 
                     def _run_shell_cmd(shell_cmd):
@@ -639,7 +645,7 @@ def run_config(in_args):
                                       str(result.returncode))
                             return_code = -2
 
-                    if isinstance(shell_cmd, list):
+                    if should_run and isinstance(shell_cmd, list):
                         for cmd in shell_cmd:
                             cmd_time_start = timeit.default_timer()
                             log.linebreak()
@@ -655,8 +661,10 @@ def run_config(in_args):
                             # https://docs.python.org/3.8/library/string.html#formatspec
                             time = f"{h:0>2.0f}:{m:0>2.0f}:{s:0>5.2f}"
                             log.normal("time elapsed: "+time)
-                    else:
+                    elif should_run:
                         _run_shell_cmd(shell_cmd)
+                    else:
+                        log.warning("no commands run")
                 else:
                     log.error("failed to generate a valid command.")
                     return_code = -1
@@ -726,7 +734,7 @@ def run_config(in_args):
                     trace = traceback.format_exc()
                     log.normal("traceback:\n\n"+trace)
 
-    if mail_login:
+    if mail_login and should_run:
         server = smtplib.SMTP_SSL(mail_host)
         server.ehlo()
         server.login(*mail_login)
@@ -759,6 +767,8 @@ def _strip_confply_args(in_args):
                 confply._handle_config_arg(option, in_args)
             elif option == "--new_tool_type":
                 confply._handle_new_tool_type(in_args)
+            elif option == "--no_run":
+                confply.config.run = False
             elif option == "--":
                 break
             else:
