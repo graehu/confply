@@ -28,7 +28,6 @@ pass_to_linker = ""
 parse_deps = lambda x: shlex.split(x)
 
 
-
 def gen_warnings():
     command = ""
     conf_warnings = config.warnings
@@ -42,20 +41,11 @@ def gen_warnings():
         command += warnings+conf_warnings+" "
     return command
 
-def __handle_args():
-    if "--cpp_clean" in config.confply.args:
-        if os.path.exists(config.object_path):
-            log.normal("cleaning compiled objects")
-            os.system("rm -r "+config.object_path)
-        else:
-            log.normal("no objects to remove")
-            
+
 def generate():
-    # #todo: this should go somewhere else, perhaps it's own common function
-    __handle_args()
     object_path = config.object_path
-    def gen_command(config, source = None):
-        
+
+    def gen_command(config, source=None):
         command = ""
         command += tool+" "+config.command_prepend+" "
         command += include+" "+(" "+include+" ").join(config.include_paths) + " " if config.include_paths else ""
@@ -99,12 +89,12 @@ def generate():
 
         tracking = {}
         tracking_path = os.path.join(object_path, "tracking.py")
-        
+
         if tracking_md5 or tracking_depends:
             if os.path.exists(tracking_path):
                 with open(tracking_path, "r") as tracking_file:
                     tracking = ast.literal_eval(tracking_file.read())
-        
+
         def update_tracking(file_path):
             nonlocal tracking
             if os.path.exists(file_path):
@@ -129,9 +119,9 @@ def generate():
                     return True
                 pass
             return False
-        
+
         compile_all = update_tracking(config_name) if config.rebuild_on_change else False
-        
+
         for source_path in sources:
             should_compile = compile_all
             if os.path.exists(source_path):
@@ -153,10 +143,10 @@ def generate():
                     should_link = True
                 elif obj_time > output_time:
                     should_link = True
-                    
+
             else:
                 log.warning(source_path+" could not be found")
-                
+
         if should_link and config.output_executable:
             config.source_files = objects
             commands.append(gen_command(config))
@@ -179,14 +169,23 @@ def get_environ():
     return os.environ
 
 
+def handle_args():
+    if "--cpp_clean" in config.confply.args or config.clean:
+        if os.path.exists(config.object_path):
+            log.normal("cleaning compiled objects")
+            os.system("rm -r "+config.object_path)
+        else:
+            log.normal("no objects to remove")
+
+
 def is_found(in_tool=None):
     path = None
-    if in_tool == None:
-        if config.confply.tool != None:
+    if in_tool is None:
+        if config.confply.tool is not None:
             path = shutil.which(config.confply.tool)
     else:
         path = shutil.which(in_tool)
-    if path == None:
+    if path is None:
         # log.error(in_tool+" not found")
         return False
     else:

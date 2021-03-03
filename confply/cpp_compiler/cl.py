@@ -99,7 +99,11 @@ def get_environ():
     else:
         return os.environ
 
-    
+
+def handle_args():
+    cpp_compiler.handle_args()
+
+
 def is_found():
     if _cl_found:
         log.success("cl found: "+_cl_path)

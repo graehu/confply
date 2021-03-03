@@ -568,6 +568,7 @@ def run_config(in_args):
                 should_run = confply.config.run
                 if valid_tools:
                     shell_cmd = tools[tool_type][tool]
+                    shell_cmd.handle_args()
                     shell_cmd = shell_cmd.generate() if valid_tools else None
                 else:
                     shell_cmd = None

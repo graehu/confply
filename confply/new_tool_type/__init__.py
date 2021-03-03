@@ -17,6 +17,11 @@ def get_environ():
     return os.environ
 
 
+# performs any actions invoked by specific commandline args
+def handle_args():
+    pass
+
+
 # return if tool is found or not. (i.e. installed and on path)
 def is_found(in_tool=None):
     if in_tool is None:

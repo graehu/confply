@@ -76,3 +76,8 @@ command_append = ""
 # prepend to the start of the command
 # usage: command_prepend_with = "-something-unsupported"
 command_prepend = ""
+
+
+# delete all object files before run
+# usage: clean = True
+clean = False
