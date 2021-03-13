@@ -1,0 +1,82 @@
+<html>
+  <header>
+    <link rel="stylesheet" href="server.css"/>
+    <h1 class="confply">_Confply</h1>
+  </header>
+  <div class="logbox">use the buttons below to run the following configs</div>
+  <body>
+    <script>
+      var lastrun = null;
+      var currentrun = null;
+      var running_button = null;
+      function httpGet(theUrl, callback)
+      {
+	  var xmlHttp = new XMLHttpRequest();
+	  xmlHttp.onreadystatechange = function() { 
+              if (xmlHttp.readyState == 4 && xmlHttp.status == 200)
+	      {
+		  callback(xmlHttp.responseText);
+	      }
+	  }
+	  xmlHttp.open("GET", theUrl, true); // true for asynchronous 
+	  xmlHttp.send(null);
+      }
+      httpGet("/?g=aliases", function(response)
+	      {
+		  var run_buttons = document.getElementById("run_buttons");
+		  var dictionary = JSON.parse(response);
+		  for(var key in dictionary)
+		  {
+		      var pre = document.createElement("pre");
+		      var button = document.createElement("button");
+		      button.setAttribute("onclick", "run_alias('"+key+"')");
+		      button.setAttribute("class", "run_button");
+		      button.setAttribute("id", key+"_button");
+		      button.innerHTML = key;
+		      var para = document.createElement("a");
+		      para.innerHTML = dictionary[key];
+		      run_buttons.appendChild(pre);
+		      pre.appendChild(button);
+		      pre.appendChild(para);
+		  }
+	      });
+      function run_alias(alias)
+      {
+	  if(running_button == null)
+	  {
+	      running_button = document.getElementById(alias+"_button");
+	      running_button.setAttribute("class", "run_button running");
+	      lastrun = currentrun;
+	      currentrun = alias +" - "+ new Date().toLocaleString();
+	      httpGet("/?r="+alias, run_complete);
+	  }
+      }
+      function run_complete()
+      {
+	  running_button.setAttribute("class", "run_button end_running");
+	  running_button = null;
+	  httpGet("/server.log", function(response)
+		  {
+		      var logs = document.getElementById("logs");
+		      if(lastrun != null)
+		      {
+			  var oldlogs = document.getElementById("oldlogs");
+			  var details = document.createElement("details");
+			  details.innerHTML = "<summary>"+lastrun+"</summary>"+logs.innerHTML;
+			  details.setAttribute("class", "logbox");
+			  oldlogs.append(document.createElement("br"));
+			  oldlogs.append(details);
+		      }
+		      logs.innerHTML = response;
+		  });
+      };
+    </script>
+    <div id="run_buttons">
+    </div>
+    <div id="logs" class="logbox">
+      waiting for logs...
+    </div>
+    <div id="oldlogs">
+    </div>
+  <body>
+</html>

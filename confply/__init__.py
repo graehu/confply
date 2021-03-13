@@ -13,6 +13,7 @@ import traceback
 import importlib
 import subprocess
 import confply.config
+import confply.server
 import email.mime.text
 import confply.log as log
 import email.mime.multipart
@@ -38,21 +39,19 @@ new_launcher_str = r"""#!/usr/bin/env python
 
 import sys
 import os
-
-# set current working directory and add confply to path
-# so we can import the launcher function
-dir_name = os.path.dirname(__file__)
-if not dir_name == "":
-    os.chdir(dir_name)
 sys.path.append("{confply_dir}")
 from confply import launcher
 
 # fill this with your configs
 aliases = {comment}
 
+# "all" will run all of the aliases
+aliases["all"] = " -- ".join([val for key, val in aliases.items()])
+
 if __name__ == "__main__":
-    # "all" will run all of the aliases
-    aliases["all"] = " -- ".join([val for key, val in aliases.items()])
+    dir_name = os.path.dirname(__file__)
+    if not dir_name == "":
+        os.chdir(dir_name)
     launcher(sys.argv[1:], aliases)
 """
 
@@ -754,6 +753,8 @@ def _strip_confply_args(in_args):
         if option.startswith("--"):
             if option == "--launcher":
                 confply._handle_launcher_arg(in_args)
+            elif option == "--listen":
+                confply._handle_listen_arg(in_args)
             elif option == "--gen_config":
                 confply._handle_gen_config_arg(in_args)
             elif option == "--help":
@@ -870,7 +871,7 @@ def _handle_launcher_arg(in_args):
                 {
                     "confply_dir": confply_dir,
                     "launcher": arguement,
-                    "comment": "{\n    #'myconfig':'path/to/config.py'\n}"
+                    "comment": "{\n    # 'myconfig':'path/to/config.py'\n}"
                 })
             launcher_file.write(launcher_str)
         st = os.stat(launcher_path)
@@ -878,6 +879,28 @@ def _handle_launcher_arg(in_args):
         log.success("wrote: "+launcher_path)
     else:
         log.error(launcher_path+" already exists!")
+
+
+def _handle_listen_arg(in_args):
+    if len(in_args) < 1:
+        log.error("--listen requires a value.")
+        log.normal("\t--listen [launcher_file]")
+        return
+    # #todo: this seems like a bad way to get the parent dir. Consider pathlib
+    confply_dir = os.path.relpath(__file__)
+    confply_dir = os.path.dirname(confply_dir)+"/.."
+    confply_dir = os.path.relpath(confply_dir)
+    confply_dir = confply_dir.replace("\\", "/")
+
+    arguement = in_args.pop(0)
+    launcher_path = os.path.abspath(os.path.curdir)+"/"+arguement
+    if os.path.exists(launcher_path):
+        print("changing dir to "+os.path.dirname(__file__))
+        with pushd(os.path.dirname(__file__)):
+            print("current working dir"+os.path.abspath(os.path.curdir))
+            confply.server.start_server(launcher=launcher_path)
+    else:
+        log.error(launcher_path+" not found!")
 
 
 def _handle_gen_config_arg(in_args):
