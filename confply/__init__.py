@@ -78,6 +78,7 @@ class SafeDict(dict):
     def __missing__(self, key):
         return '{' + key + '}'
 
+
 class pushd:
     """
     push a directory, use it like so:
@@ -210,7 +211,7 @@ def get_diff_config(config):
             if (k.startswith("__") or k.startswith("confply.__") or
                     k == "confply.mail_login"):
                 continue
-            if k in base_config and v != base_config[k]:
+            if k in base_config and v != base_config[k] and not inspect.isfunction(v):
                 diff_config[k] = v
     return diff_config
 
@@ -543,13 +544,21 @@ def run_config(in_args):
     # #todo: this is probably broken, test it
     # #todo: another awkward directory push pop that doesn't need to exist
     with pushd(new_working_dir):
-        if confply.config.log_file is not None:
-            log.normal("writing to: "+confply.config.log_file+"....")
+        log_file = confply.config.log_file
+        if log_file is not None:
+            log.normal("writing to: "+log_file+"....")
             try:
-                sys.stdout = open(confply.config.log_file, "w")
+                sys.stdout = open(log_file, "w")
+                version = sys.version_info
+                version = (version.major, version.minor, version.micro)
+                if "--no_header" not in in_args:
+                    log.confply_header()
+                    log.linebreak()
+                    log.normal("python"+str(version))
+                    log.linebreak()
             except Exception:
                 log.error("couldn't open " +
-                          confply.config.log_file +
+                          log_file +
                           " for write.")
                 return_code = -1
 
@@ -576,8 +585,8 @@ def run_config(in_args):
                 mail_login = confply.config.mail_login
                 mail_host = confply.config.mail_host
                 mail_attachments = confply.config.mail_attachments
-                if confply.config.log_file is not None:
-                    mail_attachments.append(confply.config.log_file)
+                if log_file is not None:
+                    mail_attachments.append(log_file)
                 diff_config = get_diff_config(config)
                 clean_modules()
                 confply.config.run = should_run
@@ -593,6 +602,7 @@ def run_config(in_args):
                             depends_return = run_config([d])
                             if depends_return < 0:
                                 confply.config.log_topic = old_topic
+                                confply.config.log_file = log_file
                                 log.error("failed to run: "+str(d))
                                 if not input_prompt("continue execution?"):
                                     log.normal("aborting final commands")
@@ -601,6 +611,7 @@ def run_config(in_args):
                                     log.normal("continuing execution.")
                     pass
                 confply.config.log_topic = old_topic
+                confply.config.log_file = log_file
 
                 if shell_cmd is not None:
                     cmd_env = tools[tool_type][tool].get_environ()
@@ -620,7 +631,7 @@ def run_config(in_args):
 
                     def _run_shell_cmd(shell_cmd):
                         nonlocal return_code
-                        if confply.config.log_file is not None:
+                        if log_file is not None:
                             sys.stdout.flush()
                             # #todo: check if this can be ansi-coloured
                             result = subprocess.run(shell_cmd,
@@ -895,9 +906,7 @@ def _handle_listen_arg(in_args):
     arguement = in_args.pop(0)
     launcher_path = os.path.abspath(os.path.curdir)+"/"+arguement
     if os.path.exists(launcher_path):
-        print("changing dir to "+os.path.dirname(__file__))
         with pushd(os.path.dirname(__file__)):
-            print("current working dir"+os.path.abspath(os.path.curdir))
             confply.server.start_server(launcher=launcher_path)
     else:
         log.error(launcher_path+" not found!")

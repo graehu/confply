@@ -30,7 +30,6 @@ class ConfplyServer(SimpleHTTPRequestHandler):
         # split the query out if need be
         if "?" in self.path:
             self.path, query_list = self.path.split("?")
-
             if "&" in query_list:
                 query_list = query_list.split("&")
             else:
@@ -45,32 +44,49 @@ class ConfplyServer(SimpleHTTPRequestHandler):
 
         wfile_content = None
         if "r" in queries:
-            print("recieved run request");
             if launcher_path is not None:
-                print("attmpting to run: "+queries["r"])
+                print("attempting to run: "+queries["r"])
+                server_log = os.path.abspath(os.path.dirname(__file__))
+                server_log = os.path.join(server_log, "server.log")
+                with open(server_log, "w") as sf:
+                    sf.write("failed to write server log\n")
                 cmd = "python "
                 cmd += launcher_path + " "
                 cmd += queries["r"]
-                # #todo: put the server log into the final html
-                cmd += " > server.log"
-                os.system(cmd)
+                cmd += " --config.confply.log_file "
+                cmd += server_log
+                if os.name == 'nt':
+                    system_code = os.system(cmd)
+                else:
+                    system_code = os.WEXITSTATUS(os.system(cmd))
+
+                self.send_response(200)
+                self.send_header("Cache-Control", "no-store, must-revalidate")
+                self.end_headers()
+                response = {"status": "success"}
+                if system_code != 0:
+                    response["status"] = "failure"
+                self.wfile.write(bytes(json.dumps(response), "utf-8"))
+                return
         if "g" in queries:
             if launcher_path is not None:
                 print("attempting to get "+queries["g"])
                 if queries["g"] == "aliases":
                     wfile_content = bytes(json.dumps(aliases), "utf-8")
-                    pass
+                elif queries["g"] == "launcher":
+                    launcher_dict = {"path": launcher_path}
+                    wfile_content = bytes(json.dumps(launcher_dict), "utf-8")
             pass
 
         in_path = self.translate_path(self.path)
         in_path = os.path.relpath(in_path, self.directory)
         if in_path in whitelist:
-
             if wfile_content is not None:
                 self.send_response(200)
                 self.send_header("Content-Type", "text/json")
                 self.end_headers()
                 self.wfile.write(wfile_content)
+                return
             else:
                 SimpleHTTPRequestHandler.do_GET(self)
 
@@ -102,8 +118,7 @@ def start_server(port=8000, launcher=None):
     # this is required to work with safari for some reason.
     HTTPServer.address_family, addr = _get_best_family(None, port)
     if launcher is not None:
-        launcher_path = launcher
-        print(launcher_path)
+        launcher_path = os.path.abspath(launcher)
         with open(launcher_path) as launcher_file:
             # #todo: this is dangerous af, need to redesign launcher files
             old_dir = os.path.abspath(os.path.curdir)
@@ -111,7 +126,6 @@ def start_server(port=8000, launcher=None):
             exec(launcher_file.read(), config, config)
             aliases = config["aliases"]
             os.chdir(old_dir)
-            # print("current working dir "+os.path.curdir)
 
     webServer = HTTPServer(addr, ConfplyServer)
     print("Server started http://%s:%s" % (addr))

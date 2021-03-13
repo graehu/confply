@@ -130,15 +130,26 @@ pre.numberSource div.sourceLine {
     margin-left: 4em;
     padding-left: 4px;
 }
-pre, .logbox {
+pre {
     white-space: pre;
     white-space: pre-wrap;
     word-wrap: break-word;
 }
 
+.run_command {
+    display: inline-block;
+    width: 80%;
+    white-space: nowrap;
+    overflow: hidden;
+}
+
 .logbox {
+    white-space: pre;
+    width: 100%;
     background: #efefef;
     padding: 5px;
+    overflow-x: scroll;
+    text-overflow: scroll;
 }
 
 h1.confply {
@@ -159,6 +170,9 @@ h1.confply {
     box-sizing: content-box;
     min-width: 100px;
 }
+
+.success {background-color: #4CAF50;} /* Green */
+.failure {background-color: #f44336;} /* Red */ 
 
 .running {
     animation: running_animation 1s linear infinite;

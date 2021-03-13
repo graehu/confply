@@ -1,12 +1,11 @@
 <html>
   <header>
     <link rel="stylesheet" href="server.css"/>
-    <h1 class="confply">_Confply</h1>
+    <h1 class="confply">./confply.py --listen</h1>
   </header>
-  <div class="logbox">use the buttons below to run the following configs</div>
+  <div id="launcher_div" class="logbox"></div>
   <body>
     <script>
-      var lastrun = null;
       var currentrun = null;
       var running_button = null;
       function httpGet(theUrl, callback)
@@ -33,12 +32,21 @@
 		      button.setAttribute("class", "run_button");
 		      button.setAttribute("id", key+"_button");
 		      button.innerHTML = key;
-		      var para = document.createElement("a");
-		      para.innerHTML = dictionary[key];
+		      var span = document.createElement("span");
+		      span.setAttribute("class", "run_command");
+		      span.innerHTML = dictionary[key];
 		      run_buttons.appendChild(pre);
 		      pre.appendChild(button);
-		      pre.appendChild(para);
+		      pre.appendChild(span);
 		  }
+	      });
+      httpGet("/?g=launcher", function(response)
+	      {
+		  var launcher_div = document.getElementById("launcher_div");
+		  console.log(response)
+		  var dictionary = JSON.parse(response);
+		  launcher_div.innerHTML = dictionary["path"];
+		  
 	      });
       function run_alias(alias)
       {
@@ -46,37 +54,54 @@
 	  {
 	      running_button = document.getElementById(alias+"_button");
 	      running_button.setAttribute("class", "run_button running");
-	      lastrun = currentrun;
 	      currentrun = alias +" - "+ new Date().toLocaleString();
 	      httpGet("/?r="+alias, run_complete);
 	  }
       }
-      function run_complete()
+      function run_complete(response)
       {
-	  running_button.setAttribute("class", "run_button end_running");
+	  var dictionary = JSON.parse(response);
+	  console.log(response);
+	  if("status" in dictionary)
+	  {
+	      if(dictionary["status"] === "success")
+	      {
+		  running_button.setAttribute("class", "run_button success end_running");
+		  currentrun += "<span class='success' style='padding: 0 5px 0 5px; color: white; float:right;'>success</span>"
+	      }
+	      else
+	      {
+		  running_button.setAttribute("class", "run_button failure end_running");
+		  currentrun += "<span class='failure' style='padding: 0 5px 0 5px; color: white; float:right;'>failure</span>"
+	      }
+	  }
+	  else
+	  {
+	      running_button.setAttribute("class", "run_button end_running");
+	  }
+	      
 	  running_button = null;
+	  
 	  httpGet("/server.log", function(response)
 		  {
 		      var logs = document.getElementById("logs");
-		      if(lastrun != null)
+		      if (logs.innerHTML == "waiting for logs...")
 		      {
-			  var oldlogs = document.getElementById("oldlogs");
-			  var details = document.createElement("details");
-			  details.innerHTML = "<summary>"+lastrun+"</summary>"+logs.innerHTML;
-			  details.setAttribute("class", "logbox");
-			  oldlogs.append(document.createElement("br"));
-			  oldlogs.append(details);
+			  logs.setAttribute("class", "");
+			  logs.innerHTML = "";
 		      }
-		      logs.innerHTML = response;
+		      
+		      var details = document.createElement("details");
+		      details.innerHTML = "<summary>"+currentrun+"</summary>"+response;
+		      details.setAttribute("class", "logbox");
+		      logs.prepend(document.createElement("br"));
+		      logs.prepend(details);
+		      
 		  });
       };
     </script>
     <div id="run_buttons">
     </div>
-    <div id="logs" class="logbox">
-      waiting for logs...
-    </div>
-    <div id="oldlogs">
-    </div>
+    <div id="logs" class="logbox">waiting for logs...</div>
   <body>
 </html>

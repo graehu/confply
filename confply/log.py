@@ -33,10 +33,10 @@ def confply_header():
 def linebreak(break_char = "="):
     topic = get_log_topic()
     # magic number -1 makes logs look better in terminal editors
-    if valid_ioctl:
+    if can_format():
         terminal_size = os.get_terminal_size().columns - len(topic) -1
     else:
-        terminal_size = 64
+        terminal_size = 96
     print(topic+''.center(terminal_size, break_char ))
     
 def bold(in_string):
@@ -59,10 +59,10 @@ def centered(in_string, fill_string = " "):
     topic = get_log_topic()
     ansi_delta = len(in_string) - len(escape_ansi(in_string))
     # magic number -1 makes logs look better in terminal editors
-    if valid_ioctl:
+    if can_format():
         terminal_width = os.get_terminal_size().columns - len(topic) - 1 + ansi_delta
     else:
-        terminal_width = 64
+        terminal_width = 96
     in_string = (" "+in_string+" ").center(terminal_width, fill_string)
     print(topic+in_string)
     
