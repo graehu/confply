@@ -6,8 +6,11 @@
   <div id="launcher_div" class="logbox"></div>
   <body>
     <script>
+      // #todo: httpget add failure handling
+      // for the various gets below.
       var currentrun = null;
       var running_button = null;
+      var run_queue = [];
       function httpGet(theUrl, callback)
       {
 	  var xmlHttp = new XMLHttpRequest();
@@ -50,18 +53,32 @@
 	      });
       function run_alias(alias)
       {
-	  if(running_button == null)
+	  if(running_button === null)
 	  {
 	      running_button = document.getElementById(alias+"_button");
 	      running_button.setAttribute("class", "run_button running");
 	      currentrun = alias +" - "+ new Date().toLocaleString();
 	      httpGet("/?r="+alias, run_complete);
 	  }
+	  else if(running_button.id !== (alias+"_button"))
+	  {
+	      var index = run_queue.indexOf(alias);
+	      var button = document.getElementById(alias+"_button");
+	      if (index >= 0)
+	      {
+		  run_queue.splice(index, 1);
+		  button.setAttribute("class", "run_button");
+	      }
+	      else
+	      {
+		  button.setAttribute("class", "run_button queued");
+		  run_queue.push(alias);
+	      }
+	  }
       }
       function run_complete(response)
       {
 	  var dictionary = JSON.parse(response);
-	  console.log(response);
 	  if("status" in dictionary)
 	  {
 	      if(dictionary["status"] === "success")
@@ -97,6 +114,10 @@
 		      logs.prepend(document.createElement("br"));
 		      logs.prepend(details);
 		      
+		      if(running_button === null && run_queue.length > 0)
+		      {
+			  run_alias(run_queue.shift());
+		      }
 		  });
       };
     </script>

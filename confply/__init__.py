@@ -746,11 +746,14 @@ def run_config(in_args):
                     log.normal("traceback:\n\n"+trace)
 
     if mail_login and should_run:
-        server = smtplib.SMTP_SSL(mail_host)
-        server.ehlo()
-        server.login(*mail_login)
-        server.send_message(mail_message)
-        server.quit()
+        try:
+            server = smtplib.SMTP_SSL(mail_host)
+            server.ehlo()
+            server.login(*mail_login)
+            server.send_message(mail_message)
+            server.quit()
+        except:
+            log.error("failed to send mail")
     return return_code
 
 

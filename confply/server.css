@@ -171,8 +171,9 @@ h1.confply {
     min-width: 100px;
 }
 
-.success {background-color: #4CAF50;} /* Green */
-.failure {background-color: #f44336;} /* Red */ 
+.success {background-color: #4CAF50;}
+.failure {background-color: #f44336;}
+.queued {background-color: #FFDB58;}
 
 .running {
     animation: running_animation 1s linear infinite;
