@@ -17,13 +17,23 @@ Write python to fill your config or branch in specific conditions. The python fi
 
 Because it's Python auto-completion works with minimal setup. The `config` and `options` imports make it easy to find your tools available features.
 
+<details>
+<summary>screenshot</summary>
+
 ![](https://github.com/graehu/hosting/blob/main/screenshots/confply/auto-complete.png)
+
+</details>
 
 ### Command-line 
 
 Command-line output is designed to be instructional, making debugging simple. In non-fatal error cases, confply queries the user for input. Information on confply command-line options can be found here: [help.md][help]
 
+<details>
+<summary>screenshot</summary>
+
 ![](https://github.com/graehu/hosting/blob/main/screenshots/confply/command-line.png)
+
+</details>
 
 [help]: https://github.com/graehu/confply/blob/master/help.md
 
@@ -96,6 +106,28 @@ if "debug" in config.confply.args:
 config.debug_info = debug
 ```
 
+### Simple Server
+
+With a combination of --launcher files and --listen you can run a simple server. The server will all of the aliases you define in your launcher.
+
+``` shell
+graehu@github:~/confply$ ./confply.py --launcher test.py
+[confply] called with args: ['--launcher', 'test.py']
+[confply] wrote: /home/graehu/confply/test.py
+[confply] ===========================================================================================================================================
+
+graehu@github:~/confply$ ./confply.py --listen test.py
+[confply] called with args: ['--listen', 'test.py']
+Server started http://0.0.0.0:8000
+
+```
+
+<details>
+<summary>screenshot</summary>
+
+![](https://github.com/graehu/hosting/blob/main/screenshots/confply/confply_listen.png)
+
+</details>
 
 ## Examples
 ![Linux Examples](https://github.com/graehu/confply/workflows/Linux%20Examples/badge.svg)

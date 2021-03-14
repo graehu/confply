@@ -14,6 +14,7 @@ usage : `./confply.py [config_file] --[options] [arguments] -- ...`
 	--config {overrides} : pass a dictionary of attributes to override e.g.: "{'confply':{'tool':'cl'}, 'warnings':None}"
 	--config.{path} [value] : set or add a config value directly, e.g.: --config.confply.tool "cl"
 	--launcher [out_file] : generates a runnable config launcher at [out_file] location. Set an alias to run a configs.
+	--listen [launcher_file] : starts a server using the launcher file as an interface.
 	--no_header : don't print confply header
 	--no_run : don't run the generated commands
 	--version : print version information

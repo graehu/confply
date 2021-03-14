@@ -782,6 +782,9 @@ def _strip_confply_args(in_args):
                 confply._handle_new_tool_type(in_args)
             elif option == "--no_run":
                 confply.config.run = False
+            elif option == "--no_header":
+                # #todo: need to find a way to take headers out of logs
+                pass
             elif option == "--":
                 break
             else:
