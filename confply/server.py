@@ -42,54 +42,61 @@ class ConfplyServer(SimpleHTTPRequestHandler):
                 k, v = q.split("=")
                 queries[k] = v
 
-        wfile_content = None
-        if "r" in queries:
-            if launcher_path is not None:
-                print("attempting to run: "+queries["r"])
+        if self.path.startswith("/api/") and launcher_path is not None:
+            response = {"ok": False}
+            headers = {}
+            headers["Content-Type"] = "text/json"
+            if "/api/getAliases" == self.path:
+                response["ok"] = True
+                response["aliases"] = aliases
+                pass
+
+            elif "/api/getLauncher" == self.path:
+                response["ok"] = True
+                response["path"] = launcher_path
+                pass
+
+            elif "/api/run" == self.path:
+                response["ok"] = True
+                headers["Cache-Control"] = "no-store, must-revalidate"
                 server_log = os.path.abspath(os.path.dirname(__file__))
                 server_log = os.path.join(server_log, "server.log")
                 with open(server_log, "w") as sf:
                     sf.write("failed to write server log\n")
-                cmd = "python "
-                cmd += launcher_path + " "
-                cmd += queries["r"]
-                cmd += " --config.confply.log_file "
-                cmd += server_log
+                    cmd = "python "
+                    cmd += launcher_path + " "
+                    cmd += queries["alias"]
+                    cmd += " --config.confply.log_file "
+                    cmd += server_log
                 if os.name == 'nt':
                     system_code = os.system(cmd)
                 else:
                     system_code = os.WEXITSTATUS(os.system(cmd))
 
-                self.send_response(200)
-                self.send_header("Cache-Control", "no-store, must-revalidate")
-                self.end_headers()
-                response = {"status": "success"}
                 if system_code != 0:
                     response["status"] = "failure"
+                else:
+                    response["status"] = "success"
+            else:
+                self.send_response(404)
+                for k, v in headers.items():
+                    self.send_header(k, v)
+                response["error"] = "api call not found "+self.path
+                self.end_headers()
                 self.wfile.write(bytes(json.dumps(response), "utf-8"))
                 return
-        if "g" in queries:
-            if launcher_path is not None:
-                print("attempting to get "+queries["g"])
-                if queries["g"] == "aliases":
-                    wfile_content = bytes(json.dumps(aliases), "utf-8")
-                elif queries["g"] == "launcher":
-                    launcher_dict = {"path": launcher_path}
-                    wfile_content = bytes(json.dumps(launcher_dict), "utf-8")
-            pass
+
+            self.send_response(200)
+            for k, v in headers.items():
+                self.send_header(k, v)
+            self.end_headers()
+            self.wfile.write(bytes(json.dumps(response), "utf-8"))
+            return
 
         in_path = self.translate_path(self.path)
         in_path = os.path.relpath(in_path, self.directory)
         if in_path in whitelist:
-            if wfile_content is not None:
-                self.send_response(200)
-                self.send_header("Content-Type", "text/json")
-                self.end_headers()
-                self.wfile.write(wfile_content)
-                return
-            else:
-                SimpleHTTPRequestHandler.do_GET(self)
-
+            SimpleHTTPRequestHandler.do_GET(self)
         else:
             self.send_response(404)
             self.end_headers()

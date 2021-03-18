@@ -23,33 +23,44 @@
 	  xmlHttp.open("GET", theUrl, true); // true for asynchronous 
 	  xmlHttp.send(null);
       }
-      httpGet("/?g=aliases", function(response)
+      httpGet("/api/getAliases", function(response)
 	      {
 		  var run_buttons = document.getElementById("run_buttons");
-		  var dictionary = JSON.parse(response);
-		  for(var key in dictionary)
+		  response = JSON.parse(response);
+		  var debug = document.getElementById("response_debug");
+		  if(debug !== null)
 		  {
-		      var pre = document.createElement("pre");
-		      var button = document.createElement("button");
-		      button.setAttribute("onclick", "run_alias('"+key+"')");
-		      button.setAttribute("class", "run_button");
-		      button.setAttribute("id", key+"_button");
-		      button.innerHTML = key;
-		      var span = document.createElement("span");
-		      span.setAttribute("class", "run_command");
-		      span.innerHTML = dictionary[key];
-		      run_buttons.appendChild(pre);
-		      pre.appendChild(button);
-		      pre.appendChild(span);
+		      debug.innerHTML = JSON.stringify(response, null, 2);
+		      debug.innerHTML += "\n"+JSON.stringify(response["ok"]);
+		  }
+		  
+		  if(response["ok"])
+		  {
+		      for(var key in response["aliases"])
+		      {
+			  var pre = document.createElement("pre");
+			  var button = document.createElement("button");
+			  button.setAttribute("onclick", "run_alias('"+key+"')");
+			  button.setAttribute("class", "run_button");
+			  button.setAttribute("id", key+"_button");
+			  button.innerHTML = key;
+			  var span = document.createElement("span");
+			  span.setAttribute("class", "run_command");
+			  span.innerHTML = response["aliases"][key];
+			  run_buttons.appendChild(pre);
+			  pre.appendChild(button);
+			  pre.appendChild(span);
+		      }
 		  }
 	      });
-      httpGet("/?g=launcher", function(response)
+      httpGet("/api/getLauncher", function(response)
 	      {
 		  var launcher_div = document.getElementById("launcher_div");
-		  console.log(response)
-		  var dictionary = JSON.parse(response);
-		  launcher_div.innerHTML = dictionary["path"];
-		  
+		  response = JSON.parse(response);
+		  if(response["ok"])
+		  {
+		      launcher_div.innerHTML = response["path"];   
+		  }
 	      });
       function run_alias(alias)
       {
@@ -58,7 +69,7 @@
 	      running_button = document.getElementById(alias+"_button");
 	      running_button.setAttribute("class", "run_button running");
 	      currentrun = alias +" - "+ new Date().toLocaleString();
-	      httpGet("/?r="+alias, run_complete);
+	      httpGet("/api/run?alias="+alias, run_complete);
 	  }
 	  else if(running_button.id !== (alias+"_button"))
 	  {
@@ -78,49 +89,53 @@
       }
       function run_complete(response)
       {
-	  var dictionary = JSON.parse(response);
-	  if("status" in dictionary)
+	  response = JSON.parse(response);
+	  if(response["ok"])
 	  {
-	      if(dictionary["status"] === "success")
+	      if("status" in response)
 	      {
-		  running_button.setAttribute("class", "run_button success end_running");
-		  currentrun += "<span class='success' style='padding: 0 5px 0 5px; color: white; float:right;'>success</span>"
+		  if(response["status"] === "success")
+		  {
+		      running_button.setAttribute("class", "run_button success end_running");
+		      currentrun += "<span class='success' style='padding: 0 5px 0 5px; color: white; float:right;'>success</span>"
+		  }
+		  else
+		  {
+		      running_button.setAttribute("class", "run_button failure end_running");
+		      currentrun += "<span class='failure' style='padding: 0 5px 0 5px; color: white; float:right;'>failure</span>"
+		  }
 	      }
 	      else
 	      {
-		  running_button.setAttribute("class", "run_button failure end_running");
-		  currentrun += "<span class='failure' style='padding: 0 5px 0 5px; color: white; float:right;'>failure</span>"
+		  running_button.setAttribute("class", "run_button end_running");
 	      }
-	  }
-	  else
-	  {
-	      running_button.setAttribute("class", "run_button end_running");
-	  }
 	      
-	  running_button = null;
-	  
-	  httpGet("/server.log", function(response)
-		  {
-		      var logs = document.getElementById("logs");
-		      if (logs.innerHTML == "waiting for logs...")
+	      running_button = null;
+	      
+	      httpGet("/server.log", function(response)
 		      {
-			  logs.setAttribute("class", "");
-			  logs.innerHTML = "";
-		      }
-		      
-		      var details = document.createElement("details");
-		      details.innerHTML = "<summary>"+currentrun+"</summary>"+response;
-		      details.setAttribute("class", "logbox");
-		      logs.prepend(document.createElement("br"));
-		      logs.prepend(details);
-		      
-		      if(running_button === null && run_queue.length > 0)
-		      {
-			  run_alias(run_queue.shift());
-		      }
-		  });
+			  var logs = document.getElementById("logs");
+			  if (logs.innerHTML == "waiting for logs...")
+			  {
+			      logs.setAttribute("class", "");
+			      logs.innerHTML = "";
+			  }
+			  
+			  var details = document.createElement("details");
+			  details.innerHTML = "<summary>"+currentrun+"</summary>"+response;
+			  details.setAttribute("class", "logbox");
+			  logs.prepend(document.createElement("br"));
+			  logs.prepend(details);
+			  
+			  if(running_button === null && run_queue.length > 0)
+			  {
+			      run_alias(run_queue.shift());
+			  }
+		      });
+	  }
       };
-    </script>
+      </script>
+    <!-- <div id="response_debug" class="logbox"></div> -->
     <div id="run_buttons">
     </div>
     <div id="logs" class="logbox">waiting for logs...</div>
