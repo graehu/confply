@@ -158,7 +158,7 @@ def print_config(config_name, config):
         out_config = {}
         for k, v in compare_config.items():
             if (k.startswith("__") or k.startswith("confply.__") or
-                    k == "confply.mail_login"):
+                    k == "confply.mail_login" or k == "confply.vcs_log"):
                 continue
             if k in base_config and v != base_config[k]:
                 out_config[k] = v
@@ -209,7 +209,7 @@ def get_diff_config(config):
         }
         for k, v in compare_config.items():
             if (k.startswith("__") or k.startswith("confply.__") or
-                    k == "confply.mail_login"):
+                    k == "confply.mail_login" or k == "confply.vcs_log"):
                 continue
             if k in base_config and v != base_config[k] and not inspect.isfunction(v):
                 diff_config[k] = v
@@ -376,13 +376,22 @@ def run_config(in_args):
 
     # find the git root
     # #todo: extend this to other version control?
-    try:
-        git_cmd = ['git', 'rev-parse', '--show-toplevel']
-        git_root = subprocess.check_output(git_cmd)
-        confply.config.git_root = git_root.decode('utf-8').strip()
-
-    except subprocess.CalledProcessError:
-        log.warning('git_root not found')
+    if confply.config.vcs == "git":
+        try:
+            git_cmd = 'git rev-parse --show-toplevel'
+            git_cmd = subprocess.check_output(git_cmd, shell=True)
+            confply.config.vcs_root = git_cmd.decode('utf-8').strip()
+            git_cmd = 'git branch --show-current'
+            git_cmd = subprocess.check_output(git_cmd, shell=True)
+            confply.config.vcs_branch = git_cmd.decode('utf-8').strip()
+            git_cmd = "git log -1 --pretty=format:'%an'"
+            git_cmd = subprocess.check_output(git_cmd, shell=True)
+            confply.config.vcs_author = git_cmd.decode("utf-8").strip()
+            git_cmd = "git log -1"
+            git_cmd = subprocess.check_output(git_cmd, shell=True)
+            confply.config.vcs_log = git_cmd.decode("utf-8").strip()
+        except subprocess.CalledProcessError:
+            log.warning('failed to fill git vcs information')
 
     if os.name == "nt":
         confply.config.platform = "windows"
@@ -533,7 +542,7 @@ def run_config(in_args):
 
     # setup mail
     mail_message = email.mime.multipart.MIMEMultipart('html')
-    mail_message["Subject"] = (pathlib.Path(confply.config.git_root).name +
+    mail_message["Subject"] = (pathlib.Path(confply.config.vcs_root).name +
                                ": " + file_path)
     mail_message["From"] = confply.config.mail_from
     mail_message["To"] = confply.config.mail_to
@@ -585,6 +594,7 @@ def run_config(in_args):
                 mail_login = confply.config.mail_login
                 mail_host = confply.config.mail_host
                 mail_attachments = confply.config.mail_attachments
+                vcs_log = confply.config.vcs_log
                 if log_file is not None:
                     mail_attachments.append(log_file)
                 diff_config = get_diff_config(config)
@@ -698,6 +708,7 @@ def run_config(in_args):
                         "success": ("successfully" if
                                     return_code == 0 else "unsuccessfully"),
                         "config_json": json.dumps(diff_config, indent=4),
+                        "vcs_log": vcs_log,
                         "time": time
                     }
                     for key, val in html_replace.items():

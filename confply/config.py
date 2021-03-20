@@ -67,9 +67,25 @@ args = []
 # usage: dependencies = ["config.py"]
 dependencies = []
 
-# path to the root of the git repository
-# usage: log_file = git_root+"/logs/my_log.log"
-git_root = "."
+# version control system
+# usage: vcs = "git"
+vcs = "git"
+
+# path to the root of the vcs repository
+# usage: log_file = vcs_root+"/logs/my_log.log"
+vcs_root = "."
+
+# author of latest submission/commit
+# usage: log.normal(vcs_author)
+vcs_author = "unknown"
+
+# current branch
+# usage: log.normal(vcs_branch)
+vcs_branch = "unknown"
+
+# latest submission/commit log
+# usage: log.normal(vcs_log)
+vcs_log = "unknown"
 
 # mail server login details
 # usage: mail_from = "confply@github.com"
