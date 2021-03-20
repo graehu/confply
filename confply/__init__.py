@@ -7,17 +7,15 @@ import types
 import timeit
 import select
 import inspect
-import smtplib
 import pathlib
 import traceback
 import importlib
 import subprocess
 import confply.config
 import confply.server
-import email.mime.text
 import confply.log as log
-import email.mime.multipart
-import email.mime.application
+import confply.mail as mail
+
 
 __version__ = "0.0.1"
 __doc__ = """
@@ -543,13 +541,6 @@ def run_config(in_args):
         clean_modules()
         return -1
 
-    # setup mail
-    mail_message = email.mime.multipart.MIMEMultipart('html')
-    mail_message["Subject"] = (pathlib.Path(confply.config.vcs_root).name +
-                               ": " + file_path)
-    mail_message["From"] = confply.config.mail_from
-    mail_message["To"] = confply.config.mail_to
-
     # setting confply command configuration up
     old_stdout = sys.stdout
 
@@ -574,10 +565,32 @@ def run_config(in_args):
                           " for write.")
                 return_code = -1
 
+        post_run = confply.config.post_run
+        diff_config = get_diff_config(config)
+        report = {
+            "config_path": file_path,
+            "config_json": json.dumps(diff_config, indent=4),
+            "tool_type": "unknown",
+            "tool": "unknown",
+            "status": "failure",
+            "vcs_root": confply.config.vcs_root,
+            "vcs_log": confply.config.vcs_log,
+            "vcs": confply.config.vcs,
+            "vcs_branch": confply.config.vcs_branch,
+            "time_taken": "00:00:00"
+        }
+        # setup mail
+        mail.host = confply.config.mail_host
+        mail.sender = confply.config.mail_from
+        mail.recipients = confply.config.mail_to
+        mail.login = confply.config.mail_login
+        mail.attachments = confply.config.mail_attachments
+        if log_file is not None:
+            mail.attachments.append(os.path.abspath(log_file))
+
         if return_code >= 0:
             if confply.config.log_config is not False:
                 print_config(os.path.basename(file_path), config)
-
             try:
                 time_start = timeit.default_timer()
                 # #todo: tool selection phase should happen first.
@@ -585,6 +598,8 @@ def run_config(in_args):
                 valid_tools = _validate_config()
                 tool_type = confply.config.__tool_type
                 tool = confply.config.tool
+                report["tool"] = tool
+                report["tool_type"] = tool_type
                 should_run = confply.config.run
                 if valid_tools:
                     shell_cmd = tools[tool_type][tool]
@@ -594,25 +609,7 @@ def run_config(in_args):
                     shell_cmd = None
 
                 old_topic = confply.config.log_topic
-                mail_login = confply.config.mail_login
-                mail_host = confply.config.mail_host
-                mail_attachments = confply.config.mail_attachments
-                vcs_log = confply.config.vcs_log
-                post_run = confply.config.post_run
-                if log_file is not None:
-                    mail_attachments.append(os.path.abspath(log_file))
-                diff_config = get_diff_config(config)
-                report = {
-                    "config_path": file_path,
-                    "config_json": json.dumps(diff_config, indent=4),
-                    "tool_type": tool_type,
-                    "tool": tool,
-                    "status": "failure",
-                    "vcs_log": vcs_log,
-                    "vcs": confply.config.vcs,
-                    "vcs_branch": confply.config.vcs_branch,
-                    "time_taken": "00:00:00"
-                }
+
                 clean_modules()
                 confply.config.run = should_run
                 dependencies = confply.config.dependencies
@@ -721,7 +718,6 @@ def run_config(in_args):
                 log.error("failed to run config: ")
                 trace = traceback.format_exc()
                 log.normal("traceback:\n\n"+trace)
-                # mail_message.set_content("failed to run "+file_path)
                 return_code = -1
             sys.stdout.flush()
             if (post_run and inspect.isfunction(post_run)):
@@ -740,45 +736,14 @@ def run_config(in_args):
                     log.normal("traceback:\n\n"+trace)
             log.linebreak()
             sys.stdout.flush()
-            html_file = os.path.dirname(__file__)
-            html_file = os.path.join(html_file, "mail.html")
 
-            with open(html_file) as mail_file:
-                message_str = mail_file.read()
-
-                for key, val in report.items():
-                    message_str = message_str.replace("{"+key+"}", str(val))
-
-                message_mime = email.mime.text.MIMEText(message_str, 'html')
-                mail_message.attach(message_mime)
-                for f in mail_attachments:
-                    if f is None or (not os.path.exists(f)):
-                        log.error("failed to send attachment: "+str(f))
-                        continue
-                    with open(f, "rb") as fil:
-                        part = email.mime.application.MIMEApplication(
-                            fil.read(),
-                            Name=os.path.basename(f)
-                        )
-                    # After the file is closed
-                    part['Content-Disposition'] = (
-                        'attachment; filename="%s"'
-                        % os.path.basename(f)
-                    )
-                    mail_message.attach(part)
             if sys.stdout != old_stdout:
                 sys.stdout.close()
                 sys.stdout = old_stdout
 
-    if mail_login and should_run:
-        try:
-            server = smtplib.SMTP_SSL(mail_host)
-            server.ehlo()
-            server.login(*mail_login)
-            server.send_message(mail_message)
-            server.quit()
-        except:
-            log.error("failed to send mail")
+            if should_run:
+                mail.send_report(report)
+
     return return_code
 
 
