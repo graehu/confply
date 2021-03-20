@@ -544,9 +544,8 @@ def run_config(in_args):
     # setting confply command configuration up
     old_stdout = sys.stdout
 
-    # #todo: this is probably broken, test it
-    # #todo: another awkward directory push pop that doesn't need to exist
     with pushd(new_working_dir):
+        # begin storing important state before clean_modules()
         log_file = confply.config.log_file
         if log_file is not None:
             log.normal("writing to: "+log_file+"....")
@@ -559,6 +558,7 @@ def run_config(in_args):
                     log.linebreak()
                     log.normal("python"+str(version))
                     log.linebreak()
+                log.normal("confply logging to "+log_file)
             except Exception:
                 log.error("couldn't open " +
                           log_file +
@@ -566,7 +566,11 @@ def run_config(in_args):
                 return_code = -1
 
         post_run = confply.config.post_run
+        old_topic = confply.config.log_topic
+        dependencies = confply.config.dependencies
+        echo_log_file = confply.config.echo_log_file
         diff_config = get_diff_config(config)
+        should_run = confply.config.run
         report = {
             "config_path": file_path,
             "config_json": json.dumps(diff_config, indent=4),
@@ -600,7 +604,6 @@ def run_config(in_args):
                 tool = confply.config.tool
                 report["tool"] = tool
                 report["tool_type"] = tool_type
-                should_run = confply.config.run
                 if valid_tools:
                     shell_cmd = tools[tool_type][tool]
                     shell_cmd.handle_args()
@@ -608,11 +611,8 @@ def run_config(in_args):
                 else:
                     shell_cmd = None
 
-                old_topic = confply.config.log_topic
-
                 clean_modules()
                 confply.config.run = should_run
-                dependencies = confply.config.dependencies
                 if len(dependencies) > 0:
                     for d in dependencies:
                         if d not in __configs_run:
@@ -740,6 +740,11 @@ def run_config(in_args):
             if sys.stdout != old_stdout:
                 sys.stdout.close()
                 sys.stdout = old_stdout
+                if echo_log_file:
+                    with open(log_file) as out_log:
+                        log_str = out_log.read()
+                        log_str = log_str.split("confply logging to "+log_file)[1]
+                        log.normal("wrote:\n"+log_str)
 
             if should_run:
                 mail.send_report(report)
