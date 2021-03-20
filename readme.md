@@ -144,6 +144,41 @@ Below are the config files that are run and their outputs.
 #### Main Config
 ##### examples/compile_cpp.cpp.py
 ``` python
+#!./confply.py
+# generated using:
+# python confply.py --config cpp_compiler confply.cpp.py
+import sys
+import ast
+import os
+sys.path.append('.')
+import confply.cpp_compiler.config as config
+import confply.cpp_compiler.options as options
+import confply.log as log
+############# modify_below ################
+# set the default compiler
+config.confply.tool = options.tools.clangpp
+
+# set debug_info from commandline args
+debug = False
+if "debug" in config.confply.args:
+    debug = True
+    config.object_path = "objects/debug"
+    log.normal("set to debug config")
+
+config.debug_info = debug
+config.confply.mail_to = "graehu@gmail.com"
+config.confply.mail_from = "confply.dev@gmail.com"
+config.confply.log_file = "confply.log"
+mail_login = None
+if os.path.exists("details.py"):
+    with open("details.py") as details_file:
+        mail_login = ast.literal_eval(details_file.read())
+config.confply.mail_login = mail_login
+
+```
+#### Group Config
+##### confply.cpp.py
+``` python
 #!../confply.py
 # generated using:
 # python ../confply.py --config cpp_compiler cpp_compiler.cpp.py
@@ -163,60 +198,46 @@ config.link_libraries = ["stdc++"]
 config.standard = options.standards.cpp17
 config.warnings = options.warnings.all_warnings
 config.confply.log_config = True
-```
-#### Group Config
-##### confply.cpp.py
-``` python
-#!./confply.py
-# generated using:
-# python confply.py --config cpp_compiler confply.cpp.py
-import sys
-sys.path.append('.')
-import confply.cpp_compiler.config as config
-import confply.cpp_compiler.options as options
-import confply.log as log
-############# modify_below ################
-# set the default compiler
-config.confply.tool = options.tools.clangpp
+def post_run():
+    import subprocess
+    import sys
+    subprocess.run("./hello_confply",
+                   stdout=sys.stdout,
+                   stderr=subprocess.STDOUT,
+                   shell=True)
+    pass
 
-# set debug_info from commandline args
-debug = False
-if "debug" in config.confply.args:
-    debug = True
-    config.object_path = "objects/debug"
-    log.normal("set to debug config")
+config.confply.post_run = post_run
 
-config.debug_info = debug
 ```
 #### Output
 
 ``` log
-                     _____       .__         
+                     _____       .__
   ____  ____   _____/ ____\_____ |  | ___.__.
 _/ ___\/  _ \ /    \   __\\____ \|  |<   |  |
 \  \__(  <_> )   |  \  |  |  |_> >  |_\___  |
  \___  >____/|___|  /__|  |   __/|____/ ____|
-     \/           \/      |__|        \/     
+     \/           \/      |__|        \/
 
-[confply] ================================================================
-[confply] python(3, 8, 6)
-[confply] called with args: ['./cpp_compiler.cpp.py']
-[confply] ================================================================
-[confply] =========================  run config  =========================
-[confply] ================================================================
-[confply] ================================================================
-[confply] loaded: /home/graehu/Projects/C++/framework/tools/confply/confply.cpp.py
-[cpp_compiler] loading cpp_compiler with confply_args: []
-[cpp_compiler] ================================================================
-[cpp_compiler] loaded: ./cpp_compiler.cpp.py
-[cpp_compiler] running post load script: __cpp_post_load
+[cpp_compiler] ================================================================================================
+[cpp_compiler] python(3, 8, 6)
+[cpp_compiler] ================================================================================================
 [cpp_compiler] cpp_compiler.cpp.py configuration:
 [cpp_compiler] {
 [cpp_compiler] 	confply.tool: clang++
 [cpp_compiler] 	confply.log_topic: cpp_compiler
 [cpp_compiler] 	confply.log_config: True
+[cpp_compiler] 	confply.log_file: confply.log
+[cpp_compiler] 	confply.post_run: post_run
 [cpp_compiler] 	confply.platform: linux
-[cpp_compiler] 	confply.git_root: /home/graehu/Projects/C++/framework/tools/confply
+[cpp_compiler] 	confply.args: 
+[cpp_compiler] 		--cpp_clean
+[cpp_compiler] 	confply.vcs_root: /home/graehu/Projects/C++/framework/tools/confply
+[cpp_compiler] 	confply.vcs_author: Graham Hughes
+[cpp_compiler] 	confply.vcs_branch: master
+[cpp_compiler] 	confply.mail_from: confply.dev@gmail.com
+[cpp_compiler] 	confply.mail_to: graehu@gmail.com
 [cpp_compiler] 	source_files: 
 [cpp_compiler] 		main.cpp
 [cpp_compiler] 	link_libraries: 
@@ -230,27 +251,36 @@ _/ ___\/  _ \ /    \   __\\____ \|  |<   |  |
 [cpp_compiler] 	output_file: hello_confply
 [cpp_compiler] }
 [cpp_compiler] 
+[cpp_compiler] cleaning compiled objects
 [cpp_compiler] 2 files to compile
 [cpp_compiler] final commands:
 
 clang++  -std=c++17 -Wall -Wpedantic -Wextra -c main.cpp -o objects/main.cpp.o  -MMD -MF objects/main.cpp.d  
 clang++  -std=c++17 -Wall -Wpedantic -Wextra objects/main.cpp.o -o hello_confply  -l stdc++  
 
-[cpp_compiler] =======================  begin clang++  ========================
-[cpp_compiler] ================================================================
+[cpp_compiler] =======================================  begin clang++  ========================================
+[cpp_compiler] ================================================================================================
 [cpp_compiler] clang++  -std=c++17 -Wall -Wpedantic -Wextra -c main.cpp -o objects/main.cpp.o  -MMD -MF objects/main.cpp.d  
 [cpp_compiler] 
-[cpp_compiler] ================================================================
+[cpp_compiler] ================================================================================================
 [cpp_compiler] clang++ succeeded!
-[cpp_compiler] time elapsed: 00:00:00.46
-[cpp_compiler] ================================================================
+[cpp_compiler] time elapsed: 00:00:00.45
+[cpp_compiler] ================================================================================================
 [cpp_compiler] clang++  -std=c++17 -Wall -Wpedantic -Wextra objects/main.cpp.o -o hello_confply  -l stdc++  
 [cpp_compiler] 
-[cpp_compiler] ================================================================
+[cpp_compiler] ================================================================================================
 [cpp_compiler] clang++ succeeded!
 [cpp_compiler] time elapsed: 00:00:00.08
-[cpp_compiler] total time elapsed: 00:00:00.55
-[confply] ================================================================
+[cpp_compiler] total time elapsed: 00:00:00.54
+[cpp_compiler] ================================================================================================
+[cpp_compiler] running post run script: post_run
+
+hello confply!
+time wasting calculation result: 102334155
+time wasted: 823844u(823.844ms)
+
+[cpp_compiler] ================================================================================================
+[cpp_compiler] ================================================================================================
 
 ```
 ### Supported Compilers

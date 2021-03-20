@@ -17,3 +17,13 @@ config.link_libraries = ["stdc++"]
 config.standard = options.standards.cpp17
 config.warnings = options.warnings.all_warnings
 config.confply.log_config = True
+def post_run():
+    import subprocess
+    import sys
+    subprocess.run("./hello_confply",
+                   stdout=sys.stdout,
+                   stderr=subprocess.STDOUT,
+                   shell=True)
+    pass
+
+config.confply.post_run = post_run

@@ -9,16 +9,25 @@
     Hello,
     <br>
     <br>
-    {success} ran {config}
-    <br>
-    <code>{vcs_log}</code>
-    <br>
-    <code>{config_json}</code>
-    <br>
-    time elapsed: {time}
-    <br>
+    config: {config_path} : {tool_type}<br>
+    result: {status}<br>
+    time elapsed: {time_taken}<br>
     <br>
     Thanks,<br>
     Confply
+    <br>
+    <br>
+    <hr>
+    <details> <summary> <h3>{vcs} log: {vcs_branch}</h3> </summary>
+      <code>{vcs_log}</code>
+    </details>
+    <br><br>
+    <hr>
+    <details> <summary><h3>config: {config_path}</h3></summary>
+      <code>{config_json}</code>
+    </details>
+    <br>
+    <br>
+    <hr>
   </body>
 </html>

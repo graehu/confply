@@ -523,8 +523,11 @@ def run_config(in_args):
             if (confply.config.post_load and
                     inspect.isfunction(confply.config.post_load)):
                 log.normal("running post load script: " +
-                           confply.config.post_load.__name__)
+                           confply.config.post_load.__name__+"\n")
+                sys.stdout.flush()
                 exec(confply.config.post_load.__code__, config_locals, {})
+                print("")
+                log.linebreak()
 
         except Exception:
             log.error("failed to exec "+confply.config.post_load.__name__)
@@ -595,9 +598,21 @@ def run_config(in_args):
                 mail_host = confply.config.mail_host
                 mail_attachments = confply.config.mail_attachments
                 vcs_log = confply.config.vcs_log
+                post_run = confply.config.post_run
                 if log_file is not None:
-                    mail_attachments.append(log_file)
+                    mail_attachments.append(os.path.abspath(log_file))
                 diff_config = get_diff_config(config)
+                report = {
+                    "config_path": file_path,
+                    "config_json": json.dumps(diff_config, indent=4),
+                    "tool_type": tool_type,
+                    "tool": tool,
+                    "status": "failure",
+                    "vcs_log": vcs_log,
+                    "vcs": confply.config.vcs,
+                    "vcs_branch": confply.config.vcs_branch,
+                    "time_taken": "00:00:00"
+                }
                 clean_modules()
                 confply.config.run = should_run
                 dependencies = confply.config.dependencies
@@ -669,6 +684,7 @@ def run_config(in_args):
                     if should_run and isinstance(shell_cmd, list):
                         for cmd in shell_cmd:
                             cmd_time_start = timeit.default_timer()
+                            sys.stdout.flush()
                             log.linebreak()
                             log.normal(cmd)
                             log.normal("", flush=True)
@@ -698,39 +714,8 @@ def run_config(in_args):
                 # https://docs.python.org/3.8/library/string.html#formatspec
                 time = f"{h:0>2.0f}:{m:0>2.0f}:{s:0>5.2f}"
                 log.normal("total time elapsed: "+time)
-                html_file = os.path.dirname(__file__)
-                html_file = os.path.join(html_file, "mail.html")
-
-                with open(html_file) as mail_file:
-                    message_str = mail_file.read()
-                    html_replace = {
-                        "config": file_path,
-                        "success": ("successfully" if
-                                    return_code == 0 else "unsuccessfully"),
-                        "config_json": json.dumps(diff_config, indent=4),
-                        "vcs_log": vcs_log,
-                        "time": time
-                    }
-                    for key, val in html_replace.items():
-                        message_str = message_str.replace("{"+key+"}", str(val))
-
-                    message_mime = email.mime.text.MIMEText(message_str, 'html')
-                    mail_message.attach(message_mime)
-                    for f in mail_attachments:
-                        if f is None or (not os.path.exists(f)):
-                            log.error("failed to send attachment: "+str(f))
-                            continue
-                        with open(f, "rb") as fil:
-                            part = email.mime.application.MIMEApplication(
-                                fil.read(),
-                                Name=os.path.basename(f)
-                            )
-                        # After the file is closed
-                        part['Content-Disposition'] = (
-                            'attachment; filename="%s"'
-                            % os.path.basename(f)
-                        )
-                        mail_message.attach(part)
+                report["time_taken"] = time
+                report["status"] = "success" if return_code == 0 else "failure"
 
             except Exception:
                 log.error("failed to run config: ")
@@ -738,23 +723,52 @@ def run_config(in_args):
                 log.normal("traceback:\n\n"+trace)
                 # mail_message.set_content("failed to run "+file_path)
                 return_code = -1
+            sys.stdout.flush()
+            if (post_run and inspect.isfunction(post_run)):
+                try:
+                    log.linebreak()
+                    log.normal("running post run script: " +
+                               post_run.__name__+"\n")
+                    sys.stdout.flush()
+                    exec(post_run.__code__, config_locals, {})
+                    print("")
+                    log.linebreak()
+                except Exception:
+                    log.error("failed to exec " +
+                              post_run.__name__)
+                    trace = traceback.format_exc()
+                    log.normal("traceback:\n\n"+trace)
+            log.linebreak()
+            sys.stdout.flush()
+            html_file = os.path.dirname(__file__)
+            html_file = os.path.join(html_file, "mail.html")
 
+            with open(html_file) as mail_file:
+                message_str = mail_file.read()
+
+                for key, val in report.items():
+                    message_str = message_str.replace("{"+key+"}", str(val))
+
+                message_mime = email.mime.text.MIMEText(message_str, 'html')
+                mail_message.attach(message_mime)
+                for f in mail_attachments:
+                    if f is None or (not os.path.exists(f)):
+                        log.error("failed to send attachment: "+str(f))
+                        continue
+                    with open(f, "rb") as fil:
+                        part = email.mime.application.MIMEApplication(
+                            fil.read(),
+                            Name=os.path.basename(f)
+                        )
+                    # After the file is closed
+                    part['Content-Disposition'] = (
+                        'attachment; filename="%s"'
+                        % os.path.basename(f)
+                    )
+                    mail_message.attach(part)
             if sys.stdout != old_stdout:
                 sys.stdout.close()
                 sys.stdout = old_stdout
-
-            if (confply.config.post_run and
-                    inspect.isfunction(confply.config.post_run)):
-                try:
-                    log.normal("running post run script: " +
-                               confply.config.post_run.__name__)
-                    exec(confply.config.post_run.__code__, config_locals, {})
-
-                except Exception:
-                    log.error("failed to exec " +
-                              confply.config.post_run.__name__)
-                    trace = traceback.format_exc()
-                    log.normal("traceback:\n\n"+trace)
 
     if mail_login and should_run:
         try:
