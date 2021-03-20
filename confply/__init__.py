@@ -130,48 +130,23 @@ def input_prompt(message):
 
 
 def print_config(config_name, config):
-    base_config = {}
-    compare_config = {}
+    diff_config = get_diff_config(config)
     confply_path = os.path.dirname(__file__) + "/"
     tool_type_path = confply_path+confply.config.__tool_type
 
     if(os.path.exists(tool_type_path)):
-        tool_type_path += "/config/__init__.py"
-        with open(tool_type_path) as config_file:
-            exec(config_file.read(), {}, base_config)
-        with open(confply_path+"config.py") as config_file:
-            exec(config_file.read(), {}, compare_config)
-
         log.normal(config_name+" configuration:")
         log.normal("{")
 
-        for k, v in compare_config.items():
-            base_config["confply."+k] = v
-
-        compare_config = {
-            **{"confply." +
-                k: v for k, v in confply.config.__dict__.items()},
-            **config.__dict__
-        }
-        out_config = {}
-        for k, v in compare_config.items():
-            if (k.startswith("__") or k.startswith("confply.__") or
-                    k == "confply.mail_login" or k == "confply.vcs_log"):
-                continue
-            if k in base_config and v != base_config[k]:
-                out_config[k] = v
-                if isinstance(v, list):
-                    log.normal("\t"+str(k)+": ")
-                    for i in v:
-                        log.normal("\t\t"+str(i))
-                elif inspect.isfunction(v):
-                    if base_config[k] is None or \
-                       v.__name__ != base_config[k].__name__:
-                        log.normal("\t"+str(k)+": "+v.__name__)
-                    else:
-                        pass
-                else:
-                    log.normal("\t"+str(k)+": "+str(v))
+        for k, v in diff_config.items():
+            if isinstance(v, list):
+                log.normal("\t"+str(k)+": ")
+                for i in v:
+                    log.normal("\t\t"+str(i))
+            elif inspect.isfunction(v):
+                log.normal("\t"+str(k)+": "+v.__name__)
+            else:
+                log.normal("\t"+str(k)+": "+str(v))
 
         log.normal("}")
         log.normal("")
@@ -206,9 +181,13 @@ def get_diff_config(config):
             **config.__dict__
         }
         for k, v in compare_config.items():
-            if (k.startswith("__") or k.startswith("confply.__") or
-                    k == "confply.mail_login" or k == "confply.vcs_log"):
+            if (k.startswith("__") or
+                    k.startswith("confply.__") or
+                    k.startswith("confply.mail") or
+                    k.startswith("confply.vcs") or
+                    k.startswith("confply.log")):
                 continue
+
             if k in base_config and v != base_config[k] and not inspect.isfunction(v):
                 diff_config[k] = v
     return diff_config
@@ -406,7 +385,8 @@ def run_config(in_args):
     def clean_modules():
         nonlocal config_modules
         for m in config_modules:
-            del sys.modules[m.__name__]
+            if m in sys.modules:
+                del sys.modules[m.__name__]
         importlib.reload(confply.config)
         pass
 
@@ -546,11 +526,12 @@ def run_config(in_args):
 
     with pushd(new_working_dir):
         # begin storing important state before clean_modules()
-        log_file = confply.config.log_file
-        if log_file is not None:
-            log.normal("writing to: "+log_file+"....")
+        if confply.config.log_file is not None:
+            log.normal("writing to: " +
+                       confply.config.log_file +
+                       "....")
             try:
-                sys.stdout = open(log_file, "w")
+                sys.stdout = open(confply.config.log_file, "w")
                 version = sys.version_info
                 version = (version.major, version.minor, version.micro)
                 if "--no_header" not in in_args:
@@ -558,17 +539,13 @@ def run_config(in_args):
                     log.linebreak()
                     log.normal("python"+str(version))
                     log.linebreak()
-                log.normal("confply logging to "+log_file)
+                log.normal("confply logging to "+confply.config.log_file)
             except Exception:
                 log.error("couldn't open " +
-                          log_file +
+                          confply.config.log_file +
                           " for write.")
                 return_code = -1
 
-        post_run = confply.config.post_run
-        old_topic = confply.config.log_topic
-        dependencies = confply.config.dependencies
-        echo_log_file = confply.config.echo_log_file
         diff_config = get_diff_config(config)
         should_run = confply.config.run
         report = {
@@ -584,13 +561,6 @@ def run_config(in_args):
             "time_taken": "00:00:00"
         }
         # setup mail
-        mail.host = confply.config.mail_host
-        mail.sender = confply.config.mail_from
-        mail.recipients = confply.config.mail_to
-        mail.login = confply.config.mail_login
-        mail.attachments = confply.config.mail_attachments
-        if log_file is not None:
-            mail.attachments.append(os.path.abspath(log_file))
 
         if return_code >= 0:
             if confply.config.log_config is not False:
@@ -611,20 +581,23 @@ def run_config(in_args):
                 else:
                     shell_cmd = None
 
+                # store confply.config
+                store = vars(confply.config)
+                store = {k: v for k, v in store.items() if not (k.startswith("__") and k.endswith("__"))}
                 clean_modules()
                 confply.config.run = should_run
-                if len(dependencies) > 0:
-                    for d in dependencies:
+                if len(store["dependencies"]) > 0:
+                    for d in store["dependencies"]:
                         if d not in __configs_run:
-                            confply.config.log_topic = old_topic
+                            confply.config.log_topic = store["log_topic"]
                             log.normal("running dependency: "+str(d))
                             confply.config.log_topic = "confply"
                             log.linebreak()
                             __configs_run.append(d)
                             depends_return = run_config([d])
                             if depends_return < 0:
-                                confply.config.log_topic = old_topic
-                                confply.config.log_file = log_file
+                                confply.config.log_topic = store["log_topic"]
+                                confply.config.log_file = store["log_file"]
                                 log.error("failed to run: "+str(d))
                                 if not input_prompt("continue execution?"):
                                     log.normal("aborting final commands")
@@ -632,8 +605,9 @@ def run_config(in_args):
                                 else:
                                     log.normal("continuing execution.")
                     pass
-                confply.config.log_topic = old_topic
-                confply.config.log_file = log_file
+                # reset confply.config
+                for k, v in store.items():
+                    setattr(confply.config, k, v)
 
                 if shell_cmd is not None:
                     cmd_env = tools[tool_type][tool].get_environ()
@@ -653,7 +627,7 @@ def run_config(in_args):
 
                     def _run_shell_cmd(shell_cmd):
                         nonlocal return_code
-                        if log_file is not None:
+                        if confply.config.log_file is not None:
                             sys.stdout.flush()
                             # #todo: check if this can be ansi-coloured
                             result = subprocess.run(shell_cmd,
@@ -720,18 +694,18 @@ def run_config(in_args):
                 log.normal("traceback:\n\n"+trace)
                 return_code = -1
             sys.stdout.flush()
-            if (post_run and inspect.isfunction(post_run)):
+            if (confply.config.post_run and inspect.isfunction(confply.config.post_run)):
                 try:
                     log.linebreak()
                     log.normal("running post run script: " +
-                               post_run.__name__+"\n")
+                               confply.config.post_run.__name__+"\n")
                     sys.stdout.flush()
-                    exec(post_run.__code__, config_locals, {})
+                    exec(confply.config.post_run.__code__, config_locals, {})
                     print("")
                     log.linebreak()
                 except Exception:
                     log.error("failed to exec " +
-                              post_run.__name__)
+                              confply.config.post_run.__name__)
                     trace = traceback.format_exc()
                     log.normal("traceback:\n\n"+trace)
             log.linebreak()
@@ -740,15 +714,26 @@ def run_config(in_args):
             if sys.stdout != old_stdout:
                 sys.stdout.close()
                 sys.stdout = old_stdout
-                if echo_log_file:
-                    with open(log_file) as out_log:
+                if confply.config.log_echo_file:
+                    with open(confply.config.log_file) as out_log:
                         log_str = out_log.read()
-                        log_str = log_str.split("confply logging to "+log_file)[1]
+                        log_str = log_str.split("confply logging to " +
+                                                confply.config.log_file)[1]
                         log.normal("wrote:\n"+log_str)
 
             if should_run:
+                mail.host = confply.config.mail_host
+                mail.sender = confply.config.mail_from
+                mail.recipients = confply.config.mail_to
+                mail.login = confply.config.mail_login
+                mail.attachments = confply.config.mail_attachments
+                if confply.config.log_file is not None:
+                    mail.attachments.append(os.path.abspath(
+                        confply.config.log_file
+                    ))
+                    pass
                 mail.send_report(report)
-
+    clean_modules()
     return return_code
 
 

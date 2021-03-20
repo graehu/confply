@@ -49,7 +49,7 @@ log_file = None
 
 # if true, confply will echo the log file to the terminal
 # usage: wecho_log_file = False
-echo_log_file = True
+log_echo_file = True
 
 # if set, confply will run the function after the command runs.
 # usage: post_run = my_function
