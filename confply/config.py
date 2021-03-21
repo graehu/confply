@@ -110,3 +110,19 @@ mail_host = "smtp.gmail.com"
 # file attachments for the mail
 # usage: mail_attachments = ["path/to/attachment.txt"]
 mail_attachments = []
+
+# what to send: None, failure, success, or all
+# usage: slack_send = None
+mail_send = "failure"
+
+# files to upload with your message
+# usage: slack_uploads = ["path/to/attachment.txt"]
+slack_uploads = []
+
+# bot token for the confply slack bot
+# usage: slack_bot_token = "random_hex_string"
+slack_bot_token = None
+
+# what to send: None, failure, success, or all
+# usage: slack_send = None
+slack_send = "failure"

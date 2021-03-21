@@ -15,6 +15,7 @@ import confply.config
 import confply.server
 import confply.log as log
 import confply.mail as mail
+import confply.slack as slack
 
 
 __version__ = "0.0.1"
@@ -185,7 +186,8 @@ def get_diff_config(config):
                     k.startswith("confply.__") or
                     k.startswith("confply.mail") or
                     k.startswith("confply.vcs") or
-                    k.startswith("confply.log")):
+                    k.startswith("confply.log") or
+                    k.startswith("confply.slack")):
                 continue
 
             if k in base_config and v != base_config[k] and not inspect.isfunction(v):
@@ -388,6 +390,8 @@ def run_config(in_args):
             if m in sys.modules:
                 del sys.modules[m.__name__]
         importlib.reload(confply.config)
+        importlib.reload(confply.mail)
+        importlib.reload(confply.slack)
         pass
 
     # find group config in parent directories
@@ -558,10 +562,9 @@ def run_config(in_args):
             "vcs_log": confply.config.vcs_log,
             "vcs": confply.config.vcs,
             "vcs_branch": confply.config.vcs_branch,
+            "vcs_author": confply.config.vcs_author,
             "time_taken": "00:00:00"
         }
-        # setup mail
-
         if return_code >= 0:
             if confply.config.log_config is not False:
                 print_config(os.path.basename(file_path), config)
@@ -601,6 +604,7 @@ def run_config(in_args):
                                 log.error("failed to run: "+str(d))
                                 if not input_prompt("continue execution?"):
                                     log.normal("aborting final commands")
+                                    # #todo: make this jump to the mail section?
                                     return depends_return
                                 else:
                                     log.normal("continuing execution.")
@@ -721,18 +725,33 @@ def run_config(in_args):
                                                 confply.config.log_file)[1]
                         log.normal("wrote:\n"+log_str)
 
-            if should_run:
+            if (confply.config.mail_send == report["status"] or
+                    confply.config.mail_send == "all"):
                 mail.host = confply.config.mail_host
                 mail.sender = confply.config.mail_from
                 mail.recipients = confply.config.mail_to
                 mail.login = confply.config.mail_login
                 mail.attachments = confply.config.mail_attachments
-                if confply.config.log_file is not None:
+                if (confply.config.log_file is not None and
+                        report["status"] == "failure"):
                     mail.attachments.append(os.path.abspath(
                         confply.config.log_file
                     ))
                     pass
-                mail.send_report(report)
+                if mail.login is not None:
+                    mail.send_report(report)
+
+            if (confply.config.slack_send == report["status"] or
+                    confply.config.slack_send == "all"):
+                slack.bot_token = confply.config.slack_bot_token
+                slack.uploads = confply.config.slack_uploads
+                if (confply.config.log_file is not None and
+                        report["status"] == "failure"):
+                    slack.uploads.append(os.path.abspath(
+                        confply.config.log_file
+                    ))
+                if slack.bot_token is not None:
+                    slack.send_report(report)
     clean_modules()
     return return_code
 
