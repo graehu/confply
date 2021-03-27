@@ -18,66 +18,6 @@ import confply.mail as mail
 import confply.slack as slack
 
 
-__version__ = "0.0.1"
-__doc__ = """
-Confply is an abstraction layer for other commandline tools.
-It lets you write a consistent config file & commandline interface for tools
-that have similar functions.
-More to come.
-"""
-new_launcher_str = r"""#!/usr/bin/env python
-#                      _____       .__
-#   ____  ____   _____/ ____\_____ |  | ___.__.
-# _/ ___\/  _ \ /    \   __\\____ \|  |<   |  |
-# \  \__(  <_> )   |  \  |  |  |_> >  |_\___  |
-#  \___  >____/|___|  /__|  |   __/|____/ ____|
-#      \/           \/      |__|        \/
-# launcher generated using:
-#
-# python {confply_dir}/confply.py --launcher {launcher}
-
-import sys
-import os
-sys.path.append("{confply_dir}")
-from confply import launcher
-
-# fill this with your configs
-aliases = {comment}
-
-# "all" will run all of the aliases
-aliases["all"] = " -- ".join([val for key, val in aliases.items()])
-
-if __name__ == "__main__":
-    dir_name = os.path.dirname(__file__)
-    if not dir_name == "":
-        os.chdir(dir_name)
-    launcher(sys.argv[1:], aliases)
-"""
-
-new_config_str = """#!{confply_dir}/confply.py
-# generated using:
-# python {confply_dir}/confply.py --config {tool_type_arg} {config_file}
-import sys
-sys.path.append('{confply_dir}')
-import confply.{tool_type_arg}.config as config
-import confply.{tool_type_arg}.options as options
-import confply.log as log
-############# modify_below ################
-
-config.confply.log_topic = "{tool_type_arg}"
-log.normal("loading {config_file} with confply_args: "+str(config.confply.args))
-config.confply.tool = options.defaults.tool
-"""
-# list of configs that have already been run
-__configs_run = []
-__directory_stack = []
-
-
-class SafeDict(dict):
-    def __missing__(self, key):
-        return '{' + key + '}'
-
-
 class pushd:
     """
     push a directory, use it like so:
@@ -130,128 +70,14 @@ def input_prompt(message):
         return False
 
 
-def print_config(config_name, config):
-    diff_config = get_diff_config(config)
-    confply_path = os.path.dirname(__file__) + "/"
-    tool_type_path = confply_path+confply.config.__tool_type
-
-    if(os.path.exists(tool_type_path)):
-        log.normal(config_name+" configuration:")
-        log.normal("{")
-
-        for k, v in diff_config.items():
-            if isinstance(v, list):
-                log.normal("\t"+str(k)+": ")
-                for i in v:
-                    log.normal("\t\t"+str(i))
-            elif inspect.isfunction(v):
-                log.normal("\t"+str(k)+": "+v.__name__)
-            else:
-                log.normal("\t"+str(k)+": "+str(v))
-
-        log.normal("}")
-        log.normal("")
-    else:
-        log.error(confply.config_tool_type +
-                  " is not a valid confply_tool_type" +
-                  " and should not be set by users.")
-        log.normal("\tuse: 'import confply.[tool_type].config" +
-                   " as confply' to import confply_tool_type.")
-
-
-def get_diff_config(config):
-    base_config = {}
-    compare_config = {}
-    diff_config = {}
-    confply_path = os.path.dirname(__file__) + "/"
-    tool_type_path = confply_path+confply.config.__tool_type
-
-    if(os.path.exists(tool_type_path)):
-        tool_type_path += "/config/__init__.py"
-        with open(tool_type_path) as config_file:
-            exec(config_file.read(), {}, base_config)
-        with open(confply_path+"config.py") as config_file:
-            exec(config_file.read(), {}, compare_config)
-
-        for k, v in compare_config.items():
-            base_config["confply."+k] = v
-
-        compare_config = {
-            **{"confply." +
-                k: v for k, v in confply.config.__dict__.items()},
-            **config.__dict__
-        }
-        for k, v in compare_config.items():
-            if (k.startswith("__") or
-                    k.startswith("confply.__") or
-                    k.startswith("confply.mail") or
-                    k.startswith("confply.vcs") or
-                    k.startswith("confply.log") or
-                    k.startswith("confply.slack")):
-                continue
-
-            if k in base_config and v != base_config[k] and not inspect.isfunction(v):
-                diff_config[k] = v
-    return diff_config
-
-
-def tool_select(in_tools):
-    def _print_tools():
-        num = -1
-        for k in in_tools.keys():
-            num += 1
-            if not in_tools[k].is_found():
-                log.warning("\t"+str(num)+") "+k+" (not found)")
-            else:
-                log.normal("\t"+str(num)+") "+k)
-    shown_options = False
-    while True:
-        if input_prompt("continue with a different tool?"):
-            if not shown_options:
-                log.normal("which tool? options:")
-                _print_tools()
-                log.normal("")
-                shown_options = True
-            log.normal("tool: ", end="", flush=True)
-            in_tool = input("")
-            if(in_tool.isdigit()):
-                tool_num = int(in_tool)
-                if tool_num < len(in_tools):
-                    tool_keys = list(in_tools.keys())
-                    confply.config.tool = tool_keys[tool_num]
-                    return True
-                else:
-                    log.error("'" + in_tool +
-                              "' is out of range.")
-                pass
-            else:
-                if in_tool in in_tools:
-                    confply.config.tool = in_tool
-                    return True
-                else:
-                    log.error("'" + in_tool +
-                              "' could not be found," +
-                              " is it installed?")
-        else:
-            if not shown_options:
-                log.normal("options:")
-                _print_tools()
-                log.normal("")
-            return False
-
-
 def launcher(in_args, aliases):
-    # #todo: remove the launcher at some point
     return_code = -999999
 
     def print_header():
         log.confply_header()
         log.linebreak()
-    # make confply.py's directory path
-    confply_dir = os.path.relpath(__file__)
-    confply_dir = os.path.dirname(confply_dir)+"/.."
-    confply_dir = os.path.relpath(confply_dir)
-    confply_dir = confply_dir.replace("\\", "/")
+
+    confply_dir = __get_confply_dir()
     if len(in_args) != 0:
         alias = in_args[0]
         args = " ".join(in_args[1:])
@@ -297,7 +123,7 @@ def run_config(in_args):
 
     usage: run_config(["path_to_config", "optional", "arguements"])
     """
-    in_args = _strip_confply_args(in_args)
+    in_args = __strip_confply_args(in_args)
     if len(in_args) == 0:
         return 0
     log.linebreak()
@@ -339,12 +165,12 @@ def run_config(in_args):
         if tool in tools[tool_type]:
             if not tools[tool_type][tool].is_found():
                 log.error("'"+tool+"' could not be found, is it installed?")
-                return tool_select(tools[tool_type])
+                return __tool_select(tools[tool_type])
             else:
                 return True
         else:
             log.error("'"+str(tool)+"' is not a valid "+tool_type+" tool.")
-            return tool_select(tools[tool_type])
+            return __tool_select(tools[tool_type])
 
         return False
     ########
@@ -550,7 +376,7 @@ def run_config(in_args):
                           " for write.")
                 return_code = -1
 
-        diff_config = get_diff_config(config)
+        diff_config = __get_diff_config(config)
         should_run = confply.config.run
         report = {
             "config_path": file_path,
@@ -567,7 +393,7 @@ def run_config(in_args):
         }
         if return_code >= 0:
             if confply.config.log_config is not False:
-                print_config(os.path.basename(file_path), config)
+                __print_config(os.path.basename(file_path), config)
             try:
                 time_start = timeit.default_timer()
                 # #todo: tool selection phase should happen first.
@@ -604,7 +430,7 @@ def run_config(in_args):
                                 log.error("failed to run: "+str(d))
                                 if not input_prompt("continue execution?"):
                                     log.normal("aborting final commands")
-                                    # #todo: make this jump to the mail section?
+                                    # #todo: make this jump to the mail section
                                     return depends_return
                                 else:
                                     log.normal("continuing execution.")
@@ -755,8 +581,191 @@ def run_config(in_args):
     clean_modules()
     return return_code
 
+# private section
 
-def _strip_confply_args(in_args):
+
+__version__ = "0.0.1"
+__doc__ = """
+Confply is an abstraction layer for other commandline tools.
+It lets you write a consistent config file & commandline interface for tools
+that have similar functions.
+More to come.
+"""
+
+
+__new_launcher_str = r"""#!/usr/bin/env python
+#                      _____       .__
+#   ____  ____   _____/ ____\_____ |  | ___.__.
+# _/ ___\/  _ \ /    \   __\\____ \|  |<   |  |
+# \  \__(  <_> )   |  \  |  |  |_> >  |_\___  |
+#  \___  >____/|___|  /__|  |   __/|____/ ____|
+#      \/           \/      |__|        \/
+# launcher generated using:
+#
+# python {confply_dir}/confply.py --launcher {launcher}
+
+import sys
+import os
+sys.path.append("{confply_dir}")
+from confply import launcher
+
+# fill this with your configs
+aliases = {comment}
+
+# "all" will run all of the aliases
+aliases["all"] = " -- ".join([val for key, val in aliases.items()])
+
+if __name__ == "__main__":
+    dir_name = os.path.dirname(__file__)
+    if not dir_name == "":
+        os.chdir(dir_name)
+    launcher(sys.argv[1:], aliases)
+"""
+
+__new_config_str = """#!{confply_dir}/confply.py
+# generated using:
+# python {confply_dir}/confply.py --config {tool_type_arg} {config_file}
+import sys
+sys.path.append('{confply_dir}')
+import confply.{tool_type_arg}.config as config
+import confply.{tool_type_arg}.options as options
+import confply.log as log
+############# modify_below ################
+
+config.confply.log_topic = "{tool_type_arg}"
+log.normal("loading {config_file} with confply_args: "+str(config.confply.args))
+config.confply.tool = options.defaults.tool
+"""
+# list of configs that have already been run
+__configs_run = []
+__directory_stack = []
+
+
+def __print_config(config_name, config):
+    diff_config = __get_diff_config(config)
+    confply_path = os.path.dirname(__file__) + "/"
+    tool_type_path = confply_path+confply.config.__tool_type
+
+    if(os.path.exists(tool_type_path)):
+        log.normal(config_name+" configuration:")
+        log.normal("{")
+
+        for k, v in diff_config.items():
+            if isinstance(v, list):
+                log.normal("\t"+str(k)+": ")
+                for i in v:
+                    log.normal("\t\t"+str(i))
+            elif inspect.isfunction(v):
+                log.normal("\t"+str(k)+": "+v.__name__)
+            else:
+                log.normal("\t"+str(k)+": "+str(v))
+
+        log.normal("}")
+        log.normal("")
+    else:
+        log.error(confply.config_tool_type +
+                  " is not a valid confply_tool_type" +
+                  " and should not be set by users.")
+        log.normal("\tuse: 'import confply.[tool_type].config" +
+                   " as confply' to import confply_tool_type.")
+
+
+def __get_confply_dir(rel_path=True):
+    # make confply.py's directory path
+    confply_dir = os.path.relpath(__file__)
+    confply_dir = os.path.dirname(confply_dir)+"/.."
+    if rel_path:
+        confply_dir = os.path.relpath(confply_dir)
+        pass
+    else:
+        confply_dir = os.path.abspath(confply_dir)
+        pass
+    confply_dir = confply_dir.replace("\\", "/")
+    return confply_dir
+
+
+def __get_diff_config(config):
+    base_config = {}
+    compare_config = {}
+    diff_config = {}
+    confply_path = os.path.dirname(__file__) + "/"
+    tool_type_path = confply_path+confply.config.__tool_type
+
+    if(os.path.exists(tool_type_path)):
+        tool_type_path += "/config/__init__.py"
+        with open(tool_type_path) as config_file:
+            exec(config_file.read(), {}, base_config)
+        with open(confply_path+"config.py") as config_file:
+            exec(config_file.read(), {}, compare_config)
+
+        for k, v in compare_config.items():
+            base_config["confply."+k] = v
+
+        compare_config = {
+            **{"confply." +
+                k: v for k, v in confply.config.__dict__.items()},
+            **config.__dict__
+        }
+        for k, v in compare_config.items():
+            if (k.startswith("__") or
+                    k.startswith("confply.__") or
+                    k.startswith("confply.mail") or
+                    k.startswith("confply.vcs") or
+                    k.startswith("confply.log") or
+                    k.startswith("confply.slack")):
+                continue
+
+            if k in base_config and v != base_config[k] and not inspect.isfunction(v):
+                diff_config[k] = v
+    return diff_config
+
+
+def __tool_select(in_tools):
+    def _print_tools():
+        num = -1
+        for k in in_tools.keys():
+            num += 1
+            if not in_tools[k].is_found():
+                log.warning("\t"+str(num)+") "+k+" (not found)")
+            else:
+                log.normal("\t"+str(num)+") "+k)
+    shown_options = False
+    while True:
+        if input_prompt("continue with a different tool?"):
+            if not shown_options:
+                log.normal("which tool? options:")
+                _print_tools()
+                log.normal("")
+                shown_options = True
+            log.normal("tool: ", end="", flush=True)
+            in_tool = input("")
+            if(in_tool.isdigit()):
+                tool_num = int(in_tool)
+                if tool_num < len(in_tools):
+                    tool_keys = list(in_tools.keys())
+                    confply.config.tool = tool_keys[tool_num]
+                    return True
+                else:
+                    log.error("'" + in_tool +
+                              "' is out of range.")
+                pass
+            else:
+                if in_tool in in_tools:
+                    confply.config.tool = in_tool
+                    return True
+                else:
+                    log.error("'" + in_tool +
+                              "' could not be found," +
+                              " is it installed?")
+        else:
+            if not shown_options:
+                log.normal("options:")
+                _print_tools()
+                log.normal("")
+            return False
+
+
+def __strip_confply_args(in_args):
     commandline = []
     in_len = len(in_args)
     for i in range(0, in_len):
@@ -765,23 +774,23 @@ def _strip_confply_args(in_args):
         option = in_args.pop(0)
         if option.startswith("--"):
             if option == "--launcher":
-                confply._handle_launcher_arg(in_args)
+                confply.__handle_launcher_arg(in_args)
             elif option == "--listen":
-                confply._handle_listen_arg(in_args)
+                confply.__handle_listen_arg(in_args)
             elif option == "--gen_config":
-                confply._handle_gen_config_arg(in_args)
+                confply.__handle_gen_config_arg(in_args)
             elif option == "--help":
-                confply._handle_help_arg(in_args)
+                confply.__handle_help_arg(in_args)
             elif option.startswith("--help."):
-                confply._handle_help_config_arg(option, in_args)
+                confply.__handle_help_config_arg(option, in_args)
             elif option == "--version":
-                confply._handle_version_arg(in_args)
+                confply.__handle_version_arg(in_args)
             elif option == "--config":
                 confply._handle_config_dict_arg(in_args)
             elif option.startswith("--config."):
-                confply._handle_config_arg(option, in_args)
+                confply.__handle_config_arg(option, in_args)
             elif option == "--new_tool_type":
-                confply._handle_new_tool_type(in_args)
+                confply.__handle_new_tool_type_arg(in_args)
             elif option == "--no_run":
                 confply.config.run = False
             elif option == "--no_header":
@@ -797,19 +806,17 @@ def _strip_confply_args(in_args):
     return commandline
 
 
-def _handle_help_arg(in_args):
-    confply_dir = os.path.relpath(__file__)
-    confply_dir = os.path.dirname(confply_dir)+"/.."
-    with open(os.path.join(confply_dir, "help.md")) as help_file:
+def __handle_help_arg(in_args):
+    help_path = os.path.join(__get_confply_dir(), "help.md")
+    with open(help_path) as help_file:
         print("\n"+help_file.read())
 
 
-def _handle_help_config_arg(option, in_args):
-    confply_dir = os.path.relpath(__file__)
-    confply_dir = os.path.dirname(confply_dir)
+def __handle_help_config_arg(option, in_args):
+    module_dir = os.path.relpath(__file__)
+    module_dir = os.path.dirname(module_dir)
     help_path = option.split(".")[1]
-    help_path = os.path.join(confply_dir, help_path)
-    print(help_path)
+    help_path = os.path.join(module_dir, help_path)
     if os.path.exists(help_path):
         help_path = os.path.join(help_path, "help.md")
         if os.path.exists(help_path):
@@ -821,7 +828,7 @@ def _handle_help_config_arg(option, in_args):
         log.error(option+" is not a valid command type")
 
 
-def _handle_version_arg(in_args):
+def __handle_version_arg(in_args):
     log.linebreak()
     log.normal("Confply "+confply.__version__)
     log.normal("Copyright (C) 2021 Graham Hughes.")
@@ -831,17 +838,17 @@ def _handle_version_arg(in_args):
     log.normal("There is NO WARRANTY, to the extent permitted by law.")
 
 
-def _handle_new_tool_type(in_args):
+def __handle_new_tool_type_arg(in_args):
     if len(in_args) < 1:
         log.error("--new_tool_type requires a value.")
         log.normal("\t--new_tool_type [tool_type]")
         return
-    confply_dir = os.path.relpath(__file__)
-    confply_dir = os.path.dirname(confply_dir)
+    module_dir = os.path.relpath(__file__)
+    module_dir = os.path.dirname(module_dir)
     tool_type = in_args.pop(0)
-    tool_type_dir = os.path.join(confply_dir, tool_type)
+    tool_type_dir = os.path.join(module_dir, tool_type)
     if not os.path.exists(tool_type_dir):
-        confply_dir = os.path.join(confply_dir, "new_tool_type")
+        module_dir = os.path.join(module_dir, "new_tool_type")
         os.mkdir(tool_type_dir)
         files = [
             "__init__.py",
@@ -853,7 +860,7 @@ def _handle_new_tool_type(in_args):
             "options/tools.py"
         ]
         for file_name in files:
-            with open(os.path.join(confply_dir, file_name)) as in_file:
+            with open(os.path.join(module_dir, file_name)) as in_file:
                 file_str = in_file.read()
                 file_str = file_str.format_map({"tool_type": tool_type})
                 tool_file = os.path.join(tool_type_dir, file_name)
@@ -868,22 +875,17 @@ def _handle_new_tool_type(in_args):
         pass
 
 
-def _handle_launcher_arg(in_args):
+def __handle_launcher_arg(in_args):
     if len(in_args) < 1:
         log.error("--launcher requires a value.")
         log.normal("\t--launcher [new_launcher_file]")
         return
-    # #todo: this seems like a bad way to get the parent dir. Consider pathlib
-    confply_dir = os.path.relpath(__file__)
-    confply_dir = os.path.dirname(confply_dir)+"/.."
-    confply_dir = os.path.relpath(confply_dir)
-    confply_dir = confply_dir.replace("\\", "/")
-
+    confply_dir = __get_confply_dir()
     arguement = in_args.pop(0)
     launcher_path = os.path.abspath(os.path.curdir)+"/"+arguement
     if not os.path.exists(launcher_path):
         with open(launcher_path, "w") as launcher_file:
-            launcher_str = new_launcher_str.format_map(
+            launcher_str = __new_launcher_str.format_map(
                 {
                     "confply_dir": confply_dir,
                     "launcher": arguement,
@@ -897,16 +899,11 @@ def _handle_launcher_arg(in_args):
         log.error(launcher_path+" already exists!")
 
 
-def _handle_listen_arg(in_args):
+def __handle_listen_arg(in_args):
     if len(in_args) < 1:
         log.error("--listen requires a value.")
         log.normal("\t--listen [launcher_file]")
         return
-    # #todo: this seems like a bad way to get the parent dir. Consider pathlib
-    confply_dir = os.path.relpath(__file__)
-    confply_dir = os.path.dirname(confply_dir)+"/.."
-    confply_dir = os.path.relpath(confply_dir)
-    confply_dir = confply_dir.replace("\\", "/")
 
     arguement = in_args.pop(0)
     launcher_path = os.path.abspath(os.path.curdir)+"/"+arguement
@@ -917,26 +914,21 @@ def _handle_listen_arg(in_args):
         log.error(launcher_path+" not found!")
 
 
-def _handle_gen_config_arg(in_args):
+def __handle_gen_config_arg(in_args):
     if len(in_args) < 2:
         log.error("--config requires two values:")
         log.normal("\t--gen_config [tool_type] [new_config_file]")
         log.normal("")
         log.normal("valid tool types:")
-        confply_dir = os.path.dirname(__file__)
-        files = os.listdir(confply_dir)
+        module_dir = os.path.dirname(__file__)
+        files = os.listdir(module_dir)
         for dir in files:
-            if (os.path.isdir(os.path.join(confply_dir, dir)) and
+            if (os.path.isdir(os.path.join(module_dir, dir)) and
                     not dir == "__pycache__" and not dir == "new_tool_type"):
                 log.normal("\t"+dir)
         return
 
-    # this seems like a bad way to get the parent dir. Consider pathlib
-    confply_dir = os.path.relpath(__file__)
-    confply_dir = os.path.dirname(confply_dir)+"/.."
-    confply_dir = os.path.relpath(confply_dir)
-    confply_dir = confply_dir.replace("\\", "/")
-
+    confply_dir = __get_confply_dir()
     tool_type_arg = in_args.pop(0)
     config_arg = in_args.pop(0)
     config_path = os.path.abspath(os.path.curdir)+"/"+config_arg
@@ -953,7 +945,7 @@ def _handle_gen_config_arg(in_args):
 
     if not os.path.exists(config_path):
         with open(config_path, "w") as config_file:
-            config_str = new_config_str.format_map(
+            config_str = __new_config_str.format_map(
                 {
                     "confply_dir": confply_dir,
                     "tool_type_arg": tool_type_arg,
@@ -997,7 +989,7 @@ def _handle_config_dict_arg(in_args):
 logged_overrides = False
 
 
-def _handle_config_arg(option, in_args):
+def __handle_config_arg(option, in_args):
     global logged_overrides
     if len(in_args) < 1:
         log.error("--config requires a value.")
