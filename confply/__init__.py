@@ -129,55 +129,10 @@ def run_config(in_args):
     log.linebreak()
     log.header("run config")
     log.linebreak()
-    ##########
-
-    def _validate_config():
-        nonlocal tools
-        nonlocal config_modules
-        tool_type = confply.config.__tool_type
-        if tool_type not in tools:
-            dir = os.path.dirname(__file__) + "/" + tool_type
-            if os.path.exists(dir):
-                files = os.listdir(dir)
-            else:
-                log.error(tool_type+" is not a valid confply_tool_type" +
-                          " and should not be set by users.")
-                log.normal("\tuse: " +
-                           "'import confply.[tool_type].config as config'" +
-                           " to import confply_tool_type.")
-                return None
-
-            tools[tool_type] = {}
-            module_path = "confply."+tool_type+"."
-            config_modules.append(
-                importlib.import_module("confply."+tool_type)
-            )
-            for py in files:
-                if py.endswith(".py") and not py == "__init__.py":
-                    tool = py[0:-3]
-                    tools[tool_type][tool] = \
-                        importlib.import_module(module_path + tool)
-
-        tool = confply.config.tool
-        pass
-
-        #######
-        if tool in tools[tool_type]:
-            if not tools[tool_type][tool].is_found():
-                log.error("'"+tool+"' could not be found, is it installed?")
-                return __tool_select(tools[tool_type])
-            else:
-                return True
-        else:
-            log.error("'"+str(tool)+"' is not a valid "+tool_type+" tool.")
-            return __tool_select(tools[tool_type])
-
-        return False
-    ########
 
     # setup config run
     return_code = 0
-    path = in_args.pop(0)
+    file_path = in_args.pop(0)
 
     # find the git root
     # #todo: extend this to other version control?
@@ -203,129 +158,30 @@ def run_config(in_args):
     elif os.name == "posix":
         confply.config.platform = "linux"
 
-    tools = {}
-    config_locals = {}
     confply.config.args = in_args
-    file_path = path
-    directory_paths = []
-    config_modules = []
-
-    def clean_modules():
-        nonlocal config_modules
-        for m in config_modules:
-            if m in sys.modules:
-                del sys.modules[m.__name__]
-        importlib.reload(confply.config)
-        importlib.reload(confply.mail)
-        importlib.reload(confply.slack)
-        pass
-
-    # find group config in parent directories
-    with pathlib.Path(path).absolute() as temp_path:
-        path_split = temp_path.name.split(".")
-        if path_split[1] != "py":
-            def iter_path(path, paths):
-                directory_py = path.joinpath("confply."+path_split[1]+".py")
-                if directory_py.exists():
-                    paths.insert(0, directory_py)
-
-                if(path.parent != path):
-                    iter_path(path.parent, paths)
-                pass
-            temp_path.resolve()
-            iter_path(temp_path.parent, directory_paths)
-        pass
-
-    directory_paths.append(file_path)
     should_run = confply.config.run
-    # load and execute the config files
-    for path in directory_paths:
-        if path is None:
-            continue
 
-        if os.path.exists(path) and os.path.isfile(path):
-            config_name = os.path.basename(path)
-            confply.config.config_name = config_name
-            confply.config.modified = os.path.getmtime(path).real
+    config_locals, config_modules = __load_config(file_path)
+    if config_locals is None:
+        log.error("failed to load: "+file_path)
+        return -1
 
-            with open(path) as config_file:
-                with pushd(os.path.dirname(path)):
-                    try:
-                        exec(config_file.read(), {}, config_locals)
-                        # find imported confply configs for cleanup
-                        for k, v in config_locals.items():
-                            m_valid = isinstance(v, types.ModuleType)
-                            if not m_valid:
-                                continue
-
-                            v_name = v.__name__
-                            m_valid = m_valid and v not in config_modules
-                            m_valid = m_valid and v_name.startswith("confply.")
-                            m_valid = m_valid and v_name.endswith(".config")
-                            if m_valid:
-                                config_modules.append(v)
-
-                        # validate there are less than 2 imported configs
-                        if len(confply.config.__imported_configs) > 1:
-                            log.error("too many confply configs imported:")
-                            for c in confply.config.__imported_configs:
-                                log.normal("\t "+c)
-                            log.normal(
-                                "confply only supports one config import."
-                            )
-                            clean_modules()
-                            return -1
-
-                        log.linebreak()
-                        log.success("loaded: "+str(path))
-                    except Exception:
-                        log.error("failed to exec: "+path)
-                        trace = traceback.format_exc().replace("<string>",
-                                                               path)
-                        log.normal("traceback:\n\n"+trace)
-                        return -1
-
-        else:
-            log.error("failed to load: "+path)
-            return -1
+    if("config" not in config_locals):
+        log.error("confply config incorrectly imported")
+        log.normal("\tuse: 'import confply.[tool_type].config as config'")
+        __clean_modules(config_modules)
+        return -1
 
     # ensure we don't run if should_run was EVER false
     if should_run is not True:
         confply.config.run = should_run
 
     confply_path = os.path.dirname(__file__) + "/"
-    if("config" not in config_locals):
-        log.error("confply config incorrectly imported")
-        log.normal("\tuse: 'import confply.[tool_type].config as config'")
-        clean_modules()
-        return -1
-
     config = config_locals["config"]
-    # attempting to stop people calling builtin functions
-    if "__builtins__" in config.__dict__:
-        del config.__dict__["__builtins__"]
-
-    # update the config and confply.config dictionaries with overrides
-    if isinstance(confply.config.__override_dict, dict):
-        confply_dict = confply.config.__override_dict
-        config.confply.__dict__.update(confply_dict["confply"])
-        del confply_dict["confply"]
-        config.__dict__.update(confply_dict)
-
-    # update the configs with further overrides
-    if isinstance(confply.config.__override_list, list):
-        for k, v in confply.config.__override_list:
-            try:
-                exec("{0} = v".format(k), globals(), locals())
-            except Exception:
-                log.warning("failed to exec "+"{0} = {1}:".format(k, v))
-                log.normal("\t\tcheck calling option  --"+k)
-                # trace = traceback.format_exc()
-                # log.normal("traceback:\n\n"+trace)
-
-    # #todo: this push and pop of the directory isn't great
-    # it happens later anyway.
+    __apply_overrides(config)
     new_working_dir = os.path.dirname(file_path)
+    old_stdout = sys.stdout
+    # setting confply command configuration up
     with pushd(new_working_dir):
         try:
             if (confply.config.post_load and
@@ -341,21 +197,17 @@ def run_config(in_args):
             log.error("failed to exec "+confply.config.post_load.__name__)
             trace = traceback.format_exc()
             log.normal("traceback:\n\n"+trace)
+            pass
 
-    if(not os.path.exists(confply_path+str(confply.config.__tool_type))):
-        log.error(str(confply.config.__tool_type) +
-                  " is not a valid _tool_type and should not be set directly.")
-        log.normal("\tuse: 'import confply.[tool_type].config as config'" +
-                   " to import _tool_type.")
+        if(not os.path.exists(confply_path+str(confply.config.__tool_type))):
+            log.error(str(confply.config.__tool_type) +
+                      " is not a valid _tool_type and should not be set directly.")
+            log.normal("\tuse: 'import confply.[tool_type].config as config'" +
+                       " to import _tool_type.")
 
-        clean_modules()
-        return -1
-
-    # setting confply command configuration up
-    old_stdout = sys.stdout
-
-    with pushd(new_working_dir):
-        # begin storing important state before clean_modules()
+            __clean_modules(config_modules)
+            return -1
+        # begin storing important state before __clean_modules(config_modules)
         if confply.config.log_file is not None:
             log.normal("writing to: " +
                        confply.config.log_file +
@@ -397,47 +249,20 @@ def run_config(in_args):
             try:
                 time_start = timeit.default_timer()
                 # #todo: tool selection phase should happen first.
-                # #todo: rename generate to gen_tool_type.
-                valid_tools = _validate_config()
+                tools = __validate_config(config_modules)
                 tool_type = confply.config.__tool_type
                 tool = confply.config.tool
                 report["tool"] = tool
                 report["tool_type"] = tool_type
-                if valid_tools:
+                if tools:
                     shell_cmd = tools[tool_type][tool]
                     shell_cmd.handle_args()
-                    shell_cmd = shell_cmd.generate() if valid_tools else None
+                    # #todo: rename generate to gen_tool_type.
+                    shell_cmd = shell_cmd.generate() if tools else None
                 else:
                     shell_cmd = None
 
-                # store confply.config
-                store = vars(confply.config)
-                store = {k: v for k, v in store.items() if not (k.startswith("__") and k.endswith("__"))}
-                clean_modules()
-                confply.config.run = should_run
-                if len(store["dependencies"]) > 0:
-                    for d in store["dependencies"]:
-                        if d not in __configs_run:
-                            confply.config.log_topic = store["log_topic"]
-                            log.normal("running dependency: "+str(d))
-                            confply.config.log_topic = "confply"
-                            log.linebreak()
-                            __configs_run.append(d)
-                            depends_return = run_config([d])
-                            if depends_return < 0:
-                                confply.config.log_topic = store["log_topic"]
-                                confply.config.log_file = store["log_file"]
-                                log.error("failed to run: "+str(d))
-                                if not input_prompt("continue execution?"):
-                                    log.normal("aborting final commands")
-                                    # #todo: make this jump to the mail section
-                                    return depends_return
-                                else:
-                                    log.normal("continuing execution.")
-                    pass
-                # reset confply.config
-                for k, v in store.items():
-                    setattr(confply.config, k, v)
+                __run_dependencies(config, config_modules, should_run)
 
                 if shell_cmd is not None:
                     cmd_env = tools[tool_type][tool].get_environ()
@@ -455,33 +280,6 @@ def run_config(in_args):
                             log.header("begin "+tool)
                     sys.stdout.flush()
 
-                    def _run_shell_cmd(shell_cmd):
-                        nonlocal return_code
-                        if confply.config.log_file is not None:
-                            sys.stdout.flush()
-                            # #todo: check if this can be ansi-coloured
-                            result = subprocess.run(shell_cmd,
-                                                    stdout=sys.stdout,
-                                                    stderr=subprocess.STDOUT,
-                                                    text=True,
-                                                    shell=True,
-                                                    env=cmd_env)
-                        else:
-                            result = subprocess.run(shell_cmd,
-                                                    shell=True,
-                                                    env=cmd_env)
-
-                        if result.returncode == 0:
-                            log.linebreak()
-                            log.success(tool+" succeeded!")
-                        else:
-                            log.linebreak()
-                            log.error(tool+" failed.")
-                            log.error(tool +
-                                      " return code: " +
-                                      str(result.returncode))
-                            return_code = -2
-
                     if should_run and isinstance(shell_cmd, list):
                         for cmd in shell_cmd:
                             cmd_time_start = timeit.default_timer()
@@ -489,7 +287,7 @@ def run_config(in_args):
                             log.linebreak()
                             log.normal(cmd)
                             log.normal("", flush=True)
-                            _run_shell_cmd(cmd)
+                            return_code = __run_shell_cmd(cmd, cmd_env, tool)
                             cmd_time_end = timeit.default_timer()
                             # #todo: this can be tidied with format var capture
                             s = cmd_time_end-cmd_time_start
@@ -500,7 +298,7 @@ def run_config(in_args):
                             time = f"{h:0>2.0f}:{m:0>2.0f}:{s:0>5.2f}"
                             log.normal("time elapsed: "+time)
                     elif should_run:
-                        _run_shell_cmd(shell_cmd)
+                        return_code = __run_shell_cmd(shell_cmd, cmd_env, tool)
                     else:
                         log.warning("no commands run")
                 else:
@@ -578,7 +376,7 @@ def run_config(in_args):
                     ))
                 if slack.bot_token is not None:
                     slack.send_report(report)
-    clean_modules()
+    __clean_modules(config_modules)
     return return_code
 
 # private section
@@ -639,6 +437,237 @@ config.confply.tool = options.defaults.tool
 # list of configs that have already been run
 __configs_run = []
 __directory_stack = []
+
+
+def __run_shell_cmd(shell_cmd, cmd_env, tool):
+    if confply.config.log_file is not None:
+        sys.stdout.flush()
+        # #todo: check if this can be ansi-coloured
+        result = subprocess.run(shell_cmd,
+                                stdout=sys.stdout,
+                                stderr=subprocess.STDOUT,
+                                text=True,
+                                shell=True,
+                                env=cmd_env)
+    else:
+        result = subprocess.run(shell_cmd,
+                                shell=True,
+                                env=cmd_env)
+
+    if result.returncode == 0:
+        log.linebreak()
+        log.success(tool+" succeeded!")
+        return 0
+    else:
+        log.linebreak()
+        log.error(tool+" failed.")
+        log.error(tool +
+                  " return code: " +
+                  str(result.returncode))
+        return -2
+
+
+def __clean_modules(config_modules):
+    for m in config_modules:
+        if m in sys.modules:
+            del sys.modules[m.__name__]
+    importlib.reload(confply.config)
+    importlib.reload(confply.mail)
+    importlib.reload(confply.slack)
+    pass
+
+
+def __run_dependencies(config, config_modules, should_run):
+    store = vars(confply.config)
+    store = {k: v for k, v in store.items() if not (k.startswith("__") and k.endswith("__"))}
+    __clean_modules(config_modules)
+    confply.config.run = should_run
+    if len(store["dependencies"]) > 0:
+        for d in store["dependencies"]:
+            if d not in __configs_run:
+                confply.config.log_topic = store["log_topic"]
+                log.normal("running dependency: "+str(d))
+                confply.config.log_topic = "confply"
+                log.linebreak()
+                __configs_run.append(d)
+                depends_return = run_config([d])
+                if depends_return < 0:
+                    confply.config.log_topic = store["log_topic"]
+                    confply.config.log_file = store["log_file"]
+                    log.error("failed to run: "+str(d))
+                    if not input_prompt("continue execution?"):
+                        log.normal("aborting final commands")
+                        # #todo: make this jump to the mail section
+                        return depends_return
+                    else:
+                        log.normal("continuing execution.")
+        pass
+    # reset confply.config
+    for k, v in store.items():
+        setattr(confply.config, k, v)
+
+def __apply_overrides(config):
+    # attempting to stop people calling builtin functions
+    if "__builtins__" in config.__dict__:
+        del config.__dict__["__builtins__"]
+
+    # update the config and confply.config dictionaries with overrides
+    if isinstance(confply.config.__override_dict, dict):
+        confply_dict = confply.config.__override_dict
+        config.confply.__dict__.update(confply_dict["confply"])
+        del confply_dict["confply"]
+        config.__dict__.update(confply_dict)
+
+    # update the configs with further overrides
+    if isinstance(confply.config.__override_list, list):
+        for k, v in confply.config.__override_list:
+            try:
+                exec("{0} = v".format(k), globals(), locals())
+            except Exception:
+                log.warning("failed to exec "+"{0} = {1}:".format(k, v))
+                log.normal("\t\tcheck calling option  --"+k)
+                # trace = traceback.format_exc()
+                # log.normal("traceback:\n\n"+trace)
+
+
+def __get_group_configs(path):
+    directory_paths = []
+    with pathlib.Path(path).absolute() as temp_path:
+        path_split = temp_path.name.split(".")
+        if path_split[1] != "py":
+            def iter_path(path, paths):
+                directory_py = path.joinpath("confply."+path_split[1]+".py")
+                if directory_py.exists():
+                    paths.insert(0, directory_py)
+
+                if(path.parent != path):
+                    iter_path(path.parent, paths)
+                pass
+            temp_path.resolve()
+            iter_path(temp_path.parent, directory_paths)
+        pass
+    return directory_paths
+
+
+def __load_config(path):
+    # find group config in parent directories
+    directory_paths = __get_group_configs(path)
+    directory_paths.append(path)
+    config_locals = {}
+    config_modules = []
+    # load and execute the config files
+    for dir_path in directory_paths:
+        if dir_path is None:
+            continue
+        if os.path.exists(dir_path) and os.path.isfile(dir_path):
+            config_name = os.path.basename(path)
+            confply.config.config_name = config_name
+            confply.config.modified = os.path.getmtime(path).real
+            with open(dir_path) as config_file:
+                with pushd(os.path.dirname(dir_path)):
+                    try:
+                        exec(config_file.read(), {}, config_locals)
+                        # find imported confply configs for cleanup
+                        for k, v in config_locals.items():
+                            m_valid = isinstance(v, types.ModuleType)
+                            if not m_valid:
+                                continue
+
+                            v_name = v.__name__
+                            m_valid = m_valid and v not in config_modules
+                            m_valid = m_valid and v_name.startswith("confply.")
+                            m_valid = m_valid and v_name.endswith(".config")
+                            if m_valid:
+                                config_modules.append(v)
+
+                        # validate there are less than 2 imported configs
+                        if len(confply.config.__imported_configs) > 1:
+                            log.error("too many confply configs imported:")
+                            for c in confply.config.__imported_configs:
+                                log.normal("\t "+c)
+                            log.normal(
+                                "confply only supports one config import."
+                            )
+                            __clean_modules(config_modules)
+                            return None, None
+
+                        log.linebreak()
+                        log.success("loaded: "+str(dir_path))
+                    except Exception:
+                        log.error("failed to exec: "+dir_path)
+                        trace = traceback.format_exc().replace("<string>",
+                                                               dir_path)
+                        log.normal("traceback:\n\n"+trace)
+                        return None, None
+
+        else:
+            log.error("failed to find " + dir_path)
+            return None, None
+
+    return config_locals, config_modules
+
+
+def __load_json(json, tool_type):
+    module = importlib.import_module("confply."+tool_type+".config")
+    config_modules = []
+    config_locals = {"config": module}
+    config_modules.append(module)
+    for key in dir(module):
+        if key.startswith("__"):
+            continue
+        if key in json:
+            setattr(module, key, json[key])
+
+    return config_locals, config_modules
+
+
+# #todo: this can be simplified
+def __validate_config(config_modules):
+    tools = {}
+    tool_type = confply.config.__tool_type
+    tool_dir = os.path.dirname(__file__) + "/" + tool_type
+    if os.path.exists(tool_dir):
+        files = os.listdir(tool_dir)
+    else:
+        log.error(tool_type+" is not a valid confply_tool_type" +
+                  " and should not be set by users.")
+        log.normal("\tuse: " +
+                   "'import confply.[tool_type].config as config'" +
+                   " to import confply_tool_type.")
+        return None
+
+    tools[tool_type] = {}
+    module_path = "confply."+tool_type+"."
+    config_modules.append(
+        importlib.import_module("confply."+tool_type)
+    )
+    for py in files:
+        if py.endswith(".py") and not py == "__init__.py":
+            tool = py[0:-3]
+            tools[tool_type][tool] = \
+                importlib.import_module(module_path + tool)
+
+    tool = confply.config.tool
+    pass
+
+    #######
+    if tool in tools[tool_type]:
+        if not tools[tool_type][tool].is_found():
+            log.error("'"+tool+"' could not be found, is it installed?")
+            if __tool_select(tools[tool_type]):
+                return tools
+            else:
+                return None
+        else:
+            return tools
+    else:
+        log.error("'"+str(tool)+"' is not a valid "+tool_type+" tool.")
+        if __tool_select(tools[tool_type]):
+            return tools
+        else:
+            return None
+
+    return tools
 
 
 def __print_config(config_name, config):
