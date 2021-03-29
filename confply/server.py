@@ -1,5 +1,7 @@
 # Python 3 server example
 from http.server import SimpleHTTPRequestHandler, HTTPServer
+import re
+import ast
 import json
 import os
 import socket
@@ -41,22 +43,24 @@ class ConfplyServer(SimpleHTTPRequestHandler):
             for q in query_list:
                 k, v = q.split("=")
                 queries[k] = v
-
         if self.path.startswith("/api/") and launcher_path is not None:
             response = {"ok": False}
             headers = {}
             headers["Content-Type"] = "text/json"
-            if "/api/getAliases" == self.path:
+            if "/api/get.aliases" == self.path:
                 response["ok"] = True
                 response["aliases"] = aliases
                 pass
 
-            elif "/api/getLauncher" == self.path:
+            elif "/api/get.launcher" == self.path:
                 response["ok"] = True
                 response["path"] = launcher_path
                 pass
-
-            elif "/api/run" == self.path:
+            elif "/api/get.config.form" == self.path:
+                response["ok"] = True
+                response["html"] = get_form_html()
+                pass
+            elif "/api/run.alias" == self.path:
                 response["ok"] = True
                 headers["Cache-Control"] = "no-store, must-revalidate"
                 server_log = os.path.abspath(os.path.dirname(__file__))
@@ -91,6 +95,7 @@ class ConfplyServer(SimpleHTTPRequestHandler):
                 self.send_header(k, v)
             self.end_headers()
             self.wfile.write(bytes(json.dumps(response), "utf-8"))
+            # print("sending response: "+json.dumps(response, indent=4))
             return
 
         in_path = self.translate_path(self.path)
@@ -103,10 +108,38 @@ class ConfplyServer(SimpleHTTPRequestHandler):
         pass
 
     def do_POST(self):
-        data_string = self.rfile.read(int(self.headers['Content-Length']))
-        print(data_string)
-        self.send_response(200)
-        self.end_headers()
+        if "/api/run.config" == self.path:
+            from confply import get_config_dictionary
+            data_string = self.rfile.read(int(self.headers['Content-Length']))
+            parsed = data_string.decode("utf-8")
+            parsed = re.sub(u'[\u201c\u201d]', '"', parsed)
+            parsed = re.sub(u'[\u2019\u2018]', "'", parsed)
+            parsed = json.loads(parsed)
+            print("=====")
+            print(parsed)
+            print("=====")
+            config = get_config_dictionary("cpp_compiler")
+            print(config)
+            for k, v in config.items():
+                if k == "confply":
+                    continue
+                type_name = type(v).__name__
+                if k in parsed:
+                    print(k+": "+parsed[k])
+                    if type_name == "str":
+                        parsed[k] = parsed[k]
+                    else:
+                        parsed[k] = ast.literal_eval(parsed[k])
+                else:
+                    parsed[k] = eval(type_name+"()")
+
+            print("running:")
+            print(json.dumps(parsed, indent=4))
+            self.send_response(200)
+            self.end_headers()
+        else:
+            self.send_response(404)
+            self.end_headers()
 
 
 def _get_best_family(*address):
@@ -143,6 +176,66 @@ def start_server(port=8000, launcher=None):
 
     webServer.server_close()
     print("Server stopped.")
+
+
+def get_config_dict():
+    import confply.cpp_compiler.config as config
+    out = {}
+    for k in dir(config):
+        if k.startswith("__") or k == "confply":
+            continue
+        out[k] = getattr(config, k)
+    return out
+
+
+def get_form_html():
+    import confply.cpp_compiler.config as config
+    import confply.cpp_compiler.options as options
+    lines = []
+    lines.append("<form id=\"config_form\">") # action=\"/api/run.form\" method=\"post\"
+    lines.append("<fieldset>")
+    option_map = {}
+    num = 0
+    for k in dir(config):
+        if k.startswith("__") or k == "confply":
+            continue
+        num += 1
+        default = getattr(config, k)
+        line = "<label for=\"id_"+k+"\">"+k+":</label>"
+        if k in dir(options):
+            mod = getattr(options, k)
+            mod_dir = [x for x in dir(mod) if not x.startswith("__")]
+            option_map[k] = {
+                "keys": mod_dir,
+                "values": [getattr(mod, x) for x in mod_dir]
+                }
+            if isinstance(default, list):
+                line += "\n<select multiple id=\"id_"+k+"\" name=\""+k+"\">"
+            else:
+                line += "\n<select id=\"id_"+k+"\" name=\""+k+"\">"
+            for key, value in zip(option_map[k]["keys"], option_map[k]["values"]):
+                line += "\n\t<option value=\""+str(value)+"\">"+str(key)+"</option>"
+            line += "\n</select>"
+            line += "\n<br>"
+            lines.append(line)
+        else:
+            if isinstance(default, bool):
+                if default:
+                    line += "<input type=\"checkbox\" id=\"id_"+k+"\" name=\""+k+"\" value=\"True\" checked/>"
+                else:
+                    line += "<input type=\"checkbox\" id=\"id_"+k+"\" name=\""+k+"\"/>"
+            # elif isinstance(default, list):
+            #     line += "<input type=\"text\" id=\"id_"+k+"\" name=\""+k+"[]\" value=\""+str(default)+"\"/>"
+            #     pass
+            else:
+                line += "<input type=\"text\" id=\"id_"+k+"\" name=\""+k+"\" value=\""+str(default)+"\"/>"
+            line += "\n<br>"
+            lines.append(line)
+            option_map[k] = default
+    # lines.append("<input type=\"submit\" value=\"run_config\"/>")
+    lines.append("</fieldset>")
+    lines.append("</form>")
+    return "\r\n".join(lines)
 
 
 if __name__ == "__main__":

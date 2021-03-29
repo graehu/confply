@@ -27,19 +27,19 @@ link_libraries = []
 
 # causes debug info to be generated, like -g in clang
 # usage: debug_info = True
-debug_info = None
+debug_info = False
 
 # sets the optimisation level of the generated binary
 # usage: optimisation = 0
-optimisation = None
+optimisation = 0
 
 # sets c++ standard
-# usage: cpp_standard=17
-standard = None
+# usage: cpp_standard="c++11"
+standard = ""
 
 # enables warnings
 # usage: warnings=["all", "etc"]
-warnings = None
+warnings = []
 
 # enables building object files used for building incrementally
 # usage: build_objects = True
@@ -67,7 +67,7 @@ output_executable = True
 
 # the final result of the build. Builds executables by default.
 # usage: output_file = "my_app.bin"
-output_file = None
+output_file = ""
 
 # appends to the end of the command
 # usage: command_append = "-something-unsupported"
@@ -76,7 +76,6 @@ command_append = ""
 # prepend to the start of the command
 # usage: command_prepend_with = "-something-unsupported"
 command_prepend = ""
-
 
 # delete all object files before run
 # usage: clean = True

@@ -379,6 +379,17 @@ def run_config(in_args):
     __clean_modules(config_modules)
     return return_code
 
+
+def get_config_dictionary(tool_type):
+    module = importlib.import_module("confply."+tool_type+".config")
+    config_dict = {}
+    for key in dir(module):
+        if key.startswith("__"):
+            continue
+        config_dict[key] = getattr(module, key)
+
+    return config_dict
+
 # private section
 
 
@@ -619,7 +630,6 @@ def __load_json(json, tool_type):
             setattr(module, key, json[key])
 
     return config_locals, config_modules
-
 
 # #todo: this can be simplified
 def __validate_config(config_modules):

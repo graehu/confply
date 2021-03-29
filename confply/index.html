@@ -3,14 +3,24 @@
     <link rel="stylesheet" href="server.css"/>
     <h1 class="confply">./confply.py --listen</h1>
   </header>
-  <div id="launcher_div" class="logbox"></div>
   <body>
+    <div id="launcher_div" class="logbox"></div>
+    <div id="config_div"></div>
+    <div id="debug_div" class="logbox"></div>
     <script>
       // #todo: httpget add failure handling
       // for the various gets below.
       var currentrun = null;
       var running_button = null;
       var run_queue = [];
+      var debug_div = document.getElementById("debug_div");
+      function debug_log(message)
+      {
+	  if(debug_div !== null)
+	  {
+	      debug_div.innerHTML += message;   
+	  }
+      };
       function httpGet(theUrl, callback)
       {
 	  var xmlHttp = new XMLHttpRequest();
@@ -22,18 +32,64 @@
 	  }
 	  xmlHttp.open("GET", theUrl, true); // true for asynchronous 
 	  xmlHttp.send(null);
-      }
-      httpGet("/api/getAliases", function(response)
+      };
+      function httpPost(theUrl, data, callback)
+      {
+	  var xmlHttp = new XMLHttpRequest();
+	  xmlHttp.onreadystatechange = function() { 
+              if (xmlHttp.readyState == 4 && xmlHttp.status == 200)
+	      {
+		  callback(xmlHttp.responseText);
+	      }
+	  }
+	  xmlHttp.open("POST", theUrl, true); // true for asynchronous 
+	  xmlHttp.send(data);
+      };
+      function submit_form()
+      {
+	  debug_log("<br>sending /api/run.config<br>");
+	  var config_form = document.getElementById("config_form");
+	  const formEntries = new FormData(config_form).entries();
+	  const formData = Object.assign(...Array.from(formEntries, ([x,y]) => ({[x]: y})));
+	  
+	  if(config_form !== null)
+	  {
+	      debug_log("found it<br>");
+	  }
+	  else
+	  {
+	      debug_log("didn't found it<br>");
+	  }
+	  debug_log("<br>sending /api/run.config<br>");
+	  debug_log(JSON.stringify(formData, null, 2));
+	  httpPost("/api/run.config", JSON.stringify(formData), function(response)
+		   {
+		       if(debug !== null)
+		       {
+			   debug_log("<br>/api/run.config<br>");
+			   debug_log(JSON.stringify(response, null, 2));
+		       }
+		   });
+      };
+      httpGet("/api/get.config.form", function(response)
+	      {
+		  debug_log(JSON.stringify(response, null, 2));
+		  var response = JSON.parse(response);
+		  if(response["ok"])
+		  {
+		      var form  = document.getElementById("config_div");
+		      form.innerHTML = response["html"];
+		      var button = document.createElement("button");
+		      button.setAttribute("onclick", "submit_form()");
+		      button.innerHTML = "run config";
+		      form.appendChild(button);
+		  }
+	      });
+      httpGet("/api/get.aliases", function(response)
 	      {
 		  var run_buttons = document.getElementById("run_buttons");
 		  response = JSON.parse(response);
-		  var debug = document.getElementById("response_debug");
-		  if(debug !== null)
-		  {
-		      debug.innerHTML = JSON.stringify(response, null, 2);
-		      debug.innerHTML += "\n"+JSON.stringify(response["ok"]);
-		  }
-		  
+		  debug_log(JSON.stringify(response, null, 2));
 		  if(response["ok"])
 		  {
 		      for(var key in response["aliases"])
@@ -53,7 +109,7 @@
 		      }
 		  }
 	      });
-      httpGet("/api/getLauncher", function(response)
+      httpGet("/api/get.launcher", function(response)
 	      {
 		  var launcher_div = document.getElementById("launcher_div");
 		  response = JSON.parse(response);
@@ -69,7 +125,7 @@
 	      running_button = document.getElementById(alias+"_button");
 	      running_button.setAttribute("class", "run_button running");
 	      currentrun = alias +" - "+ new Date().toLocaleString();
-	      httpGet("/api/run?alias="+alias, run_complete);
+	      httpGet("/api/run.alias?alias="+alias, run_complete);
 	  }
 	  else if(running_button.id !== (alias+"_button"))
 	  {
@@ -86,7 +142,7 @@
 		  run_queue.push(alias);
 	      }
 	  }
-      }
+      };
       function run_complete(response)
       {
 	  response = JSON.parse(response);
@@ -135,9 +191,7 @@
 	  }
       };
       </script>
-    <!-- <div id="response_debug" class="logbox"></div> -->
-    <div id="run_buttons">
-    </div>
+    <div id="run_buttons"></div>
     <div id="logs" class="logbox">waiting for logs...</div>
   <body>
 </html>
