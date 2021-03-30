@@ -16,6 +16,7 @@ import confply.server
 import confply.log as log
 import confply.mail as mail
 import confply.slack as slack
+from datetime import datetime
 
 
 class pushd:
@@ -220,6 +221,7 @@ def run_config(in_args):
                     log.confply_header()
                     log.linebreak()
                     log.normal("python"+str(version))
+                    log.normal("date: "+str(datetime.now()))
                     log.linebreak()
                 log.normal("confply logging to "+confply.config.log_file)
             except Exception:

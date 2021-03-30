@@ -108,38 +108,36 @@ class ConfplyServer(SimpleHTTPRequestHandler):
         pass
 
     def do_POST(self):
+        response = {"ok": False}
         if "/api/run.config" == self.path:
             from confply import get_config_dictionary
+            response["ok"] = True
             data_string = self.rfile.read(int(self.headers['Content-Length']))
             parsed = data_string.decode("utf-8")
-            parsed = re.sub(u'[\u201c\u201d]', '"', parsed)
-            parsed = re.sub(u'[\u2019\u2018]', "'", parsed)
             parsed = json.loads(parsed)
             print("=====")
             print(parsed)
             print("=====")
             config = get_config_dictionary("cpp_compiler")
             print(config)
+            # fillout missing values with type defaults
             for k, v in config.items():
                 if k == "confply":
                     continue
                 type_name = type(v).__name__
-                if k in parsed:
-                    print(k+": "+parsed[k])
-                    if type_name == "str":
-                        parsed[k] = parsed[k]
-                    else:
-                        parsed[k] = ast.literal_eval(parsed[k])
-                else:
+                if k not in parsed:
                     parsed[k] = eval(type_name+"()")
 
+            response["running"] = parsed
             print("running:")
-            print(json.dumps(parsed, indent=4))
+            print(response["running"])
             self.send_response(200)
             self.end_headers()
+            self.wfile.write(bytes(json.dumps(response), "utf-8"))
         else:
             self.send_response(404)
             self.end_headers()
+            self.wfile.write(bytes(json.dumps(response), "utf-8"))
 
 
 def _get_best_family(*address):
@@ -192,7 +190,7 @@ def get_form_html():
     import confply.cpp_compiler.config as config
     import confply.cpp_compiler.options as options
     lines = []
-    lines.append("<form id=\"config_form\">") # action=\"/api/run.form\" method=\"post\"
+    lines.append("<form id=\"config_form\">")
     lines.append("<fieldset>")
     option_map = {}
     num = 0
@@ -213,6 +211,7 @@ def get_form_html():
                 line += "\n<select multiple id=\"id_"+k+"\" name=\""+k+"\">"
             else:
                 line += "\n<select id=\"id_"+k+"\" name=\""+k+"\">"
+                line += "\n\t<option selected=\"selected\" value=\"\">none</option>"
             for key, value in zip(option_map[k]["keys"], option_map[k]["values"]):
                 line += "\n\t<option value=\""+str(value)+"\">"+str(key)+"</option>"
             line += "\n</select>"
@@ -221,21 +220,17 @@ def get_form_html():
         else:
             if isinstance(default, bool):
                 if default:
-                    line += "<input type=\"checkbox\" id=\"id_"+k+"\" name=\""+k+"\" value=\"True\" checked/>"
+                    line += "<input type=\"checkbox\" id=\"id_"+k+"\" name=\""+k+"\" value=\"true\" checked/>"
                 else:
-                    line += "<input type=\"checkbox\" id=\"id_"+k+"\" name=\""+k+"\"/>"
-            # elif isinstance(default, list):
-            #     line += "<input type=\"text\" id=\"id_"+k+"\" name=\""+k+"[]\" value=\""+str(default)+"\"/>"
-            #     pass
+                    line += "<input type=\"checkbox\" id=\"id_"+k+"\" name=\""+k+"\" value=\"false\" />"
             else:
                 line += "<input type=\"text\" id=\"id_"+k+"\" name=\""+k+"\" value=\""+str(default)+"\"/>"
             line += "\n<br>"
             lines.append(line)
             option_map[k] = default
-    # lines.append("<input type=\"submit\" value=\"run_config\"/>")
     lines.append("</fieldset>")
     lines.append("</form>")
-    return "\r\n".join(lines)
+    return "\n".join(lines)
 
 
 if __name__ == "__main__":

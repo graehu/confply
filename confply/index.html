@@ -6,7 +6,9 @@
   <body>
     <div id="launcher_div" class="logbox"></div>
     <div id="config_div"></div>
-    <div id="debug_div" class="logbox"></div>
+    <details> <summary>debug</summary>
+      <div id="debug_div" class="logbox"></div>
+    </details>
     <script>
       // #todo: httpget add failure handling
       // for the various gets below.
@@ -18,15 +20,23 @@
       {
 	  if(debug_div !== null)
 	  {
-	      debug_div.innerHTML += message;   
+	      debug_div.innerHTML += message+"<br>";
 	  }
       };
       function httpGet(theUrl, callback)
       {
+	  debug_log("GET "+theUrl);
 	  var xmlHttp = new XMLHttpRequest();
 	  xmlHttp.onreadystatechange = function() { 
               if (xmlHttp.readyState == 4 && xmlHttp.status == 200)
 	      {
+		  debug_log("GET "+theUrl+" response:");
+		  try
+		  {
+		      var holder = JSON.parse(xmlHttp.responseText);
+		      debug_log(JSON.stringify(holder, null, 2));
+		  }
+		  catch(err){debug_log("response not json parsable");}
 		  callback(xmlHttp.responseText);
 	      }
 	  }
@@ -35,45 +45,53 @@
       };
       function httpPost(theUrl, data, callback)
       {
+	  debug_log("POST "+theUrl);
+	  debug_log(data);
 	  var xmlHttp = new XMLHttpRequest();
 	  xmlHttp.onreadystatechange = function() { 
               if (xmlHttp.readyState == 4 && xmlHttp.status == 200)
 	      {
+		  debug_log("POST "+theUrl+" response:");
+		  try
+		  {
+		      var holder = JSON.parse(xmlHttp.responseText);
+		      debug_log(JSON.stringify(holder, null, 2));
+		  }
+		  catch(err){debug_log("response not json parsable");}
 		  callback(xmlHttp.responseText);
 	      }
 	  }
-	  xmlHttp.open("POST", theUrl, true); // true for asynchronous 
+	  xmlHttp.open("POST", theUrl, true); // true for asynchronous
 	  xmlHttp.send(data);
       };
       function submit_form()
       {
-	  debug_log("<br>sending /api/run.config<br>");
 	  var config_form = document.getElementById("config_form");
-	  const formEntries = new FormData(config_form).entries();
-	  const formData = Object.assign(...Array.from(formEntries, ([x,y]) => ({[x]: y})));
-	  
-	  if(config_form !== null)
+	  var formData = {};
+	  // create json parsable dictionary from form
+	  for(var [k, v] of new FormData(config_form))
 	  {
-	      debug_log("found it<br>");
-	  }
-	  else
-	  {
-	      debug_log("didn't found it<br>");
-	  }
-	  debug_log("<br>sending /api/run.config<br>");
-	  debug_log(JSON.stringify(formData, null, 2));
+	      v = v.replace(/[\u2018\u2019]/g, "'");
+	      v = v.replace(/[\u201C\u201D]/g, '"');
+	      v = v.replace(/[\u2013\u2014]/g, '-');
+ 	      v = v.replace(/[\u2026]/g, '...');
+	      if(k in formData)
+	      {
+		  if(Array.isArray(formData[k])) { formData[k].push(v); }
+		  else { formData[k] = [formData[k], v]; }
+	      }
+	      else
+	      {
+		  try { formData[k] = JSON.parse(v); }
+		  catch(err) { formData[k] = v; }
+	      }
+	  };
 	  httpPost("/api/run.config", JSON.stringify(formData), function(response)
 		   {
-		       if(debug !== null)
-		       {
-			   debug_log("<br>/api/run.config<br>");
-			   debug_log(JSON.stringify(response, null, 2));
-		       }
 		   });
       };
       httpGet("/api/get.config.form", function(response)
 	      {
-		  debug_log(JSON.stringify(response, null, 2));
 		  var response = JSON.parse(response);
 		  if(response["ok"])
 		  {
@@ -89,7 +107,6 @@
 	      {
 		  var run_buttons = document.getElementById("run_buttons");
 		  response = JSON.parse(response);
-		  debug_log(JSON.stringify(response, null, 2));
 		  if(response["ok"])
 		  {
 		      for(var key in response["aliases"])
