@@ -48,7 +48,7 @@
 	  debug_log("POST "+theUrl);
 	  debug_log(data);
 	  var xmlHttp = new XMLHttpRequest();
-	  xmlHttp.onreadystatechange = function() { 
+	  xmlHttp.onreadystatechange = function() {
               if (xmlHttp.readyState == 4 && xmlHttp.status == 200)
 	      {
 		  debug_log("POST "+theUrl+" response:");
@@ -67,25 +67,39 @@
       function submit_form()
       {
 	  var config_form = document.getElementById("config_form");
+	  var confply_form = document.getElementById("confply_form");
 	  var formData = {};
+	  formData["confply"] = {};
 	  // create json parsable dictionary from form
-	  for(var [k, v] of new FormData(config_form))
+	  for(var form of [config_form, confply_form])
 	  {
-	      v = v.replace(/[\u2018\u2019]/g, "'");
-	      v = v.replace(/[\u201C\u201D]/g, '"');
-	      v = v.replace(/[\u2013\u2014]/g, '-');
- 	      v = v.replace(/[\u2026]/g, '...');
-	      if(k in formData)
+	      var dict = {}
+	      for(var [k, v] of new FormData(form))
 	      {
-		  if(Array.isArray(formData[k])) { formData[k].push(v); }
-		  else { formData[k] = [formData[k], v]; }
+		  v = v.replace(/[\u2018\u2019]/g, "'");
+		  v = v.replace(/[\u201C\u201D]/g, '"');
+		  v = v.replace(/[\u2013\u2014]/g, '-');
+ 		  v = v.replace(/[\u2026]/g, '...');
+		  if(k in dict)
+		  {
+		      if(Array.isArray(dict[k])) { dict[k].push(v); }
+		      else { dict[k] = [dict[k], v]; }
+		  }
+		  else
+		  {
+		      try { dict[k] = JSON.parse(v); }
+		      catch(err) { dict[k] = v; }
+		  }
+	      };
+	      if(form === config_form)
+	      {
+		  formData = dict;
 	      }
 	      else
 	      {
-		  try { formData[k] = JSON.parse(v); }
-		  catch(err) { formData[k] = v; }
+		  formData["confply"] = dict;
 	      }
-	  };
+	  }
 	  httpPost("/api/run.config", JSON.stringify(formData), function(response)
 		   {
 		   });

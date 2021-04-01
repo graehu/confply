@@ -11,7 +11,7 @@ _/ ___\/  _ \ /    \   __\\____ \|  |<   |  |
 
 # the tool type to run with after loading the config
 # usage: don't set this, it's set on config import
-__tool_type = None
+__tool_type = ""
 
 # the number of configs imported so far
 # usage: don't set this, it's set on config import
@@ -27,7 +27,7 @@ __override_list = []
 
 # sets the desired tool to be used for the command.
 # usage: tool = "clang"
-tool = None
+tool = ""
 
 # sets whether to run the resulting commands or not
 # usage: run = True
@@ -40,24 +40,26 @@ log_topic = "confply"
 # if true, confply will log it's config.
 # default behaviour is as if true.
 # usage: log_config = False
-log_config = None
+log_config = False
 
 # if set, confply will save it's output to the file
 # default behaviour is as if unset, no logs created.
 # usage: log_file = "../logs/my_command.log"
-log_file = None
+log_file = ""
 
 # if true, confply will echo the log file to the terminal
-# usage: wecho_log_file = False
-log_echo_file = True
+# usage: echo_log_file = False
+log_echo_file = False
 
 # if set, confply will run the function after the command runs.
 # usage: post_run = my_function
-post_run = None
+def confply_post_run(): pass
+post_run = confply_post_run
 
 # if set, confply will run the function after the config loads.
 # usage: post_load = my_function
-post_load = None
+def confply_post_load(): pass
+post_load = confply_post_load
 
 # platform that the command is running on
 # usage: if(platform == "linux"): pass
@@ -93,15 +95,15 @@ vcs_log = "unknown"
 
 # mail server login details
 # usage: mail_from = "confply@github.com"
-mail_from = None
+mail_from = ""
 
 # send messages to email address
 # usage: mail_to = "graehu@github.com"
-mail_to = None
+mail_to = ""
 
 # mail server login details
 # usage: mail_login = ("username", "password")
-mail_login = None
+mail_login = ()
 
 # mail hosting server
 # usage: mail_host = ""
@@ -121,7 +123,7 @@ slack_uploads = []
 
 # bot token for the confply slack bot
 # usage: slack_bot_token = "random_hex_string"
-slack_bot_token = None
+slack_bot_token = ""
 
 # what to send: None, failure, success, or all
 # usage: slack_send = None

@@ -154,23 +154,18 @@ def run_config(in_args):
         except subprocess.CalledProcessError:
             log.warning('failed to fill git vcs information')
 
-    if os.name == "nt":
-        confply.config.platform = "windows"
-    elif os.name == "posix":
-        confply.config.platform = "linux"
-
     confply.config.args = in_args
     should_run = confply.config.run
 
-    config_locals, config_modules = __load_config(file_path)
-    if config_locals is None:
+    config_locals, config_modules = load_config(file_path)
+    if not config_locals:
         log.error("failed to load: "+file_path)
         return -1
 
     if("config" not in config_locals):
         log.error("confply config incorrectly imported")
         log.normal("\tuse: 'import confply.[tool_type].config as config'")
-        __clean_modules(config_modules)
+        clean_modules(config_modules)
         return -1
 
     # ensure we don't run if should_run was EVER false
@@ -206,10 +201,10 @@ def run_config(in_args):
             log.normal("\tuse: 'import confply.[tool_type].config as config'" +
                        " to import _tool_type.")
 
-            __clean_modules(config_modules)
+            clean_modules(config_modules)
             return -1
         # begin storing important state before __clean_modules(config_modules)
-        if confply.config.log_file is not None:
+        if confply.config.log_file:
             log.normal("writing to: " +
                        confply.config.log_file +
                        "....")
@@ -358,27 +353,27 @@ def run_config(in_args):
                 mail.recipients = confply.config.mail_to
                 mail.login = confply.config.mail_login
                 mail.attachments = confply.config.mail_attachments
-                if (confply.config.log_file is not None and
+                if (confply.config.log_file and
                         report["status"] == "failure"):
                     mail.attachments.append(os.path.abspath(
                         confply.config.log_file
                     ))
                     pass
-                if mail.login is not None:
+                if mail.login:
                     mail.send_report(report)
 
             if (confply.config.slack_send == report["status"] or
                     confply.config.slack_send == "all"):
                 slack.bot_token = confply.config.slack_bot_token
                 slack.uploads = confply.config.slack_uploads
-                if (confply.config.log_file is not None and
+                if (confply.config.log_file and
                         report["status"] == "failure"):
                     slack.uploads.append(os.path.abspath(
                         confply.config.log_file
                     ))
-                if slack.bot_token is not None:
+                if slack.bot_token:
                     slack.send_report(report)
-    __clean_modules(config_modules)
+    clean_modules(config_modules)
     return return_code
 
 
@@ -391,6 +386,79 @@ def get_config_dictionary(tool_type):
         config_dict[key] = getattr(module, key)
 
     return config_dict
+
+
+def load_config(path):
+    if os.name == "nt":
+        confply.config.platform = "windows"
+    elif os.name == "posix":
+        confply.config.platform = "linux"
+    # find group config in parent directories
+    directory_paths = __get_group_configs(path)
+    directory_paths.append(path)
+    config_locals = {}
+    config_modules = []
+    # load and execute the config files
+    for dir_path in directory_paths:
+        if dir_path is None:
+            continue
+        if os.path.exists(dir_path) and os.path.isfile(dir_path):
+            config_name = os.path.basename(path)
+            confply.config.config_name = config_name
+            confply.config.modified = os.path.getmtime(path).real
+            with open(dir_path) as config_file:
+                with pushd(os.path.dirname(dir_path)):
+                    try:
+                        exec(config_file.read(), {}, config_locals)
+                        # find imported confply configs for cleanup
+                        for k, v in config_locals.items():
+                            m_valid = isinstance(v, types.ModuleType)
+                            if not m_valid:
+                                continue
+
+                            v_name = v.__name__
+                            m_valid = m_valid and v not in config_modules
+                            m_valid = m_valid and v_name.startswith("confply.")
+                            m_valid = m_valid and v_name.endswith(".config")
+                            if m_valid:
+                                config_modules.append(v)
+
+                        # validate there are less than 2 imported configs
+                        if len(confply.config.__imported_configs) > 1:
+                            log.error("too many confply configs imported:")
+                            for c in confply.config.__imported_configs:
+                                log.normal("\t "+c)
+                            log.normal(
+                                "confply only supports one config import."
+                            )
+                            clean_modules(config_modules)
+                            return None, None
+
+                        log.linebreak()
+                        log.success("loaded: "+str(dir_path))
+                    except Exception:
+                        log.error("failed to exec: "+dir_path)
+                        trace = traceback.format_exc().replace("<string>",
+                                                               dir_path)
+                        log.normal("traceback:\n\n"+trace)
+                        return None, None
+
+        else:
+            log.error("failed to find " + dir_path)
+            return None, None
+
+    return config_locals, config_modules
+
+
+def clean_modules(config_modules):
+    for m in config_modules:
+        if m in sys.modules:
+            del sys.modules[m.__name__]
+    importlib.reload(confply.config)
+    importlib.reload(confply.mail)
+    importlib.reload(confply.slack)
+    pass
+
 
 # private section
 
@@ -453,7 +521,7 @@ __directory_stack = []
 
 
 def __run_shell_cmd(shell_cmd, cmd_env, tool):
-    if confply.config.log_file is not None:
+    if confply.config.log_file:
         sys.stdout.flush()
         # #todo: check if this can be ansi-coloured
         result = subprocess.run(shell_cmd,
@@ -480,20 +548,11 @@ def __run_shell_cmd(shell_cmd, cmd_env, tool):
         return -2
 
 
-def __clean_modules(config_modules):
-    for m in config_modules:
-        if m in sys.modules:
-            del sys.modules[m.__name__]
-    importlib.reload(confply.config)
-    importlib.reload(confply.mail)
-    importlib.reload(confply.slack)
-    pass
-
 
 def __run_dependencies(config, config_modules, should_run):
     store = vars(confply.config)
     store = {k: v for k, v in store.items() if not (k.startswith("__") and k.endswith("__"))}
-    __clean_modules(config_modules)
+    clean_modules(config_modules)
     confply.config.run = should_run
     if len(store["dependencies"]) > 0:
         for d in store["dependencies"]:
@@ -560,64 +619,6 @@ def __get_group_configs(path):
             iter_path(temp_path.parent, directory_paths)
         pass
     return directory_paths
-
-
-def __load_config(path):
-    # find group config in parent directories
-    directory_paths = __get_group_configs(path)
-    directory_paths.append(path)
-    config_locals = {}
-    config_modules = []
-    # load and execute the config files
-    for dir_path in directory_paths:
-        if dir_path is None:
-            continue
-        if os.path.exists(dir_path) and os.path.isfile(dir_path):
-            config_name = os.path.basename(path)
-            confply.config.config_name = config_name
-            confply.config.modified = os.path.getmtime(path).real
-            with open(dir_path) as config_file:
-                with pushd(os.path.dirname(dir_path)):
-                    try:
-                        exec(config_file.read(), {}, config_locals)
-                        # find imported confply configs for cleanup
-                        for k, v in config_locals.items():
-                            m_valid = isinstance(v, types.ModuleType)
-                            if not m_valid:
-                                continue
-
-                            v_name = v.__name__
-                            m_valid = m_valid and v not in config_modules
-                            m_valid = m_valid and v_name.startswith("confply.")
-                            m_valid = m_valid and v_name.endswith(".config")
-                            if m_valid:
-                                config_modules.append(v)
-
-                        # validate there are less than 2 imported configs
-                        if len(confply.config.__imported_configs) > 1:
-                            log.error("too many confply configs imported:")
-                            for c in confply.config.__imported_configs:
-                                log.normal("\t "+c)
-                            log.normal(
-                                "confply only supports one config import."
-                            )
-                            __clean_modules(config_modules)
-                            return None, None
-
-                        log.linebreak()
-                        log.success("loaded: "+str(dir_path))
-                    except Exception:
-                        log.error("failed to exec: "+dir_path)
-                        trace = traceback.format_exc().replace("<string>",
-                                                               dir_path)
-                        log.normal("traceback:\n\n"+trace)
-                        return None, None
-
-        else:
-            log.error("failed to find " + dir_path)
-            return None, None
-
-    return config_locals, config_modules
 
 
 def __load_json(json, tool_type):

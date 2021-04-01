@@ -1,10 +1,9 @@
 # Python 3 server example
 from http.server import SimpleHTTPRequestHandler, HTTPServer
-import re
-import ast
 import json
 import os
 import socket
+import inspect
 
 whitelist = [
     ".",
@@ -187,49 +186,63 @@ def get_config_dict():
 
 
 def get_form_html():
-    import confply.cpp_compiler.config as config
-    import confply.cpp_compiler.options as options
+    from confply import load_config
+    from confply import clean_modules
+    config_locals, config_modules = load_config("../examples/cpp_compiler.cpp.py")
+    config = config_locals["config"]
+    options = config_locals["options"]
+    options_map = {}
     lines = []
-    lines.append("<form id=\"config_form\">")
-    lines.append("<fieldset>")
-    option_map = {}
-    num = 0
-    for k in dir(config):
-        if k.startswith("__") or k == "confply":
-            continue
-        num += 1
-        default = getattr(config, k)
-        line = "<label for=\"id_"+k+"\">"+k+":</label>"
-        if k in dir(options):
-            mod = getattr(options, k)
-            mod_dir = [x for x in dir(mod) if not x.startswith("__")]
-            option_map[k] = {
-                "keys": mod_dir,
-                "values": [getattr(mod, x) for x in mod_dir]
-                }
-            if isinstance(default, list):
-                line += "\n<select multiple id=\"id_"+k+"\" name=\""+k+"\">"
-            else:
-                line += "\n<select id=\"id_"+k+"\" name=\""+k+"\">"
-                line += "\n\t<option selected=\"selected\" value=\"\">none</option>"
-            for key, value in zip(option_map[k]["keys"], option_map[k]["values"]):
-                line += "\n\t<option value=\""+str(value)+"\">"+str(key)+"</option>"
-            line += "\n</select>"
-            line += "\n<br>"
-            lines.append(line)
+    for name in ["config", "confply"]:
+        summary_name = name
+        if name == "confply":
+            config = config.confply
         else:
-            if isinstance(default, bool):
-                if default:
-                    line += "<input type=\"checkbox\" id=\"id_"+k+"\" name=\""+k+"\" value=\"true\" checked/>"
+            summary_name = config.confply.__tool_type
+        lines.append("<details><summary>"+summary_name+" form </summary>")
+        lines.append("<form id=\""+name+"_form\">")
+        lines.append("<fieldset>")
+        option_map = {}
+        for k in dir(config):
+            if k.startswith("__") or k == "confply":
+                continue
+            default = getattr(config, k)
+            line = "<label for=\"id_"+k+"\">"+k+":</label>"
+            if k in dir(options):
+                mod = getattr(options, k)
+                mod_dir = [x for x in dir(mod) if not x.startswith("__")]
+                option_map[k] = {
+                    "keys": mod_dir,
+                    "values": [getattr(mod, x) for x in mod_dir]
+                    }
+                if isinstance(default, list):
+                    line += "\n<select multiple id=\"id_"+k+"\" name=\""+k+"\">"
                 else:
-                    line += "<input type=\"checkbox\" id=\"id_"+k+"\" name=\""+k+"\" value=\"false\" />"
+                    line += "\n<select id=\"id_"+k+"\" name=\""+k+"\">"
+                    line += "\n\t<option selected=\"selected\" value=\"\">none</option>"
+                for key, value in zip(option_map[k]["keys"], option_map[k]["values"]):
+                    line += "\n\t<option value=\""+str(value)+"\">"+str(key)+"</option>"
+                line += "\n</select>"
+                line += "\n<br>"
+                lines.append(line)
             else:
-                line += "<input type=\"text\" id=\"id_"+k+"\" name=\""+k+"\" value=\""+str(default)+"\"/>"
-            line += "\n<br>"
-            lines.append(line)
-            option_map[k] = default
-    lines.append("</fieldset>")
-    lines.append("</form>")
+                if isinstance(default, bool):
+                    if default:
+                        line += "<input type=\"checkbox\" id=\"id_"+k+"\" name=\""+k+"\" value=\"true\" checked/>"
+                    else:
+                        line += "<input type=\"checkbox\" id=\"id_"+k+"\" name=\""+k+"\" value=\"false\" />"
+                elif inspect.isfunction(default):
+                    line += "<span> "+default.__name__+"</span>"
+                    pass
+                else:
+                    line += "<input type=\"textarea\" id=\"id_"+k+"\" name=\""+k+"\" value=\""+str(default)+"\"/>"
+                line += "\n<br>"
+                lines.append(line)
+                option_map[k] = default
+        lines.append("</fieldset>")
+        lines.append("</form>")
+        lines.append("</details>")
+    clean_modules(config_modules)
     return "\n".join(lines)
 
 
