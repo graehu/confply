@@ -8,7 +8,6 @@ import inspect
 whitelist = [
     ".",
     "server.css",
-    "server.log"
 ]
 launcher_path = None
 aliases = {}
@@ -59,6 +58,10 @@ class ConfplyServer(SimpleHTTPRequestHandler):
                 response["ok"] = True
                 response["html"] = get_form_html()
                 pass
+            elif "/api/get.config.dict" == self.path:
+                response["ok"] = True
+                config = get_config_dict("../examples/cpp_compiler.cpp.py")
+                response["dict"] = {**config}
             elif "/api/run.alias" == self.path:
                 response["ok"] = True
                 headers["Cache-Control"] = "no-store, must-revalidate"
@@ -80,6 +83,8 @@ class ConfplyServer(SimpleHTTPRequestHandler):
                     response["status"] = "failure"
                 else:
                     response["status"] = "success"
+                with open(server_log) as sf:
+                    response["log"] = sf.read()
             else:
                 self.send_response(404)
                 for k, v in headers.items():
@@ -94,7 +99,6 @@ class ConfplyServer(SimpleHTTPRequestHandler):
                 self.send_header(k, v)
             self.end_headers()
             self.wfile.write(bytes(json.dumps(response), "utf-8"))
-            # print("sending response: "+json.dumps(response, indent=4))
             return
 
         in_path = self.translate_path(self.path)
@@ -109,24 +113,10 @@ class ConfplyServer(SimpleHTTPRequestHandler):
     def do_POST(self):
         response = {"ok": False}
         if "/api/run.config" == self.path:
-            from confply import get_config_dictionary
             response["ok"] = True
             data_string = self.rfile.read(int(self.headers['Content-Length']))
             parsed = data_string.decode("utf-8")
             parsed = json.loads(parsed)
-            print("=====")
-            print(parsed)
-            print("=====")
-            config = get_config_dictionary("cpp_compiler")
-            print(config)
-            # fillout missing values with type defaults
-            for k, v in config.items():
-                if k == "confply":
-                    continue
-                type_name = type(v).__name__
-                if k not in parsed:
-                    parsed[k] = eval(type_name+"()")
-
             response["running"] = parsed
             print("running:")
             print(response["running"])
@@ -175,14 +165,20 @@ def start_server(port=8000, launcher=None):
     print("Server stopped.")
 
 
-def get_config_dict():
-    import confply.cpp_compiler.config as config
-    out = {}
-    for k in dir(config):
-        if k.startswith("__") or k == "confply":
-            continue
-        out[k] = getattr(config, k)
-    return out
+def get_config_dict(path):
+    from confply import load_config
+    from confply import clean_modules
+    from confply import config_to_dict
+    config_locals, config_modules = load_config(path)
+    if config_locals:
+        config = config_locals["config"]
+        options = config_locals["options"]
+        config = config_to_dict(config)
+        options = config_to_dict(options)
+        clean_modules(config_modules)
+        return {"config": config, "options": options}
+
+    return None
 
 
 def get_form_html():
@@ -191,7 +187,6 @@ def get_form_html():
     config_locals, config_modules = load_config("../examples/cpp_compiler.cpp.py")
     config = config_locals["config"]
     options = config_locals["options"]
-    options_map = {}
     lines = []
     for name in ["config", "confply"]:
         summary_name = name

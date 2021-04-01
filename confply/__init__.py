@@ -135,25 +135,6 @@ def run_config(in_args):
     return_code = 0
     file_path = in_args.pop(0)
 
-    # find the git root
-    # #todo: extend this to other version control?
-    if confply.config.vcs == "git":
-        try:
-            git_cmd = 'git rev-parse --show-toplevel'
-            git_cmd = subprocess.check_output(git_cmd, shell=True)
-            confply.config.vcs_root = git_cmd.decode('utf-8').strip()
-            git_cmd = 'git branch --show-current'
-            git_cmd = subprocess.check_output(git_cmd, shell=True)
-            confply.config.vcs_branch = git_cmd.decode('utf-8').strip()
-            git_cmd = "git log -1 --pretty=format:'%an'"
-            git_cmd = subprocess.check_output(git_cmd, shell=True)
-            confply.config.vcs_author = git_cmd.decode("utf-8").strip()
-            git_cmd = "git log -1"
-            git_cmd = subprocess.check_output(git_cmd, shell=True)
-            confply.config.vcs_log = git_cmd.decode("utf-8").strip()
-        except subprocess.CalledProcessError:
-            log.warning('failed to fill git vcs information')
-
     confply.config.args = in_args
     should_run = confply.config.run
 
@@ -348,10 +329,10 @@ def run_config(in_args):
 
             if (confply.config.mail_send == report["status"] or
                     confply.config.mail_send == "all"):
-                mail.host = confply.config.mail_host
+                mail.host = confply.config.__mail_host
                 mail.sender = confply.config.mail_from
                 mail.recipients = confply.config.mail_to
-                mail.login = confply.config.mail_login
+                mail.login = confply.config.__mail_login
                 mail.attachments = confply.config.mail_attachments
                 if (confply.config.log_file and
                         report["status"] == "failure"):
@@ -364,7 +345,7 @@ def run_config(in_args):
 
             if (confply.config.slack_send == report["status"] or
                     confply.config.slack_send == "all"):
-                slack.bot_token = confply.config.slack_bot_token
+                slack.bot_token = confply.config.__slack_bot_token
                 slack.uploads = confply.config.slack_uploads
                 if (confply.config.log_file and
                         report["status"] == "failure"):
@@ -377,15 +358,22 @@ def run_config(in_args):
     return return_code
 
 
-def get_config_dictionary(tool_type):
-    module = importlib.import_module("confply."+tool_type+".config")
-    config_dict = {}
-    for key in dir(module):
-        if key.startswith("__"):
-            continue
-        config_dict[key] = getattr(module, key)
-
-    return config_dict
+def config_to_dict(config):
+    def module_to_dict(module):
+        out = {}
+        for key in dir(module):
+            if key.startswith("__"):
+                continue
+            value = getattr(module, key)
+            if inspect.ismodule(value):
+                out[key] = module_to_dict(value)
+                continue
+            elif inspect.isfunction(value):
+                out[key] = value.__name__
+            else:
+                out[key] = value
+        return out
+    return module_to_dict(config)
 
 
 def load_config(path):
@@ -393,6 +381,27 @@ def load_config(path):
         confply.config.platform = "windows"
     elif os.name == "posix":
         confply.config.platform = "linux"
+
+    # find the git root
+    # #todo: extend this to other version control?
+    # move this to a tool_type
+    if confply.config.vcs == "git":
+        try:
+            git_cmd = 'git rev-parse --show-toplevel'
+            git_cmd = subprocess.check_output(git_cmd, shell=True)
+            confply.config.vcs_root = git_cmd.decode('utf-8').strip()
+            git_cmd = 'git branch --show-current'
+            git_cmd = subprocess.check_output(git_cmd, shell=True)
+            confply.config.vcs_branch = git_cmd.decode('utf-8').strip()
+            git_cmd = "git log -1 --pretty=format:'%an'"
+            git_cmd = subprocess.check_output(git_cmd, shell=True)
+            confply.config.vcs_author = git_cmd.decode("utf-8").strip()
+            git_cmd = "git log -1"
+            git_cmd = subprocess.check_output(git_cmd, shell=True)
+            confply.config.vcs_log = git_cmd.decode("utf-8").strip()
+        except subprocess.CalledProcessError:
+            log.warning('failed to fill git vcs information')
+
     # find group config in parent directories
     directory_paths = __get_group_configs(path)
     directory_paths.append(path)

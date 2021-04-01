@@ -34,7 +34,8 @@
 		  try
 		  {
 		      var holder = JSON.parse(xmlHttp.responseText);
-		      debug_log(JSON.stringify(holder, null, 2));
+		      var debug_str = "<details><summary>json</summary>"+JSON.stringify(holder, null, 2)+"</details>";
+		      debug_log(debug_str);
 		  }
 		  catch(err){debug_log("response not json parsable");}
 		  callback(xmlHttp.responseText);
@@ -55,7 +56,8 @@
 		  try
 		  {
 		      var holder = JSON.parse(xmlHttp.responseText);
-		      debug_log(JSON.stringify(holder, null, 2));
+		      var debug_str = "<details><summary>json</summary>"+JSON.stringify(holder, null, 2)+"</details>";
+		      debug_log(debug_str);
 		  }
 		  catch(err){debug_log("response not json parsable");}
 		  callback(xmlHttp.responseText);
@@ -198,29 +200,25 @@
 	      }
 	      
 	      running_button = null;
+	      var logs = document.getElementById("logs");
+	      if (logs.innerHTML == "waiting for logs...")
+	      {
+		  logs.setAttribute("class", "");
+		  logs.innerHTML = "";
+	      }
 	      
-	      httpGet("/server.log", function(response)
-		      {
-			  var logs = document.getElementById("logs");
-			  if (logs.innerHTML == "waiting for logs...")
-			  {
-			      logs.setAttribute("class", "");
-			      logs.innerHTML = "";
-			  }
-			  
-			  var details = document.createElement("details");
-			  details.innerHTML = "<summary>"+currentrun+"</summary>"+response;
-			  details.setAttribute("class", "logbox");
-			  logs.prepend(document.createElement("br"));
-			  logs.prepend(details);
-			  
-			  if(running_button === null && run_queue.length > 0)
-			  {
-			      run_alias(run_queue.shift());
-			  }
-		      });
+	      var details = document.createElement("details");
+	      details.innerHTML = "<summary>"+currentrun+"</summary>"+response["log"];
+	      details.setAttribute("class", "logbox");
+	      logs.prepend(document.createElement("br"));
+	      logs.prepend(details);
+	      if(run_queue.length > 0)
+	      {
+		  run_alias(run_queue.shift());
+	      }
 	  }
       };
+      httpGet("/api/get.config.dict");
       </script>
     <div id="run_buttons"></div>
     <div id="logs" class="logbox">waiting for logs...</div>

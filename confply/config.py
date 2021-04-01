@@ -102,12 +102,12 @@ mail_from = ""
 mail_to = ""
 
 # mail server login details
-# usage: mail_login = ("username", "password")
-mail_login = ()
+# usage: __mail_login = ("username", "password")
+__mail_login = ()
 
 # mail hosting server
-# usage: mail_host = ""
-mail_host = "smtp.gmail.com"
+# usage: __mail_host = ""
+__mail_host = "smtp.gmail.com"
 
 # file attachments for the mail
 # usage: mail_attachments = ["path/to/attachment.txt"]
@@ -122,8 +122,8 @@ mail_send = "failure"
 slack_uploads = []
 
 # bot token for the confply slack bot
-# usage: slack_bot_token = "random_hex_string"
-slack_bot_token = ""
+# usage: __slack_bot_token = "random_hex_string"
+__slack_bot_token = ""
 
 # what to send: None, failure, success, or all
 # usage: slack_send = None
