@@ -106,19 +106,6 @@
 		   {
 		   });
       };
-      httpGet("/api/get.config.form", function(response)
-	      {
-		  var response = JSON.parse(response);
-		  if(response["ok"])
-		  {
-		      var form  = document.getElementById("config_div");
-		      form.innerHTML = response["html"];
-		      var button = document.createElement("button");
-		      button.setAttribute("onclick", "submit_form()");
-		      button.innerHTML = "run config";
-		      form.appendChild(button);
-		  }
-	      });
       httpGet("/api/get.aliases", function(response)
 	      {
 		  var run_buttons = document.getElementById("run_buttons");
@@ -218,7 +205,83 @@
 	      }
 	  }
       };
-      httpGet("/api/get.config.dict");
+      httpGet("/api/get.config.dict", function(response)
+	      {
+		  response = JSON.parse(response);
+		  if(response["ok"])
+		  {
+		      var config = response["dict"]["config"];
+		      var confply = config["confply"];
+		      delete config["confply"];
+		      var options = response["dict"]["options"];
+		      debug_log(JSON.stringify(options,null,2));
+		      function dict_to_form(dict, name)
+		      {
+			  var lines = [];
+			  lines.push("<details><summary>"+name+" form</summary>");
+			  lines.push("<form id='"+name+"_form'>");
+			  lines.push("<fieldset>");
+			  //
+			  for(var [k, v] of Object.entries(dict))
+			  {
+			      debug_log(k+": "+v);
+			      var line = "<label for=\"id_"+k+"\">"+k+":</label>";
+			      if(k in options)
+			      {
+				  if(Array.isArray(v))
+				  {
+				      line += "\n<select multiple id='id_"+k+"' name='"+k+"'>";
+				  }
+				  else
+				  {
+				      line += "\n<select id='id_"+k+"' name='"+k+"'>";
+				  }
+				  line += "\n\t<option selected='selected' value=''>none</option>";
+				  for ([key, value] of Object.entries(options[k]))
+				  {
+				      line += "\n\t<option value=\""+value+"\">"+key+"</option>";
+				  }
+				  line += "\n</select>";
+			      }
+			      else
+			      {
+				  if(typeof(v) === 'boolean')
+				  {
+				      if(v)
+				      {
+					  line += "<input type='checkbox' id='id_"+k+"' name='"+k+"' value='true' checked />";
+				      }
+				      else
+				      {
+					  line += "<input type='checkbox' id='id_"+k+"' name='"+k+"' value='false' />";
+				      }
+				  }
+				  else if(v.constructor == Object)
+				  {
+				      line += "<input type='textarea' id='id_"+k+"' name='"+k+"' value='"+JSON.stringify(v)+"' />"
+				  }
+				  else
+				  {
+				      line += "<input type='textarea' id='id_"+k+"' name='"+k+"' value='"+v+"' />"
+				  }
+			      }
+			      line += "\n<br>";
+			      lines.push(line);
+			  }
+			  lines.push("</fieldset>");
+			  lines.push("</form>");
+			  lines.push("</details>");
+			  return lines.join("\n");
+		      };
+		      var form  = document.getElementById("config_div");
+		      form.innerHTML = dict_to_form(config, "config");
+		      form.innerHTML += dict_to_form(confply, "confply");
+		      var button = document.createElement("button");
+		      button.setAttribute("onclick", "submit_form()");
+		      button.innerHTML = "run config";
+		      form.appendChild(button);
+		  }
+	      });
       </script>
     <div id="run_buttons"></div>
     <div id="logs" class="logbox">waiting for logs...</div>
