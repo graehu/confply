@@ -3,7 +3,6 @@ from http.server import SimpleHTTPRequestHandler, HTTPServer
 import json
 import os
 import socket
-import inspect
 
 whitelist = [
     ".",
@@ -25,6 +24,7 @@ class ConfplyServer(SimpleHTTPRequestHandler):
     whitelist = []
 
     def do_GET(self):
+        from confply import pushd
         query_list = None
 
         # split the query out if need be
@@ -54,14 +54,15 @@ class ConfplyServer(SimpleHTTPRequestHandler):
                 response["ok"] = True
                 response["path"] = launcher_path
                 pass
-            elif "/api/get.config.form" == self.path:
-                response["ok"] = True
-                response["html"] = get_form_html()
-                pass
             elif "/api/get.config.dict" == self.path:
-                response["ok"] = True
-                config = get_config_dict("../examples/cpp_compiler.cpp.py")
-                response["dict"] = {**config}
+                with pushd(os.path.dirname(launcher_path)):
+                    if "path" in queries and os.path.exists(queries["path"]):
+                        response["ok"] = True
+                        config = get_config_dict(queries["path"])
+                        response["dict"] = {**config}
+                    else:
+                        response["ok"] = False
+                        response["error"] = "invalid path"
             elif "/api/run.alias" == self.path:
                 response["ok"] = True
                 headers["Cache-Control"] = "no-store, must-revalidate"
@@ -147,12 +148,9 @@ def start_server(port=8000, launcher=None):
     if launcher is not None:
         launcher_path = os.path.abspath(launcher)
         with open(launcher_path) as launcher_file:
-            # #todo: this is dangerous af, need to redesign launcher files
-            old_dir = os.path.abspath(os.path.curdir)
             config = {"aliases": {}, "__file__": launcher_path}
             exec(launcher_file.read(), config, config)
             aliases = config["aliases"]
-            os.chdir(old_dir)
 
     webServer = HTTPServer(addr, ConfplyServer)
     print("Server started http://%s:%s" % (addr))
@@ -179,66 +177,6 @@ def get_config_dict(path):
         return {"config": config, "options": options}
 
     return None
-
-
-def get_form_html():
-    from confply import load_config
-    from confply import clean_modules
-    config_locals, config_modules = load_config("../examples/cpp_compiler.cpp.py")
-    config = config_locals["config"]
-    options = config_locals["options"]
-    lines = []
-    for name in ["config", "confply"]:
-        summary_name = name
-        if name == "confply":
-            config = config.confply
-        else:
-            summary_name = config.confply.__tool_type
-        lines.append("<details><summary>"+summary_name+" form </summary>")
-        lines.append("<form id=\""+name+"_form\">")
-        lines.append("<fieldset>")
-        option_map = {}
-        for k in dir(config):
-            if k.startswith("__") or k == "confply":
-                continue
-            default = getattr(config, k)
-            line = "<label for=\"id_"+k+"\">"+k+":</label>"
-            if k in dir(options):
-                mod = getattr(options, k)
-                mod_dir = [x for x in dir(mod) if not x.startswith("__")]
-                option_map[k] = {
-                    "keys": mod_dir,
-                    "values": [getattr(mod, x) for x in mod_dir]
-                    }
-                if isinstance(default, list):
-                    line += "\n<select multiple id=\"id_"+k+"\" name=\""+k+"\">"
-                else:
-                    line += "\n<select id=\"id_"+k+"\" name=\""+k+"\">"
-                    line += "\n\t<option selected=\"selected\" value=\"\">none</option>"
-                for key, value in zip(option_map[k]["keys"], option_map[k]["values"]):
-                    line += "\n\t<option value=\""+str(value)+"\">"+str(key)+"</option>"
-                line += "\n</select>"
-                line += "\n<br>"
-                lines.append(line)
-            else:
-                if isinstance(default, bool):
-                    if default:
-                        line += "<input type=\"checkbox\" id=\"id_"+k+"\" name=\""+k+"\" value=\"true\" checked/>"
-                    else:
-                        line += "<input type=\"checkbox\" id=\"id_"+k+"\" name=\""+k+"\" value=\"false\" />"
-                elif inspect.isfunction(default):
-                    line += "<span> "+default.__name__+"</span>"
-                    pass
-                else:
-                    line += "<input type=\"textarea\" id=\"id_"+k+"\" name=\""+k+"\" value=\""+str(default)+"\"/>"
-                line += "\n<br>"
-                lines.append(line)
-                option_map[k] = default
-        lines.append("</fieldset>")
-        lines.append("</form>")
-        lines.append("</details>")
-    clean_modules(config_modules)
-    return "\n".join(lines)
 
 
 if __name__ == "__main__":

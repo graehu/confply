@@ -10,7 +10,7 @@ import confply.cpp_compiler.options as options
 import confply.log as log
 ############# modify_below ################
 # set the default compiler
-config.confply.tool = options.tools.clangpp
+config.confply.tool = options.tool.clangpp
 
 # set debug_info from commandline args
 debug = False

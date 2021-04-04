@@ -14,7 +14,7 @@ log.normal("loading cpp_compiler with confply_args: "+str(config.confply.args))
 config.source_files = ["main.cpp"]
 config.output_file = "hello_confply"
 config.link_libraries = ["stdc++"]
-config.standard = options.standards.cpp17
+config.standard = options.standard.cpp17
 config.warnings = options.warnings.all_warnings
 config.confply.log_config = True
 def post_run():

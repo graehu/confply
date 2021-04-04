@@ -102,6 +102,8 @@
 		  formData["confply"] = dict;
 	      }
 	  }
+	  // #todo: store the retrieved config json and updated that with the formData.
+	  // fixes missing form data issue.
 	  httpPost("/api/run.config", JSON.stringify(formData), function(response)
 		   {
 		   });
@@ -205,7 +207,7 @@
 	      }
 	  }
       };
-      httpGet("/api/get.config.dict", function(response)
+      httpGet("/api/get.config.dict?path=examples/cpp_compiler.cpp.py", function(response)
 	      {
 		  response = JSON.parse(response);
 		  if(response["ok"])
@@ -214,7 +216,7 @@
 		      var confply = config["confply"];
 		      delete config["confply"];
 		      var options = response["dict"]["options"];
-		      debug_log(JSON.stringify(options,null,2));
+		      // debug_log(JSON.stringify(options,null,2));
 		      function dict_to_form(dict, name)
 		      {
 			  var lines = [];
@@ -222,26 +224,33 @@
 			  lines.push("<form id='"+name+"_form'>");
 			  lines.push("<fieldset>");
 			  //
+			  // debug_log("starting form");
 			  for(var [k, v] of Object.entries(dict))
 			  {
-			      debug_log(k+": "+v);
-			      var line = "<label for=\"id_"+k+"\">"+k+":</label>";
+			      // debug_log(k+": "+v);
+			      lines.push("<label for=\"id_"+k+"\">"+k+":</label>");
 			      if(k in options)
 			      {
 				  if(Array.isArray(v))
 				  {
-				      line += "\n<select multiple id='id_"+k+"' name='"+k+"'>";
+				      lines.push("<select multiple id='id_"+k+"' name='"+k+"'>");
+				      for ([key, value] of Object.entries(options[k]))
+				      {
+					  lines.push("\t<option value=\""+value+"\">"+key+"</option>");
+				      }
+				      lines.push("</select>");
 				  }
 				  else
 				  {
-				      line += "\n<select id='id_"+k+"' name='"+k+"'>";
+				      lines.push("<input list='"+k+"_list' id='id_"+k+"' name='"+k+"' value='"+v+"' multiple />");
+				      lines.push("<datalist id='"+k+"_list'>");
+				      for ([key, value] of Object.entries(options[k]))
+				      {
+					  lines.push("\t<option value=\""+value+"\">"+key+"</option>");
+				      }
+				      lines.push("</datalist>");
 				  }
-				  line += "\n\t<option selected='selected' value=''>none</option>";
-				  for ([key, value] of Object.entries(options[k]))
-				  {
-				      line += "\n\t<option value=\""+value+"\">"+key+"</option>";
-				  }
-				  line += "\n</select>";
+
 			      }
 			      else
 			      {
@@ -249,24 +258,23 @@
 				  {
 				      if(v)
 				      {
-					  line += "<input type='checkbox' id='id_"+k+"' name='"+k+"' value='true' checked />";
+					  lines.push("<input type='checkbox' id='id_"+k+"' name='"+k+"' value='true' checked />");
 				      }
 				      else
 				      {
-					  line += "<input type='checkbox' id='id_"+k+"' name='"+k+"' value='false' />";
+					  lines.push("<input type='checkbox' id='id_"+k+"' name='"+k+"' value='false' />");
 				      }
 				  }
 				  else if(v.constructor == Object)
 				  {
-				      line += "<input type='textarea' id='id_"+k+"' name='"+k+"' value='"+JSON.stringify(v)+"' />"
+				      lines.push("<input type='textarea' id='id_"+k+"' name='"+k+"' value='"+JSON.stringify(v)+"' />");
 				  }
 				  else
 				  {
-				      line += "<input type='textarea' id='id_"+k+"' name='"+k+"' value='"+v+"' />"
+				      lines.push("<input type='textarea' id='id_"+k+"' name='"+k+"' value='"+v+"' />");
 				  }
 			      }
-			      line += "\n<br>";
-			      lines.push(line);
+			      lines.push("<br>");
 			  }
 			  lines.push("</fieldset>");
 			  lines.push("</form>");
