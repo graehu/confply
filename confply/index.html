@@ -16,6 +16,7 @@
       var running_button = null;
       var run_queue = [];
       var debug_div = document.getElementById("debug_div");
+      var config_json = null;
       function debug_log(message)
       {
 	  if(debug_div !== null)
@@ -102,8 +103,10 @@
 		  formData["confply"] = dict;
 	      }
 	  }
-	  // #todo: store the retrieved config json and updated that with the formData.
-	  // fixes missing form data issue.
+	  formData = {
+	      ...formData,
+	      ...config_json
+	  };
 	  httpPost("/api/run.config", JSON.stringify(formData), function(response)
 		   {
 		   });
@@ -212,8 +215,10 @@
 		  response = JSON.parse(response);
 		  if(response["ok"])
 		  {
+		      config_json = response["dict"]["config"];
 		      var config = response["dict"]["config"];
 		      var confply = config["confply"];
+		      
 		      delete config["confply"];
 		      var options = response["dict"]["options"];
 		      // debug_log(JSON.stringify(options,null,2));
