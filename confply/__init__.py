@@ -116,13 +116,13 @@ def launcher(in_args, aliases):
 
 # #todo: make this import one tool at a time,
 # like previous import_cache behaviour
-def run_config(in_args):
+def run_commandline(in_args):
     """
     runs the confply config, with supplied arguements.
     confply reservered options will be stripped. e.g. --help
     see help.md
 
-    usage: run_config(["path_to_config", "optional", "arguements"])
+    usage: run_commandline(["path_to_config", "optional", "arguements"])
     """
     in_args = __strip_confply_args(in_args)
     if len(in_args) == 0:
@@ -132,9 +132,8 @@ def run_config(in_args):
     log.linebreak()
 
     # setup config run
-    return_code = 0
-    file_path = in_args.pop(0)
-
+    confply.config.config_path = in_args.pop(0)
+    file_path = confply.config.config_path
     confply.config.args = in_args
     should_run = confply.config.run
 
@@ -152,9 +151,233 @@ def run_config(in_args):
     # ensure we don't run if should_run was EVER false
     if should_run is not True:
         confply.config.run = should_run
+    return __run_config(config_locals, config_modules)
 
-    confply_path = os.path.dirname(__file__) + "/"
+
+def run_json(json, tool_type):
+    """
+    runs the confply json for the supplied tool_type
+
+    usage: run_json(json, tool_type)
+    """
+    log.linebreak()
+    log.header("run config")
+    log.linebreak()
+
+    # setup config run
+    should_run = confply.config.run
+    path = json["confply"]["config_path"]
+    confply.config.config_path = path
+    config_name = os.path.basename(path)
+    confply.config.config_name = config_name
+    confply.config.modified = os.path.getmtime(path).real
+    confply.config.__tool_type = tool_type
+    config_locals, config_modules = apply_to_config(json, tool_type)
+    if not config_locals:
+        log.error("failed to load: "+tool_type+" json")
+        return -1
+
+    if("config" not in config_locals):
+        log.error("confply config incorrectly imported")
+        log.normal("\tuse: 'import confply.[tool_type].config as config'")
+        clean_modules(config_modules)
+        return -1
+
+    # ensure we don't run if should_run was EVER false
+    if should_run is not True:
+        confply.config.run = should_run
+    return __run_config(config_locals, config_modules)
+
+
+def config_to_dict(config):
+    def module_to_dict(module):
+        out = {}
+        for key in dir(module):
+            if key.startswith("__"):
+                continue
+            value = getattr(module, key)
+            if inspect.ismodule(value):
+                out[key] = module_to_dict(value)
+                continue
+            elif inspect.isfunction(value):
+                out[key] = value.__name__
+            else:
+                out[key] = value
+        return out
+    return module_to_dict(config)
+
+
+def apply_to_config(config_name, config):
+    def apply_to_module(in_dict):
+        for key, value in in_dict.items():
+            if key.startswith("__"):
+                continue
+            value = setattr(module, key, value)
+            if inspect.ismodule(value):
+                module_to_dict(value)
+
+
+def load_config(path):
+    if os.name == "nt":
+        confply.config.platform = "windows"
+    elif os.name == "posix":
+        confply.config.platform = "linux"
+
+    # find the git root
+    # #todo: extend this to other version control?
+    # move this to a tool_type
+    if confply.config.vcs == "git":
+        try:
+            git_cmd = 'git rev-parse --show-toplevel'
+            git_cmd = subprocess.check_output(git_cmd, shell=True)
+            confply.config.vcs_root = git_cmd.decode('utf-8').strip()
+            git_cmd = 'git branch --show-current'
+            git_cmd = subprocess.check_output(git_cmd, shell=True)
+            confply.config.vcs_branch = git_cmd.decode('utf-8').strip()
+            git_cmd = "git log -1 --pretty=format:'%an'"
+            git_cmd = subprocess.check_output(git_cmd, shell=True)
+            confply.config.vcs_author = git_cmd.decode("utf-8").strip()
+            git_cmd = "git log -1"
+            git_cmd = subprocess.check_output(git_cmd, shell=True)
+            confply.config.vcs_log = git_cmd.decode("utf-8").strip()
+        except subprocess.CalledProcessError:
+            log.warning('failed to fill git vcs information')
+
+    # find group config in parent directories
+    directory_paths = __get_group_configs(path)
+    directory_paths.append(path)
+    config_locals = {}
+    config_modules = []
+    # load and execute the config files
+    for dir_path in directory_paths:
+        if dir_path is None:
+            continue
+        if os.path.exists(dir_path) and os.path.isfile(dir_path):
+            config_name = os.path.basename(path)
+            confply.config.config_name = config_name
+            confply.config.modified = os.path.getmtime(path).real
+            with open(dir_path) as config_file:
+                with pushd(os.path.dirname(dir_path)):
+                    try:
+                        exec(config_file.read(), {}, config_locals)
+                        # find imported confply configs for cleanup
+                        for k, v in config_locals.items():
+                            m_valid = isinstance(v, types.ModuleType)
+                            if not m_valid:
+                                continue
+
+                            v_name = v.__name__
+                            m_valid = m_valid and v not in config_modules
+                            m_valid = m_valid and v_name.startswith("confply.")
+                            m_valid = m_valid and v_name.endswith(".config")
+                            if m_valid:
+                                config_modules.append(v)
+
+                        # validate there are less than 2 imported configs
+                        if len(confply.config.__imported_configs) > 1:
+                            log.error("too many confply configs imported:")
+                            for c in confply.config.__imported_configs:
+                                log.normal("\t "+c)
+                            log.normal(
+                                "confply only supports one config import."
+                            )
+                            clean_modules(config_modules)
+                            return None, None
+
+                        log.linebreak()
+                        log.success("loaded: "+str(dir_path))
+                    except Exception:
+                        log.error("failed to exec: "+dir_path)
+                        trace = traceback.format_exc().replace("<string>",
+                                                               dir_path)
+                        log.normal("traceback:\n\n"+trace)
+                        return None, None
+
+        else:
+            log.error("failed to find " + dir_path)
+            return None, None
+
+    return config_locals, config_modules
+
+
+def clean_modules(config_modules):
+    for m in config_modules:
+        if m in sys.modules:
+            del sys.modules[m.__name__]
+    importlib.reload(confply.config)
+    importlib.reload(confply.mail)
+    importlib.reload(confply.slack)
+    pass
+
+
+# private section
+
+
+__version__ = "0.0.1"
+__doc__ = """
+Confply is an abstraction layer for other commandline tools.
+It lets you write a consistent config file & commandline interface for tools
+that have similar functions.
+More to come.
+"""
+
+
+__new_launcher_str = r"""#!/usr/bin/env python
+#                      _____       .__
+#   ____  ____   _____/ ____\_____ |  | ___.__.
+# _/ ___\/  _ \ /    \   __\\____ \|  |<   |  |
+# \  \__(  <_> )   |  \  |  |  |_> >  |_\___  |
+#  \___  >____/|___|  /__|  |   __/|____/ ____|
+#      \/           \/      |__|        \/
+# launcher generated using:
+#
+# python {confply_dir}/confply.py --launcher {launcher}
+
+import sys
+import os
+sys.path.append("{confply_dir}")
+from confply import launcher
+
+# fill this with your configs
+aliases = {comment}
+
+# "all" will run all of the aliases
+aliases["all"] = " -- ".join([val for key, val in aliases.items()])
+
+if __name__ == "__main__":
+    dir_name = os.path.dirname(__file__)
+    if not dir_name == "":
+        os.chdir(dir_name)
+    launcher(sys.argv[1:], aliases)
+"""
+
+__new_config_str = """#!{confply_dir}/confply.py
+# generated using:
+# python {confply_dir}/confply.py --config {tool_type_arg} {config_file}
+import sys
+sys.path.append('{confply_dir}')
+import confply.{tool_type_arg}.config as config
+import confply.{tool_type_arg}.options as options
+import confply.log as log
+############# modify_below ################
+
+config.confply.log_topic = "{tool_type_arg}"
+log.normal("loading {config_file} with confply_args: "+str(config.confply.args))
+config.confply.tool = options.defaults.tool
+"""
+# list of configs that have already been run
+__configs_run = []
+__directory_stack = []
+
+
+def __run_config(config_locals, config_modules):
+    in_args = confply.config.args
     config = config_locals["config"]
+    return_code = 0
+    should_run = confply.config.run
+    file_path = confply.config.config_path
+    print(file_path)
+    confply_path = os.path.dirname(__file__) + "/"
     __apply_overrides(config)
     new_working_dir = os.path.dirname(file_path)
     old_stdout = sys.stdout
@@ -358,176 +581,6 @@ def run_config(in_args):
     return return_code
 
 
-def config_to_dict(config):
-    def module_to_dict(module):
-        out = {}
-        for key in dir(module):
-            if key.startswith("__"):
-                continue
-            value = getattr(module, key)
-            if inspect.ismodule(value):
-                out[key] = module_to_dict(value)
-                continue
-            elif inspect.isfunction(value):
-                out[key] = value.__name__
-            else:
-                out[key] = value
-        return out
-    return module_to_dict(config)
-
-
-def load_config(path):
-    if os.name == "nt":
-        confply.config.platform = "windows"
-    elif os.name == "posix":
-        confply.config.platform = "linux"
-
-    # find the git root
-    # #todo: extend this to other version control?
-    # move this to a tool_type
-    if confply.config.vcs == "git":
-        try:
-            git_cmd = 'git rev-parse --show-toplevel'
-            git_cmd = subprocess.check_output(git_cmd, shell=True)
-            confply.config.vcs_root = git_cmd.decode('utf-8').strip()
-            git_cmd = 'git branch --show-current'
-            git_cmd = subprocess.check_output(git_cmd, shell=True)
-            confply.config.vcs_branch = git_cmd.decode('utf-8').strip()
-            git_cmd = "git log -1 --pretty=format:'%an'"
-            git_cmd = subprocess.check_output(git_cmd, shell=True)
-            confply.config.vcs_author = git_cmd.decode("utf-8").strip()
-            git_cmd = "git log -1"
-            git_cmd = subprocess.check_output(git_cmd, shell=True)
-            confply.config.vcs_log = git_cmd.decode("utf-8").strip()
-        except subprocess.CalledProcessError:
-            log.warning('failed to fill git vcs information')
-
-    # find group config in parent directories
-    directory_paths = __get_group_configs(path)
-    directory_paths.append(path)
-    config_locals = {}
-    config_modules = []
-    # load and execute the config files
-    for dir_path in directory_paths:
-        if dir_path is None:
-            continue
-        if os.path.exists(dir_path) and os.path.isfile(dir_path):
-            config_name = os.path.basename(path)
-            confply.config.config_name = config_name
-            confply.config.modified = os.path.getmtime(path).real
-            with open(dir_path) as config_file:
-                with pushd(os.path.dirname(dir_path)):
-                    try:
-                        exec(config_file.read(), {}, config_locals)
-                        # find imported confply configs for cleanup
-                        for k, v in config_locals.items():
-                            m_valid = isinstance(v, types.ModuleType)
-                            if not m_valid:
-                                continue
-
-                            v_name = v.__name__
-                            m_valid = m_valid and v not in config_modules
-                            m_valid = m_valid and v_name.startswith("confply.")
-                            m_valid = m_valid and v_name.endswith(".config")
-                            if m_valid:
-                                config_modules.append(v)
-
-                        # validate there are less than 2 imported configs
-                        if len(confply.config.__imported_configs) > 1:
-                            log.error("too many confply configs imported:")
-                            for c in confply.config.__imported_configs:
-                                log.normal("\t "+c)
-                            log.normal(
-                                "confply only supports one config import."
-                            )
-                            clean_modules(config_modules)
-                            return None, None
-
-                        log.linebreak()
-                        log.success("loaded: "+str(dir_path))
-                    except Exception:
-                        log.error("failed to exec: "+dir_path)
-                        trace = traceback.format_exc().replace("<string>",
-                                                               dir_path)
-                        log.normal("traceback:\n\n"+trace)
-                        return None, None
-
-        else:
-            log.error("failed to find " + dir_path)
-            return None, None
-
-    return config_locals, config_modules
-
-
-def clean_modules(config_modules):
-    for m in config_modules:
-        if m in sys.modules:
-            del sys.modules[m.__name__]
-    importlib.reload(confply.config)
-    importlib.reload(confply.mail)
-    importlib.reload(confply.slack)
-    pass
-
-
-# private section
-
-
-__version__ = "0.0.1"
-__doc__ = """
-Confply is an abstraction layer for other commandline tools.
-It lets you write a consistent config file & commandline interface for tools
-that have similar functions.
-More to come.
-"""
-
-
-__new_launcher_str = r"""#!/usr/bin/env python
-#                      _____       .__
-#   ____  ____   _____/ ____\_____ |  | ___.__.
-# _/ ___\/  _ \ /    \   __\\____ \|  |<   |  |
-# \  \__(  <_> )   |  \  |  |  |_> >  |_\___  |
-#  \___  >____/|___|  /__|  |   __/|____/ ____|
-#      \/           \/      |__|        \/
-# launcher generated using:
-#
-# python {confply_dir}/confply.py --launcher {launcher}
-
-import sys
-import os
-sys.path.append("{confply_dir}")
-from confply import launcher
-
-# fill this with your configs
-aliases = {comment}
-
-# "all" will run all of the aliases
-aliases["all"] = " -- ".join([val for key, val in aliases.items()])
-
-if __name__ == "__main__":
-    dir_name = os.path.dirname(__file__)
-    if not dir_name == "":
-        os.chdir(dir_name)
-    launcher(sys.argv[1:], aliases)
-"""
-
-__new_config_str = """#!{confply_dir}/confply.py
-# generated using:
-# python {confply_dir}/confply.py --config {tool_type_arg} {config_file}
-import sys
-sys.path.append('{confply_dir}')
-import confply.{tool_type_arg}.config as config
-import confply.{tool_type_arg}.options as options
-import confply.log as log
-############# modify_below ################
-
-config.confply.log_topic = "{tool_type_arg}"
-log.normal("loading {config_file} with confply_args: "+str(config.confply.args))
-config.confply.tool = options.defaults.tool
-"""
-# list of configs that have already been run
-__configs_run = []
-__directory_stack = []
-
 
 def __run_shell_cmd(shell_cmd, cmd_env, tool):
     if confply.config.log_file:
@@ -630,15 +683,22 @@ def __get_group_configs(path):
     return directory_paths
 
 
-def __load_json(json, tool_type):
+def apply_to_config(json, tool_type):
     module = importlib.import_module("confply."+tool_type+".config")
+    confply_config = importlib.import_module("confply.config")
     config_modules = []
     config_locals = {"config": module}
     config_modules.append(module)
     for key in dir(module):
         if key.startswith("__"):
             continue
-        if key in json:
+        if key == "confply":
+            for k in dir(confply_config):
+                if key.startswith("__"):
+                    continue
+                if k in json[key]:
+                    setattr(confply_config, k, json[key][k])
+        elif key in json:
             setattr(module, key, json[key])
 
     return config_locals, config_modules

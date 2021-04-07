@@ -104,8 +104,8 @@
 	      }
 	  }
 	  formData = {
-	      ...formData,
-	      ...config_json
+	      ...config_json,
+	      ...formData
 	  };
 	  httpPost("/api/run.config", JSON.stringify(formData), function(response)
 		   {
@@ -267,10 +267,10 @@
 				      }
 				      else
 				      {
-					  lines.push("<input type='checkbox' id='id_"+k+"' name='"+k+"' value='false' />");
+					  lines.push("<input type='checkbox' id='id_"+k+"' name='"+k+"' value='true' />");
 				      }
 				  }
-				  else if(v.constructor == Object)
+				  else if(v.constructor == Object || Array.isArray(v))
 				  {
 				      lines.push("<input type='textarea' id='id_"+k+"' name='"+k+"' value='"+JSON.stringify(v)+"' />");
 				  }

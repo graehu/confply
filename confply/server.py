@@ -114,13 +114,29 @@ class ConfplyServer(SimpleHTTPRequestHandler):
     def do_POST(self):
         response = {"ok": False}
         if "/api/run.config" == self.path:
+            from confply import run_json
+            from confply import pushd
             response["ok"] = True
             data_string = self.rfile.read(int(self.headers['Content-Length']))
             parsed = data_string.decode("utf-8")
             parsed = json.loads(parsed)
-            response["running"] = parsed
-            print("running:")
-            print(response["running"])
+            response["ran"] = parsed
+            server_log = os.path.abspath(os.path.dirname(__file__))
+            server_log = os.path.join(server_log, "server.log")
+            with open(server_log, "w") as sf:
+                sf.write("failed to write server log\n")
+                pass
+            parsed["confply"]["log_file"] = server_log
+            with pushd(os.path.dirname(launcher_path)):
+                return_code = run_json(parsed, "cpp_compiler")
+
+            if return_code != 0:
+                response["status"] = "failure"
+            else:
+                response["status"] = "success"
+            with open(server_log) as sf:
+                response["log"] = sf.read()
+                pass
             self.send_response(200)
             self.end_headers()
             self.wfile.write(bytes(json.dumps(response), "utf-8"))
@@ -173,6 +189,7 @@ def get_config_dict(path):
         options = config_locals["options"]
         config = config_to_dict(config)
         options = config_to_dict(options)
+        config["confply"]["config_path"] = path
         clean_modules(config_modules)
         return {"config": config, "options": options}
 

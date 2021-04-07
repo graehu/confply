@@ -22,7 +22,7 @@ if __name__ == "__main__":
     return_code = -999999
     if len(in_args) != 0:
         while len(in_args) > 0:
-            cmd_return = confply.run_config(in_args)
+            cmd_return = confply.run_commandline(in_args)
 
             if(cmd_return > return_code and cmd_return != 0):
                 return_code = cmd_return

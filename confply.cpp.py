@@ -33,3 +33,4 @@ if os.path.exists("slack_details.py"):
         slack_bot = ast.literal_eval(details_file.read())
 config.confply.__mail_login = mail_login
 config.confply.__slack_bot_token = slack_bot
+config.confply.log_echo_file = True
