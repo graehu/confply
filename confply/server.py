@@ -59,10 +59,14 @@ class ConfplyServer(SimpleHTTPRequestHandler):
                     if "path" in queries and os.path.exists(queries["path"]):
                         response["ok"] = True
                         config = get_config_dict(queries["path"])
+                        # #todo: deal with functions.
                         response["dict"] = {**config}
                     else:
                         response["ok"] = False
                         response["error"] = "invalid path"
+            elif "/api/get.configs" == self.path:
+                response["ok"] = True
+                response["configs"] = ["examples/cpp_compiler.cpp.py"]
             elif "/api/run.alias" == self.path:
                 response["ok"] = True
                 headers["Cache-Control"] = "no-store, must-revalidate"
@@ -116,6 +120,7 @@ class ConfplyServer(SimpleHTTPRequestHandler):
         if "/api/run.config" == self.path:
             from confply import run_json
             from confply import pushd
+            # #todo: check that the passed config is in the valid configs passed by get.configs
             response["ok"] = True
             data_string = self.rfile.read(int(self.headers['Content-Length']))
             parsed = data_string.decode("utf-8")

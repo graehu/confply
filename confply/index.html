@@ -6,6 +6,7 @@
   <body>
     <div id="launcher_div" class="logbox"></div>
     <div id="config_div"></div>
+    <div id="config_select_div"></div>
     <details> <summary>debug</summary>
       <div id="debug_div" class="logbox"></div>
     </details>
@@ -69,54 +70,73 @@
       };
       function submit_form()
       {
-	  var config_form = document.getElementById("config_form");
-	  var confply_form = document.getElementById("confply_form");
-	  var formData = {};
-	  formData["confply"] = {};
-	  // create json parsable dictionary from form
-	  for(var form of [config_form, confply_form])
+	  if(running_button === null)
 	  {
-	      var dict = {}
-	      for(var [k, v] of new FormData(form))
+	      var config_form = document.getElementById("config_form");
+	      var confply_form = document.getElementById("confply_form");
+	      var formData = {};
+	      formData["confply"] = {};
+	      // create json parsable dictionary from form
+	      for(var form of [config_form, confply_form])
 	      {
-		  v = v.replace(/[\u2018\u2019]/g, "'");
-		  v = v.replace(/[\u201C\u201D]/g, '"');
-		  v = v.replace(/[\u2013\u2014]/g, '-');
- 		  v = v.replace(/[\u2026]/g, '...');
-		  if(k in dict)
+		  var dict = {}
+		  for(var [k, v] of new FormData(form))
 		  {
-		      if(Array.isArray(dict[k])) { dict[k].push(v); }
-		      else { dict[k] = [dict[k], v]; }
+		      v = v.replace(/[\u2018\u2019]/g, "'");
+		      v = v.replace(/[\u201C\u201D]/g, '"');
+		      v = v.replace(/[\u2013\u2014]/g, '-');
+ 		      v = v.replace(/[\u2026]/g, '...');
+		      if(k in dict)
+		      {
+			  if(Array.isArray(dict[k])) { dict[k].push(v); }
+			  else { dict[k] = [dict[k], v]; }
+		      }
+		      else
+		      {
+			  try { dict[k] = JSON.parse(v); }
+			  catch(err) { dict[k] = v; }
+		      }
+		  };
+		  if(form === config_form)
+		  {
+		      formData = dict;
 		  }
 		  else
 		  {
-		      try { dict[k] = JSON.parse(v); }
-		      catch(err) { dict[k] = v; }
+		      formData["confply"] = dict;
 		  }
+	      }
+	      formData = {
+		  ...config_json,
+		  ...formData
 	      };
-	      if(form === config_form)
+	      currentrun = "form - "+ new Date().toLocaleString();
+	      running_button = document.getElementById("form_button");
+	      running_button.setAttribute("class", "run_button running");
+	      httpPost("/api/run.config", JSON.stringify(formData), run_complete);
+	  }
+	  else
+	  {
+	      var index = run_queue.indexOf("confply_form");
+	      var button =  document.getElementById("form_button");
+	      if (index >= 0)
 	      {
-		  formData = dict;
+		  run_queue.splice(index, 1);
+		  button.setAttribute("class", "run_button");
 	      }
 	      else
 	      {
-		  formData["confply"] = dict;
+		  button.setAttribute("class", "run_button queued");
+		  run_queue.push("confply_form");
 	      }
 	  }
-	  formData = {
-	      ...config_json,
-	      ...formData
-	  };
-	  httpPost("/api/run.config", JSON.stringify(formData), function(response)
-		   {
-		   });
       };
       httpGet("/api/get.aliases", function(response)
 	      {
-		  var run_buttons = document.getElementById("run_buttons");
 		  response = JSON.parse(response);
 		  if(response["ok"])
 		  {
+		      var run_buttons = document.getElementById("run_buttons");
 		      for(var key in response["aliases"])
 		      {
 			  var pre = document.createElement("pre");
@@ -134,6 +154,25 @@
 		      }
 		  }
 	      });
+      httpGet("/api/get.configs", function(response)
+	      {
+		  response = JSON.parse(response);
+		  if(response["ok"])
+		  {
+		      var config_select_div = document.getElementById("config_select_div");
+		      var lines = [];
+		      lines.push("<label for='id_config_select'>selected config:</label>");
+		      lines.push("<select id='id_config_select' name='config_select' onchange='config_changed()'>");
+		      lines.push("\t<option value='none'>none</option>");
+		      for(var path in response["configs"])
+		      {
+			  path = response["configs"][path];
+			  lines.push("\t<option value='"+path+"'\">"+path+"</option>");
+		      }
+		      lines.push("</select>");
+		      config_select_div.innerHTML = lines.join("\n");
+		  }
+	      });
       httpGet("/api/get.launcher", function(response)
 	      {
 		  var launcher_div = document.getElementById("launcher_div");
@@ -143,6 +182,106 @@
 		      launcher_div.innerHTML = response["path"];   
 		  }
 	      });
+      function config_changed()
+      {
+	  var config_select = document.getElementById("id_config_select");
+	  var value = config_select.value;
+	  if(value !== "none")
+	  {
+	      httpGet("/api/get.config.dict?path="+value, function(response)
+		      {
+			  response = JSON.parse(response);
+			  if(response["ok"])
+			  {
+			      config_json = response["dict"]["config"];
+			      var config = response["dict"]["config"];
+			      var confply = config["confply"];
+			      
+			      delete config["confply"];
+			      var options = response["dict"]["options"];
+			      // debug_log(JSON.stringify(options,null,2));
+			      function dict_to_form(dict, name)
+			      {
+				  var lines = [];
+				  lines.push("<details><summary>"+name+" form</summary>");
+				  lines.push("<form id='"+name+"_form'>");
+				  lines.push("<fieldset>");
+				  //
+				  // debug_log("starting form");
+				  for(var [k, v] of Object.entries(dict))
+				  {
+				      // debug_log(k+": "+v);
+				      lines.push("<label for=\"id_"+k+"\">"+k+":</label>");
+				      if(k in options)
+				      {
+					  if(Array.isArray(v))
+					  {
+					      lines.push("<select multiple id='id_"+k+"' name='"+k+"'>");
+					      for ([key, value] of Object.entries(options[k]))
+					      {
+						  lines.push("\t<option value=\""+value+"\">"+key+"</option>");
+					      }
+					      lines.push("</select>");
+					  }
+					  else
+					  {
+					      lines.push("<input list='"+k+"_list' id='id_"+k+"' name='"+k+"' value='"+v+"' multiple />");
+					      lines.push("<datalist id='"+k+"_list'>");
+					      for ([key, value] of Object.entries(options[k]))
+					      {
+						  lines.push("\t<option value=\""+value+"\">"+key+"</option>");
+					      }
+					      lines.push("</datalist>");
+					  }
+
+				      }
+				      else
+				      {
+					  if(typeof(v) === 'boolean')
+					  {
+					      if(v)
+					      {
+						  lines.push("<input type='checkbox' id='id_"+k+"' name='"+k+"' value='true' checked />");
+					      }
+					      else
+					      {
+						  lines.push("<input type='checkbox' id='id_"+k+"' name='"+k+"' value='true' />");
+					      }
+					  }
+					  else if(v.constructor == Object || Array.isArray(v))
+					  {
+					      lines.push("<input type='textarea' id='id_"+k+"' name='"+k+"' value='"+JSON.stringify(v)+"' />");
+					  }
+					  else
+					  {
+					      lines.push("<input type='textarea' id='id_"+k+"' name='"+k+"' value='"+v+"' />");
+					  }
+				      }
+				      lines.push("<br>");
+				  }
+				  lines.push("</fieldset>");
+				  lines.push("</form>");
+				  lines.push("</details>");
+				  return lines.join("\n");
+			      };
+			      var form = document.getElementById("config_div");
+			      form.innerHTML = dict_to_form(config, "config");
+			      form.innerHTML += dict_to_form(confply, "confply");
+			      var button = document.createElement("button");
+			      button.setAttribute("onclick", "submit_form()");
+			      button.setAttribute("class", "run_button");
+			      button.setAttribute("id", "form_button");
+			      button.innerHTML = "run config";
+			      form.appendChild(button);
+			  }
+		      });
+	  }
+	  else
+	  {
+	      var form  = document.getElementById("config_div");
+	      form.innerHTML = "";
+	  }
+      };
       function run_alias(alias)
       {
 	  if(running_button === null)
@@ -206,95 +345,18 @@
 	      logs.prepend(details);
 	      if(run_queue.length > 0)
 	      {
-		  run_alias(run_queue.shift());
+		  var run = run_queue.shift();
+		  if(run === "confply_form")
+		  {
+		      submit_form();
+		  }
+		  else
+		  {
+		      run_alias(run);
+		  }
 	      }
 	  }
       };
-      httpGet("/api/get.config.dict?path=examples/cpp_compiler.cpp.py", function(response)
-	      {
-		  response = JSON.parse(response);
-		  if(response["ok"])
-		  {
-		      config_json = response["dict"]["config"];
-		      var config = response["dict"]["config"];
-		      var confply = config["confply"];
-		      
-		      delete config["confply"];
-		      var options = response["dict"]["options"];
-		      // debug_log(JSON.stringify(options,null,2));
-		      function dict_to_form(dict, name)
-		      {
-			  var lines = [];
-			  lines.push("<details><summary>"+name+" form</summary>");
-			  lines.push("<form id='"+name+"_form'>");
-			  lines.push("<fieldset>");
-			  //
-			  // debug_log("starting form");
-			  for(var [k, v] of Object.entries(dict))
-			  {
-			      // debug_log(k+": "+v);
-			      lines.push("<label for=\"id_"+k+"\">"+k+":</label>");
-			      if(k in options)
-			      {
-				  if(Array.isArray(v))
-				  {
-				      lines.push("<select multiple id='id_"+k+"' name='"+k+"'>");
-				      for ([key, value] of Object.entries(options[k]))
-				      {
-					  lines.push("\t<option value=\""+value+"\">"+key+"</option>");
-				      }
-				      lines.push("</select>");
-				  }
-				  else
-				  {
-				      lines.push("<input list='"+k+"_list' id='id_"+k+"' name='"+k+"' value='"+v+"' multiple />");
-				      lines.push("<datalist id='"+k+"_list'>");
-				      for ([key, value] of Object.entries(options[k]))
-				      {
-					  lines.push("\t<option value=\""+value+"\">"+key+"</option>");
-				      }
-				      lines.push("</datalist>");
-				  }
-
-			      }
-			      else
-			      {
-				  if(typeof(v) === 'boolean')
-				  {
-				      if(v)
-				      {
-					  lines.push("<input type='checkbox' id='id_"+k+"' name='"+k+"' value='true' checked />");
-				      }
-				      else
-				      {
-					  lines.push("<input type='checkbox' id='id_"+k+"' name='"+k+"' value='true' />");
-				      }
-				  }
-				  else if(v.constructor == Object || Array.isArray(v))
-				  {
-				      lines.push("<input type='textarea' id='id_"+k+"' name='"+k+"' value='"+JSON.stringify(v)+"' />");
-				  }
-				  else
-				  {
-				      lines.push("<input type='textarea' id='id_"+k+"' name='"+k+"' value='"+v+"' />");
-				  }
-			      }
-			      lines.push("<br>");
-			  }
-			  lines.push("</fieldset>");
-			  lines.push("</form>");
-			  lines.push("</details>");
-			  return lines.join("\n");
-		      };
-		      var form  = document.getElementById("config_div");
-		      form.innerHTML = dict_to_form(config, "config");
-		      form.innerHTML += dict_to_form(confply, "confply");
-		      var button = document.createElement("button");
-		      button.setAttribute("onclick", "submit_form()");
-		      button.innerHTML = "run config";
-		      form.appendChild(button);
-		  }
-	      });
       </script>
     <div id="run_buttons"></div>
     <div id="logs" class="logbox">waiting for logs...</div>
