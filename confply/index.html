@@ -226,7 +226,7 @@
 				  for(var [k, v] of Object.entries(dict))
 				  {
 				      // debug_log(k+": "+v);
-				      lines.push("<label for='id_"+k+"' class='config_label'>"+k+":</label>");
+				      lines.push("<label for='id_"+k+"'>"+k+":</label>");
 				      var completion = [];
 				      if(k in options)
 				      {
@@ -440,10 +440,17 @@
 		      b.addEventListener("click", function(e) {
 			  var new_word = this.getElementsByTagName("input")[0].value;
 			  var old_word = words[word_index];
-			  if(cur_word !== "") { new_word = old_word.replace(cur_word, new_word); }
-			  else { new_word = old_word+new_word; }
-			  words[word_index] = new_word;
-			  cur_len += new_word.length;
+			  var replacement = "";
+			  var cursor_pos = inp.selectionStart;
+			  if(cur_word !== "") { replacement = old_word.replace(cur_word, new_word); }
+			  else
+			  {
+			      var cut_at = cursor_pos-cur_len;
+			      replacement = old_word.slice(0, cut_at)+new_word+old_word.slice(cut_at);
+			  }
+			  var new_pos = replacement.lastIndexOf(new_word)+new_word.length;
+			  words[word_index] = replacement;
+			  cur_len += new_pos;
 			  cursor_pos = cur_len;
 			  inp.value = words.join(",");
 			  closeAllLists();
@@ -470,6 +477,10 @@
 		  e.preventDefault();
 		  if (currentFocus > -1) {
 		      if (x) x[currentFocus].click();
+		  }
+		  else if(x && x.length == 1)
+		  {
+		      x[0].click();
 		  }
 	      }
 	  });
