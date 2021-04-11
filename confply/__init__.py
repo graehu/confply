@@ -200,7 +200,9 @@ def config_to_dict(config):
                 out[key] = module_to_dict(value)
                 continue
             elif inspect.isfunction(value):
-                out[key] = value.__name__
+                # #todo: handle functions in a better way
+                # out[key] = value.__name__
+                pass
             else:
                 out[key] = value
         return out

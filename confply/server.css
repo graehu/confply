@@ -18,6 +18,46 @@ body {
     background: #fefefe;
 }
 
+.autocomplete-items {
+  position: absolute;
+  border: 1px solid #d4d4d4;
+  border-bottom: none;
+  border-top: none;
+  z-index: 99;
+  top: 100%;
+  left: 0;
+  right: 0;
+}
+
+.autocomplete {
+  position: relative;
+  display: inline-block;
+  width: 100%;
+}
+
+.autocomplete-items div {
+  padding: 10px;
+  cursor: pointer;
+  background-color: #f1f1f1; 
+  border-bottom: 1px solid #d4d4d4;
+}
+
+.autocomplete-items div:hover {
+  background-color: #e9e9e9;
+}
+
+.autocomplete-active {
+  background-color: darkgray !important; 
+  color: #f1f1f1;
+}
+
+#config_div [type=text] {
+    border: 1px solid transparent;
+    font-size: 16px;
+    background-color: #f1f1f1;
+    width: 100%;
+}
+
 a {
     color: #0645ad;
     text-decoration: none;
@@ -119,10 +159,10 @@ hr {
     padding: 0;
 }
 
-pre, code, kbd, samp, .logbox {
+label, input, pre, code, kbd, samp, .logbox, .autocomplete-items {
     color: #000;
     font-family: monospace, monospace;
-    _font-family: 'courier new', monospace;
+    font-family: 'courier new', monospace;
     font-size: 0.98em;
 }
 
