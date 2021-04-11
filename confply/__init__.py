@@ -154,7 +154,7 @@ def run_commandline(in_args):
     return __run_config(config_locals, config_modules)
 
 
-def run_json(json, tool_type):
+def run_json(json):
     """
     runs the confply json for the supplied tool_type
 
@@ -171,10 +171,9 @@ def run_json(json, tool_type):
     config_name = os.path.basename(path)
     confply.config.config_name = config_name
     confply.config.modified = os.path.getmtime(path).real
-    confply.config.__tool_type = tool_type
-    config_locals, config_modules = apply_to_config(json, tool_type)
+    config_locals, config_modules = apply_to_config(json)
     if not config_locals:
-        log.error("failed to load: "+tool_type+" json")
+        log.error("failed to load:  json")
         return -1
 
     if("config" not in config_locals):
@@ -190,10 +189,13 @@ def run_json(json, tool_type):
 
 
 def config_to_dict(config):
+    def is_serialisable(obj):
+        return isinstance(obj, (int, float, str, dict, list, bool))
+
     def module_to_dict(module):
         out = {}
         for key in dir(module):
-            if key.startswith("__"):
+            if key in ["__builtins__", "__cached__"]:
                 continue
             value = getattr(module, key)
             if inspect.ismodule(value):
@@ -203,20 +205,12 @@ def config_to_dict(config):
                 # #todo: handle functions in a better way
                 # out[key] = value.__name__
                 pass
-            else:
+            elif is_serialisable(value):
                 out[key] = value
         return out
+
     return module_to_dict(config)
 
-
-def apply_to_config(config_name, config):
-    def apply_to_module(in_dict):
-        for key, value in in_dict.items():
-            if key.startswith("__"):
-                continue
-            value = setattr(module, key, value)
-            if inspect.ismodule(value):
-                module_to_dict(value)
 
 
 def load_config(path):
@@ -539,6 +533,7 @@ def __run_config(config_locals, config_modules):
                               confply.config.post_run.__name__)
                     trace = traceback.format_exc()
                     log.normal("traceback:\n\n"+trace)
+            log.normal("date: "+str(datetime.now()))
             log.linebreak()
             sys.stdout.flush()
 
@@ -685,24 +680,19 @@ def __get_group_configs(path):
     return directory_paths
 
 
-def apply_to_config(json, tool_type):
-    module = importlib.import_module("confply."+tool_type+".config")
+def apply_to_config(json):
+    module = importlib.import_module(json["__package__"])
     confply_config = importlib.import_module("confply.config")
     config_modules = []
     config_locals = {"config": module}
     config_modules.append(module)
     for key in dir(module):
-        if key.startswith("__"):
-            continue
         if key == "confply":
             for k in dir(confply_config):
-                if key.startswith("__"):
-                    continue
                 if k in json[key]:
                     setattr(confply_config, k, json[key][k])
         elif key in json:
             setattr(module, key, json[key])
-
     return config_locals, config_modules
 
 # #todo: this can be simplified

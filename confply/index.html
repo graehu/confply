@@ -110,6 +110,7 @@
 	      {
 		  for(var [k, v] of Object.entries(conf_dict))
 		  {
+		      if(k.startsWith("__")) { continue; }
 		      if(!(k in form_dict) || !form_dict[k])
 		      {
 			  if(typeof(v) === "boolean")
@@ -121,13 +122,16 @@
 		      }
 		  }
 	      };
-	      
 	      handle_emptry_fields(formData, config_json);
 	      handle_emptry_fields(formData["confply"], config_json["confply"]);
 	      formData = {
 		  ...config_json,
 		  ...formData
 	      };
+	      formData["confply"] = {
+		  ...config_json["confply"],
+		  ...formData["confply"]
+	      }
 	      currentrun = "form - "+ new Date().toLocaleString();
 	      running_button = document.getElementById("form_button");
 	      running_button.setAttribute("class", "run_button running");
@@ -225,12 +229,21 @@
 				  lines.push("<fieldset>");
 				  for(var [k, v] of Object.entries(dict))
 				  {
+				      // don't show private info
+				      if(k.startsWith("__")) { continue; }
 				      // debug_log(k+": "+v);
 				      lines.push("<label for='id_"+k+"'>"+k+":</label>");
 				      var completion = [];
+				      // #todo: strip privates for options in python
 				      if(k in options)
 				      {
-					  completion = completion.concat(Object.values(options[k]));
+					  for (var [id, entry] of Object.entries(options[k]))
+					  {
+					      if(!id.startsWith("__"))
+					      {
+						  completion.push(entry);
+					      }
+					  }
 				      }
 				      if(typeof(v) === 'boolean')
 				      {
@@ -259,7 +272,8 @@
 					  if(v) { completion.push(v); }
 				      }
 				      lines.push("<br>");
-				      completions["id_"+k] = completion.filter((item, pos) => completion.indexOf(item) === pos);
+				      completion = completion.filter((item, pos) => completion.indexOf(item) === pos);
+				      completions["id_"+k] = completion;
 				  }
 				  lines.push("</fieldset>");
 				  lines.push("</form>");

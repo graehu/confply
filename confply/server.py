@@ -3,6 +3,7 @@ from http.server import SimpleHTTPRequestHandler, HTTPServer
 import json
 import os
 import socket
+import shlex
 
 whitelist = [
     ".",
@@ -10,6 +11,7 @@ whitelist = [
 ]
 launcher_path = None
 aliases = {}
+configs = set()
 __all__ = [
     "launcher_path",
     "start_server",
@@ -66,7 +68,7 @@ class ConfplyServer(SimpleHTTPRequestHandler):
                         response["error"] = "invalid path"
             elif "/api/get.configs" == self.path:
                 response["ok"] = True
-                response["configs"] = ["examples/cpp_compiler.cpp.py"]
+                response["configs"] = list(configs)
             elif "/api/run.alias" == self.path:
                 response["ok"] = True
                 headers["Cache-Control"] = "no-store, must-revalidate"
@@ -133,7 +135,7 @@ class ConfplyServer(SimpleHTTPRequestHandler):
                 pass
             parsed["confply"]["log_file"] = server_log
             with pushd(os.path.dirname(launcher_path)):
-                return_code = run_json(parsed, "cpp_compiler")
+                return_code = run_json(parsed)
 
             if return_code != 0:
                 response["status"] = "failure"
@@ -164,6 +166,7 @@ def _get_best_family(*address):
 def start_server(port=8000, launcher=None):
     global launcher_path
     global aliases
+    global configs
     # this is required to work with safari for some reason.
     HTTPServer.address_family, addr = _get_best_family(None, port)
     if launcher is not None:
@@ -172,6 +175,11 @@ def start_server(port=8000, launcher=None):
             config = {"aliases": {}, "__file__": launcher_path}
             exec(launcher_file.read(), config, config)
             aliases = config["aliases"]
+            for k, v in aliases.items():
+                for elem in shlex.split(v):
+                    if elem.endswith(".py"):
+                        configs.add(elem)
+
 
     webServer = HTTPServer(addr, ConfplyServer)
     print("Server started http://%s:%s" % (addr))
