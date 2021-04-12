@@ -201,7 +201,7 @@ def get_config_dict(path):
         config = config_locals["config"]
         options = config_locals["options"]
         config = config_to_dict(config)
-        options = config_to_dict(options)
+        options = config_to_dict(options, False)
         config["confply"]["config_path"] = path
         clean_modules(config_modules)
         return {"config": config, "options": options}

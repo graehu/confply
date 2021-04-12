@@ -33,6 +33,7 @@ body {
   position: relative;
   display: inline-block;
   width: 100%;
+  background-color: #f1f1f1;
 }
 
 .autocomplete-items div {
@@ -51,11 +52,12 @@ body {
   color: #f1f1f1;
 }
 
-#config_div [type=text] {
+.autocomplete input[type=text] {
     border: 1px solid transparent;
     font-size: 16px;
     background-color: #f1f1f1;
     width: 100%;
+    border-radius:  0;
 }
 
 a {
@@ -159,10 +161,10 @@ hr {
     padding: 0;
 }
 
-label, input, pre, code, kbd, samp, .logbox, .autocomplete-items {
+label, input, pre, code, kbd, samp, .logbox .autocomplete-items, details {
     color: #000;
     font-family: monospace, monospace;
-    font-family: 'courier new', monospace;
+    _font-family: 'courier new', monospace;
     font-size: 0.98em;
 }
 

@@ -188,7 +188,7 @@ def run_json(json):
     return __run_config(config_locals, config_modules)
 
 
-def config_to_dict(config):
+def config_to_dict(config, has_privates=True):
     def is_serialisable(obj):
         return isinstance(obj, (int, float, str, dict, list, bool))
 
@@ -196,6 +196,8 @@ def config_to_dict(config):
         out = {}
         for key in dir(module):
             if key in ["__builtins__", "__cached__"]:
+                continue
+            if key.startswith("__") and not has_privates:
                 continue
             value = getattr(module, key)
             if inspect.ismodule(value):
@@ -298,7 +300,7 @@ def load_config(path):
 
 def clean_modules(config_modules):
     for m in config_modules:
-        if m in sys.modules:
+        if m.__name__ in sys.modules:
             del sys.modules[m.__name__]
     importlib.reload(confply.config)
     importlib.reload(confply.mail)

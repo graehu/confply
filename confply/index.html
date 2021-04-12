@@ -5,8 +5,12 @@
   </header>
   <body>
     <div id="launcher_div" class="logbox"></div>
-    <div id="config_div"></div>
+    <div id="config_div" style='background-color: #fafafa; padding: 5px; width: 100%;'></div>
     <div id="config_select_div"></div>
+    <!-- <label for='id_config_input'>selected config:</label> -->
+    <div class="autocomplete" style="padding: 5px;">
+      <input type="text" id="id_config_input" name="id_config_input" placeholder="path/to/config.py"/>
+    </div>
     <details> <summary>debug</summary>
       <div id="debug_div" class="logbox"></div>
     </details>
@@ -181,18 +185,22 @@
 		  response = JSON.parse(response);
 		  if(response["ok"])
 		  {
-		      var config_select_div = document.getElementById("config_select_div");
-		      var lines = [];
-		      lines.push("<label for='id_config_select'>selected config:</label>");
-		      lines.push("<select id='id_config_select' name='config_select' onchange='config_changed()'>");
-		      lines.push("\t<option value='none'>none</option>");
-		      for(var path in response["configs"])
+		      var config_input = document.getElementById("id_config_input");
+		      var completions = ["none"];
+		      var completions = completions.concat(response["configs"]);
+		      autocomplete("id_config_input", completions);
+		      function update_configs(e)
 		      {
-			  path = response["configs"][path];
-			  lines.push("\t<option value='"+path+"'\">"+path+"</option>");
+			  if(response["configs"].includes(this.value))
+			  {
+			      config_changed(this.value);
+			  }
+			  else
+			  {
+			      config_changed();
+			  }
 		      }
-		      lines.push("</select>");
-		      config_select_div.innerHTML = lines.join("\n");
+		      config_input.addEventListener("autocomplete", update_configs);
 		  }
 	      });
       httpGet("/api/get.launcher", function(response)
@@ -204,10 +212,8 @@
 		      launcher_div.innerHTML = response["path"];   
 		  }
 	      });
-      function config_changed()
+      function config_changed(value = "none")
       {
-	  var config_select = document.getElementById("id_config_select");
-	  var value = config_select.value;
 	  if(value !== "none")
 	  {
 	      httpGet("/api/get.config.dict?path="+value, function(response)
@@ -224,9 +230,8 @@
 			      function dict_to_form(dict, name)
 			      {
 				  var lines = [];
-				  lines.push("<details><summary>"+name+" form</summary>");
+				  lines.push("<details style='padding: 5px; background-color:#fafafa;'><summary>"+name+" form</summary>");
 				  lines.push("<form id='"+name+"_form'>");
-				  lines.push("<fieldset>");
 				  for(var [k, v] of Object.entries(dict))
 				  {
 				      // don't show private info
@@ -234,27 +239,17 @@
 				      // debug_log(k+": "+v);
 				      lines.push("<label for='id_"+k+"'>"+k+":</label>");
 				      var completion = [];
-				      // #todo: strip privates for options in python
 				      if(k in options)
 				      {
-					  for (var [id, entry] of Object.entries(options[k]))
-					  {
-					      if(!id.startsWith("__"))
-					      {
-						  completion.push(entry);
-					      }
-					  }
+					  completion = completion.concat(Object.values(options[k]));
 				      }
 				      if(typeof(v) === 'boolean')
 				      {
-					  if(v)
-					  {
-					      lines.push("<input type='checkbox' id='id_"+k+"' name='"+k+"' value='true' checked />");
-					  }
-					  else
-					  {
-					      lines.push("<input type='checkbox' id='id_"+k+"' name='"+k+"' value='true' />");
-					  }
+					  lines.push("<div class='autocomplete'>");
+					  lines.push("<input type='text' id='id_"+k+"' name='"+k+"' value='"+v+"' />");
+					  lines.push("</div>");
+					  completion.push("true");
+					  completion.push("false");
 				      }
 				      else if(v.constructor == Object || Array.isArray(v))
 				      {
@@ -262,7 +257,6 @@
 					  lines.push("<input type='text' id='id_"+k+"' name='"+k+"' value='"+JSON.stringify(v)+"' />");
 					  lines.push("</div>")
 					  completion = completion.concat(Object.values(v));
-
 				      }
 				      else
 				      {
@@ -275,7 +269,6 @@
 				      completion = completion.filter((item, pos) => completion.indexOf(item) === pos);
 				      completions["id_"+k] = completion;
 				  }
-				  lines.push("</fieldset>");
 				  lines.push("</form>");
 				  lines.push("</details>");
 				  return lines.join("\n");
@@ -397,6 +390,8 @@
 		      var new_word = this.getElementsByTagName("input")[0].value;
 		      inp.value += new_word;
 		      closeAllLists();
+		      const event = new Event('autocomplete');
+		      inp.dispatchEvent(event);
 		  });
 		  a.appendChild(b);
 	      }
@@ -470,6 +465,8 @@
 			  closeAllLists();
 			  inp.selectionStart = cursor_pos;
 			  inp.selectionEnd = cursor_pos;
+			  const event = new Event('autocomplete');
+			  inp.dispatchEvent(event);
 		      });
 		      a.appendChild(b);
 		  }
