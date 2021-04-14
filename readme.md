@@ -9,7 +9,7 @@ For now compilers are the focus, but confply is extendable.
 
 ### Python Configs
 
-Write python to fill your config or branch in specific conditions. The python files are [exec][exec]'d to populate the tool_type/config prior to command generation and run.
+Write python to fill your config or branch in specific conditions. The python files are [exec][exec]'d to populate the config_type/config prior to command generation and run.
 
 [exec]: https://docs.python.org/3.8/library/functions.html#exec
 
@@ -43,18 +43,18 @@ Confply uses pure python 3.8, there are no additional modules to install. It's d
 
 ### Extendable
 
-Confply allows you to create your own tool types, like so:
-> `./confply.py --new_tool_type my_tool_type`
+Confply allows you to create your own tools, like so:
+> `./confply.py --new_tool my_tool`
 
 This adds the following files:
 
-* /confply/my\_tool\_type/**help.md**
-* /confply/my\_tool\_type/**\_\_init\_\_.py**
-* /confply/my\_tool\_type/**config/\_\_init\_\_.py**
-* /confply/my\_tool\_type/**options/\_\_init\_\_.py**
+* /confply/my\_tool/**help.md**
+* /confply/my\_tool/**\_\_init\_\_.py**
+* /confply/my\_tool/**config/\_\_init\_\_.py**
+* /confply/my\_tool/**options/\_\_init\_\_.py**
 
 **help.md** is printed when users invoke config specific help, like so:
-> `./confply.py --help.my_tool_type`
+> `./confply.py --help.my_tool`
 
 **\_\_init\_\_.py** is where all of the shared code goes. <br>
 **config/\_\_init\_\_.py** is where you store all of the tool settings. <br>

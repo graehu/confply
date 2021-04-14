@@ -1,5 +1,5 @@
 import confply.config as confply
-confply.__tool_type = "cpp_compiler"
+confply.__config_type = "cpp_compiler"
 confply.__imported_configs.append("cpp_compiler")
 # used to add things to system environment variables.
 # usage: environment = { "PATH" : "c:/bin/dir/", "etc" : "c:/etc/" }

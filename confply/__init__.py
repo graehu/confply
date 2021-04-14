@@ -144,7 +144,7 @@ def run_commandline(in_args):
 
     if("config" not in config_locals):
         log.error("confply config incorrectly imported")
-        log.normal("\tuse: 'import confply.[tool_type].config as config'")
+        log.normal("\tuse: 'import confply.[config_type].config as config'")
         clean_modules(config_modules)
         return -1
 
@@ -156,9 +156,9 @@ def run_commandline(in_args):
 
 def run_json(json):
     """
-    runs the confply json for the supplied tool_type
+    runs the confply json for the supplied config_type
 
-    usage: run_json(json, tool_type)
+    usage: run_json(json, config_type)
     """
     log.linebreak()
     log.header("run config")
@@ -178,7 +178,7 @@ def run_json(json):
 
     if("config" not in config_locals):
         log.error("confply config incorrectly imported")
-        log.normal("\tuse: 'import confply.[tool_type].config as config'")
+        log.normal("\tuse: 'import confply.[config_type].config as config'")
         clean_modules(config_modules)
         return -1
 
@@ -223,7 +223,7 @@ def load_config(path):
 
     # find the git root
     # #todo: extend this to other version control?
-    # move this to a tool_type
+    # move this to a config_type
     if confply.config.vcs == "git":
         try:
             git_cmd = 'git rev-parse --show-toplevel'
@@ -351,15 +351,15 @@ if __name__ == "__main__":
 
 __new_config_str = """#!{confply_dir}/confply.py
 # generated using:
-# python {confply_dir}/confply.py --config {tool_type_arg} {config_file}
+# python {confply_dir}/confply.py --config {config_type_arg} {config_file}
 import sys
 sys.path.append('{confply_dir}')
-import confply.{tool_type_arg}.config as config
-import confply.{tool_type_arg}.options as options
+import confply.{config_type_arg}.config as config
+import confply.{config_type_arg}.options as options
 import confply.log as log
 ############# modify_below ################
 
-config.confply.log_topic = "{tool_type_arg}"
+config.confply.log_topic = "{config_type_arg}"
 log.normal("loading {config_file} with confply_args: "+str(config.confply.args))
 """
 # list of configs that have already been run
@@ -395,11 +395,11 @@ def __run_config(config_locals, config_modules):
             log.normal("traceback:\n\n"+trace)
             pass
 
-        if(not os.path.exists(confply_path+str(confply.config.__tool_type))):
-            log.error(str(confply.config.__tool_type) +
-                      " is not a valid _tool_type and should not be set directly.")
-            log.normal("\tuse: 'import confply.[tool_type].config as config'" +
-                       " to import _tool_type.")
+        if(not os.path.exists(confply_path+str(confply.config.__config_type))):
+            log.error(str(confply.config.__config_type) +
+                      " is not a valid _config_type and should not be set directly.")
+            log.normal("\tuse: 'import confply.[config_type].config as config'" +
+                       " to import _config_type.")
 
             clean_modules(config_modules)
             return -1
@@ -430,7 +430,7 @@ def __run_config(config_locals, config_modules):
         report = {
             "config_path": file_path,
             "config_json": json.dumps(diff_config, indent=4),
-            "tool_type": "unknown",
+            "config_type": "unknown",
             "tool": "unknown",
             "status": "failure",
             "vcs_root": confply.config.vcs_root,
@@ -447,14 +447,14 @@ def __run_config(config_locals, config_modules):
                 time_start = timeit.default_timer()
                 # #todo: tool selection phase should happen first.
                 tools = __validate_config(config_modules)
-                tool_type = confply.config.__tool_type
+                config_type = confply.config.__config_type
                 tool = confply.config.tool
                 report["tool"] = tool
-                report["tool_type"] = tool_type
+                report["config_type"] = config_type
                 if tools:
-                    shell_cmd = tools[tool_type][tool]
+                    shell_cmd = tools[config_type][tool]
                     shell_cmd.handle_args()
-                    # #todo: rename generate to gen_tool_type.
+                    # #todo: rename generate to gen_config_type.
                     shell_cmd = shell_cmd.generate() if tools else None
                 else:
                     shell_cmd = None
@@ -462,7 +462,7 @@ def __run_config(config_locals, config_modules):
                 __run_dependencies(config, config_modules, should_run)
 
                 if shell_cmd is not None:
-                    cmd_env = tools[tool_type][tool].get_environ()
+                    cmd_env = tools[config_type][tool].get_environ()
                     if len(shell_cmd) > 0:
                         if isinstance(shell_cmd, list):
                             log.normal("final commands:\n")
@@ -698,45 +698,45 @@ def apply_to_config(json):
 # #todo: this can be simplified
 def __validate_config(config_modules):
     tools = {}
-    tool_type = confply.config.__tool_type
-    tool_dir = os.path.dirname(__file__) + "/" + tool_type
+    config_type = confply.config.__config_type
+    tool_dir = os.path.dirname(__file__) + "/" + config_type
     if os.path.exists(tool_dir):
         files = os.listdir(tool_dir)
     else:
-        log.error(tool_type+" is not a valid confply_tool_type" +
+        log.error(config_type+" is not a valid confply_config_type" +
                   " and should not be set by users.")
         log.normal("\tuse: " +
-                   "'import confply.[tool_type].config as config'" +
-                   " to import confply_tool_type.")
+                   "'import confply.[config_type].config as config'" +
+                   " to import confply_config_type.")
         return None
 
-    tools[tool_type] = {}
-    module_path = "confply."+tool_type+"."
+    tools[config_type] = {}
+    module_path = "confply."+config_type+"."
     config_modules.append(
-        importlib.import_module("confply."+tool_type)
+        importlib.import_module("confply."+config_type)
     )
     for py in files:
         if py.endswith(".py") and not py == "__init__.py":
             tool = py[0:-3]
-            tools[tool_type][tool] = \
+            tools[config_type][tool] = \
                 importlib.import_module(module_path + tool)
 
     tool = confply.config.tool
     pass
 
     #######
-    if tool in tools[tool_type]:
-        if not tools[tool_type][tool].is_found():
+    if tool in tools[config_type]:
+        if not tools[config_type][tool].is_found():
             log.error("'"+tool+"' could not be found, is it installed?")
-            if __tool_select(tools[tool_type]):
+            if __tool_select(tools[config_type]):
                 return tools
             else:
                 return None
         else:
             return tools
     else:
-        log.error("'"+str(tool)+"' is not a valid "+tool_type+" tool.")
-        if __tool_select(tools[tool_type]):
+        log.error("'"+str(tool)+"' is not a valid "+config_type+" tool.")
+        if __tool_select(tools[config_type]):
             return tools
         else:
             return None
@@ -747,9 +747,9 @@ def __validate_config(config_modules):
 def __print_config(config_name, config):
     diff_config = __get_diff_config(config)
     confply_path = os.path.dirname(__file__) + "/"
-    tool_type_path = confply_path+confply.config.__tool_type
+    config_type_path = confply_path+confply.config.__config_type
 
-    if(os.path.exists(tool_type_path)):
+    if(os.path.exists(config_type_path)):
         log.normal(config_name+" configuration:")
         log.normal("{")
 
@@ -766,11 +766,11 @@ def __print_config(config_name, config):
         log.normal("}")
         log.normal("")
     else:
-        log.error(confply.config_tool_type +
-                  " is not a valid confply_tool_type" +
+        log.error(confply.config_config_type +
+                  " is not a valid confply_config_type" +
                   " and should not be set by users.")
-        log.normal("\tuse: 'import confply.[tool_type].config" +
-                   " as confply' to import confply_tool_type.")
+        log.normal("\tuse: 'import confply.[config_type].config" +
+                   " as confply' to import confply_config_type.")
 
 
 def __get_confply_dir(rel_path=True):
@@ -792,11 +792,11 @@ def __get_diff_config(config):
     compare_config = {}
     diff_config = {}
     confply_path = os.path.dirname(__file__) + "/"
-    tool_type_path = confply_path+confply.config.__tool_type
+    config_type_path = confply_path+confply.config.__config_type
 
-    if(os.path.exists(tool_type_path)):
-        tool_type_path += "/config/__init__.py"
-        with open(tool_type_path) as config_file:
+    if(os.path.exists(config_type_path)):
+        config_type_path += "/config/__init__.py"
+        with open(config_type_path) as config_file:
             exec(config_file.read(), {}, base_config)
         with open(confply_path+"config.py") as config_file:
             exec(config_file.read(), {}, compare_config)
@@ -892,8 +892,8 @@ def __strip_confply_args(in_args):
                 confply._handle_config_dict_arg(in_args)
             elif option.startswith("--config."):
                 confply.__handle_config_arg(option, in_args)
-            elif option == "--new_tool_type":
-                confply.__handle_new_tool_type_arg(in_args)
+            elif option == "--new_tool":
+                confply.__handle_new_tool_arg(in_args)
             elif option == "--no_run":
                 confply.config.run = False
             elif option == "--no_header":
@@ -941,18 +941,18 @@ def __handle_version_arg(in_args):
     log.normal("There is NO WARRANTY, to the extent permitted by law.")
 
 
-def __handle_new_tool_type_arg(in_args):
+def __handle_new_tool_arg(in_args):
     if len(in_args) < 1:
-        log.error("--new_tool_type requires a value.")
-        log.normal("\t--new_tool_type [tool_type]")
+        log.error("--new_tool requires a value.")
+        log.normal("\t--new_tool [config_type]")
         return
     module_dir = os.path.relpath(__file__)
     module_dir = os.path.dirname(module_dir)
-    tool_type = in_args.pop(0)
-    tool_type_dir = os.path.join(module_dir, tool_type)
-    if not os.path.exists(tool_type_dir):
-        module_dir = os.path.join(module_dir, "new_tool_type")
-        os.mkdir(tool_type_dir)
+    config_type = in_args.pop(0)
+    config_type_dir = os.path.join(module_dir, config_type)
+    if not os.path.exists(config_type_dir):
+        module_dir = os.path.join(module_dir, "new_tool")
+        os.mkdir(config_type_dir)
         files = [
             "__init__.py",
             "help.md",
@@ -964,16 +964,16 @@ def __handle_new_tool_type_arg(in_args):
         for file_name in files:
             with open(os.path.join(module_dir, file_name)) as in_file:
                 file_str = in_file.read()
-                file_str = file_str.format_map({"tool_type": tool_type})
-                tool_file = os.path.join(tool_type_dir, file_name)
+                file_str = file_str.format_map({"config_type": config_type})
+                tool_file = os.path.join(config_type_dir, file_name)
                 os.makedirs(os.path.dirname(tool_file), exist_ok=True)
                 with open(tool_file, "w") as out_file:
                     out_file.write(file_str)
-        log.success("created "+tool_type+" tool_type!")
+        log.success("created "+config_type+" config_type!")
         log.normal("generate a config file by calling: " +
-                   "'./confply.py --new_config "+tool_type+" my_config.py'")
+                   "'./confply.py --new_config "+config_type+" my_config.py'")
     else:
-        log.error(tool_type+" already exists. (--new_tool_type)")
+        log.error(config_type+" already exists. (--new_tool)")
         pass
 
 
@@ -1019,26 +1019,26 @@ def __handle_listen_arg(in_args):
 def __handle_new_config_arg(in_args):
     if len(in_args) < 2:
         log.error("--config requires two values:")
-        log.normal("\t--new_config [tool_type] [new_config_file]")
+        log.normal("\t--new_config [config_type] [new_config_file]")
         log.normal("")
         log.normal("valid tool types:")
         module_dir = os.path.dirname(__file__)
         files = os.listdir(module_dir)
         for dir in files:
             if (os.path.isdir(os.path.join(module_dir, dir)) and
-                    not dir == "__pycache__" and not dir == "new_tool_type"):
+                    not dir == "__pycache__" and not dir == "new_tool"):
                 log.normal("\t"+dir)
         return
 
     confply_dir = __get_confply_dir()
-    tool_type_arg = in_args.pop(0)
+    config_type_arg = in_args.pop(0)
     config_arg = in_args.pop(0)
     config_path = os.path.abspath(os.path.curdir)+"/"+config_arg
-    tool_type_dir = os.path.dirname(os.path.relpath(__file__))
-    tool_type_dir = os.path.join(tool_type_dir, tool_type_arg)
+    config_type_dir = os.path.dirname(os.path.relpath(__file__))
+    config_type_dir = os.path.join(config_type_dir, config_type_arg)
 
-    if not os.path.exists(tool_type_dir):
-        log.error(tool_type_arg+" is not a valid tool_type, consider:")
+    if not os.path.exists(config_type_dir):
+        log.error(config_type_arg+" is not a valid config_type, consider:")
         for dir_file in os.listdir(confply_dir+"/confply/"):
             if os.path.isdir(confply_dir+"/confply/"+dir_file):
                 if not dir_file == "__pycache__":
@@ -1050,7 +1050,7 @@ def __handle_new_config_arg(in_args):
             config_str = __new_config_str.format_map(
                 {
                     "confply_dir": confply_dir,
-                    "tool_type_arg": tool_type_arg,
+                    "config_type_arg": config_type_arg,
                     "config_file": config_arg
                 })
             config_file.write(config_str)

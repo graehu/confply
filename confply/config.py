@@ -11,7 +11,7 @@ _/ ___\/  _ \ /    \   __\\____ \|  |<   |  |
 
 # the tool type to run with after loading the config
 # usage: don't set this, it's set on config import
-__tool_type = ""
+__config_type = ""
 
 # the number of configs imported so far
 # usage: don't set this, it's set on config import

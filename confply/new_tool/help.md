@@ -1,3 +1,3 @@
-# {tool_type}
+# {config_type}
 
 Fill this with useful information for users.

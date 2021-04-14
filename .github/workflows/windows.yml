@@ -48,9 +48,9 @@ jobs:
       - name: Cpp_compiler.py g++
         run: python test.py g++
         if: ${{ always() }}
-      # Test --new_tool_type
-      - name: --new_tool_type
-        run: python confply.py --new_tool_type new_tool
+      # Test --new_tool
+      - name: --new_tool
+        run: python confply.py --new_tool new_tool
         if: ${{ always() }}
       - name: --new_config
         run: python confply.py --new_config new_tool new_tool.py
