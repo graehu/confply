@@ -165,18 +165,12 @@
 		      var run_buttons = document.getElementById("run_buttons");
 		      for(var key in response["aliases"])
 		      {
-			  var pre = document.createElement("pre");
 			  var button = document.createElement("button");
 			  button.setAttribute("onclick", "run_alias('"+key+"')");
 			  button.setAttribute("class", "run_button");
 			  button.setAttribute("id", key+"_button");
 			  button.innerHTML = key;
-			  var span = document.createElement("span");
-			  span.setAttribute("class", "run_command");
-			  span.innerHTML = response["aliases"][key];
-			  run_buttons.appendChild(pre);
-			  pre.appendChild(button);
-			  pre.appendChild(span);
+			  run_buttons.appendChild(button);
 		      }
 		  }
 	      });
@@ -355,7 +349,9 @@
 	      var details = document.createElement("details");
 	      details.innerHTML = "<summary>"+currentrun+"</summary>"+response["log"];
 	      details.setAttribute("class", "logbox");
-	      logs.prepend(document.createElement("br"));
+	      var br = document.createElement("span");
+	      br.setAttribute("style", "display: block; margin-top: 5px;");
+	      logs.prepend(br);
 	      logs.prepend(details);
 	      if(run_queue.length > 0)
 	      {
@@ -520,7 +516,7 @@
 	  });
       }
       </script>
-    <div id="run_buttons"></div>
+    <div id="run_buttons" class="run_buttons_div"></div>
     <div id="logs" class="logbox">waiting for logs...</div>
   <body>
 </html>
