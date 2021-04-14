@@ -1,1 +1,1 @@
-import confply.{tool_type}.options.defaults as defaults
+import confply.{tool_type}.options.tool as tool

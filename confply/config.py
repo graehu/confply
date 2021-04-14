@@ -27,7 +27,7 @@ __override_list = []
 
 # sets the desired tool to be used for the command.
 # usage: tool = "clang"
-tool = ""
+tool = "default"
 
 # sets whether to run the resulting commands or not
 # usage: run = True

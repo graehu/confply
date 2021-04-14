@@ -1,6 +1,6 @@
 import confply.{tool_type} as {tool_type}
 
-tool_name = {tool_type}.os.path.basename(__file__)[:-3]
+tool_name = "echo"
 
 
 def generate():

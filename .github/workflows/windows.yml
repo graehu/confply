@@ -52,8 +52,8 @@ jobs:
       - name: --new_tool_type
         run: python confply.py --new_tool_type new_tool
         if: ${{ always() }}
-      - name: --gen_config
-        run: python confply.py --gen_config new_tool new_tool.py
+      - name: --new_config
+        run: python confply.py --new_config new_tool new_tool.py
         if: ${{ always() }}
       - name: Run new_tool
         run: python confply.py new_tool.py

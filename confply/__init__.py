@@ -361,7 +361,6 @@ import confply.log as log
 
 config.confply.log_topic = "{tool_type_arg}"
 log.normal("loading {config_file} with confply_args: "+str(config.confply.args))
-config.confply.tool = options.defaults.tool
 """
 # list of configs that have already been run
 __configs_run = []
@@ -374,7 +373,6 @@ def __run_config(config_locals, config_modules):
     return_code = 0
     should_run = confply.config.run
     file_path = confply.config.config_path
-    print(file_path)
     confply_path = os.path.dirname(__file__) + "/"
     __apply_overrides(config)
     new_working_dir = os.path.dirname(file_path)
@@ -882,8 +880,8 @@ def __strip_confply_args(in_args):
                 confply.__handle_launcher_arg(in_args)
             elif option == "--listen":
                 confply.__handle_listen_arg(in_args)
-            elif option == "--gen_config":
-                confply.__handle_gen_config_arg(in_args)
+            elif option == "--new_config":
+                confply.__handle_new_config_arg(in_args)
             elif option == "--help":
                 confply.__handle_help_arg(in_args)
             elif option.startswith("--help."):
@@ -958,11 +956,10 @@ def __handle_new_tool_type_arg(in_args):
         files = [
             "__init__.py",
             "help.md",
-            "echo.py",
+            "default.py",
             "config/__init__.py",
             "options/__init__.py",
-            "options/defaults.py",
-            "options/tools.py"
+            "options/tool.py"
         ]
         for file_name in files:
             with open(os.path.join(module_dir, file_name)) as in_file:
@@ -974,7 +971,7 @@ def __handle_new_tool_type_arg(in_args):
                     out_file.write(file_str)
         log.success("created "+tool_type+" tool_type!")
         log.normal("generate a config file by calling: " +
-                   "'./confply.py --gen_config "+tool_type+" my_config.py'")
+                   "'./confply.py --new_config "+tool_type+" my_config.py'")
     else:
         log.error(tool_type+" already exists. (--new_tool_type)")
         pass
@@ -1019,10 +1016,10 @@ def __handle_listen_arg(in_args):
         log.error(launcher_path+" not found!")
 
 
-def __handle_gen_config_arg(in_args):
+def __handle_new_config_arg(in_args):
     if len(in_args) < 2:
         log.error("--config requires two values:")
-        log.normal("\t--gen_config [tool_type] [new_config_file]")
+        log.normal("\t--new_config [tool_type] [new_config_file]")
         log.normal("")
         log.normal("valid tool types:")
         module_dir = os.path.dirname(__file__)
@@ -1062,7 +1059,7 @@ def __handle_gen_config_arg(in_args):
         log.success("wrote: "+config_path)
     else:
         log.error(config_path+" already exists!")
-        log.normal("aborted --gen_config.")
+        log.normal("aborted --new_config.")
 
 
 def _handle_config_dict_arg(in_args):
