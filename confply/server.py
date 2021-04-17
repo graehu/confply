@@ -51,7 +51,6 @@ class ConfplyServer(SimpleHTTPRequestHandler):
                 response["ok"] = True
                 response["aliases"] = aliases
                 pass
-
             elif "/api/get.launcher" == self.path:
                 response["ok"] = True
                 response["path"] = launcher_path
@@ -199,10 +198,12 @@ def get_config_dict(path):
     config_locals, config_modules = load_config(path)
     if config_locals:
         config = config_locals["config"]
-        options = config_locals["options"]
         config = config_to_dict(config)
-        options = config_to_dict(options, False)
         config["confply"]["config_path"] = path
+        options = {}
+        if "options" in config_locals:
+            options = config_locals["options"]
+            options = config_to_dict(options, False)
         clean_modules(config_modules)
         return {"config": config, "options": options}
 

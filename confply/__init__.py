@@ -285,9 +285,9 @@ def load_config(path):
                         log.linebreak()
                         log.success("loaded: "+str(dir_path))
                     except Exception:
-                        log.error("failed to exec: "+dir_path)
+                        log.error("failed to exec: "+str(dir_path))
                         trace = traceback.format_exc().replace("<string>",
-                                                               dir_path)
+                                                               str(dir_path))
                         log.normal("traceback:\n\n"+trace)
                         return None, None
 
@@ -379,31 +379,6 @@ def __run_config(config_locals, config_modules):
     old_stdout = sys.stdout
     # setting confply command configuration up
     with pushd(new_working_dir):
-        try:
-            if (confply.config.post_load and
-                    inspect.isfunction(confply.config.post_load)):
-                log.normal("running post load script: " +
-                           confply.config.post_load.__name__+"\n")
-                sys.stdout.flush()
-                exec(confply.config.post_load.__code__, config_locals, {})
-                print("")
-                log.linebreak()
-
-        except Exception:
-            log.error("failed to exec "+confply.config.post_load.__name__)
-            trace = traceback.format_exc()
-            log.normal("traceback:\n\n"+trace)
-            pass
-
-        if(not os.path.exists(confply_path+str(confply.config.__config_type))):
-            log.error(str(confply.config.__config_type) +
-                      " is not a valid _config_type and should not be set directly.")
-            log.normal("\tuse: 'import confply.[config_type].config as config'" +
-                       " to import _config_type.")
-
-            clean_modules(config_modules)
-            return -1
-        # begin storing important state before __clean_modules(config_modules)
         if confply.config.log_file:
             log.normal("writing to: " +
                        confply.config.log_file +
@@ -424,6 +399,29 @@ def __run_config(config_locals, config_modules):
                           confply.config.log_file +
                           " for write.")
                 return_code = -1
+        try:
+            if (confply.config.post_load and
+                    inspect.isfunction(confply.config.post_load)):
+                log.normal("running post load script: " +
+                           confply.config.post_load.__name__)
+                sys.stdout.flush()
+                exec(confply.config.post_load.__code__, config_locals, {})
+                log.linebreak()
+
+        except Exception:
+            log.error("failed to exec "+confply.config.post_load.__name__)
+            trace = traceback.format_exc()
+            log.normal("traceback:\n\n"+trace)
+            pass
+
+        if(not os.path.exists(confply_path+str(confply.config.__config_type))):
+            log.error(str(confply.config.__config_type) +
+                      " is not a valid _config_type and should not be set directly.")
+            log.normal("\tuse: 'import confply.[config_type].config as config'" +
+                       " to import _config_type.")
+
+            clean_modules(config_modules)
+            return -1
 
         diff_config = __get_diff_config(config)
         should_run = confply.config.run
@@ -523,10 +521,9 @@ def __run_config(config_locals, config_modules):
                 try:
                     log.linebreak()
                     log.normal("running post run script: " +
-                               confply.config.post_run.__name__+"\n")
+                               confply.config.post_run.__name__)
                     sys.stdout.flush()
                     exec(confply.config.post_run.__code__, config_locals, {})
-                    print("")
                     log.linebreak()
                 except Exception:
                     log.error("failed to exec " +
@@ -621,7 +618,7 @@ def __run_dependencies(config, config_modules, should_run):
                 confply.config.log_topic = "confply"
                 log.linebreak()
                 __configs_run.append(d)
-                depends_return = run_config([d])
+                depends_return = run_commandline([d])
                 if depends_return < 0:
                     confply.config.log_topic = store["log_topic"]
                     confply.config.log_file = store["log_file"]
