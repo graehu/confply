@@ -259,7 +259,7 @@
 				      else
 				      {
 					  lines.push("<div class='autocomplete'>");
-					  lines.push("<input type='text' id='id_"+k+"' name='"+k+"' value='"+v+"' />");
+					  lines.push("<input type='text' id='id_"+k+"' name='"+k+"' value='"+JSON.stringify(v)+"' />");
 					  lines.push("</div>");
 					  if(v) { completion.push(v); }
 				      }
@@ -375,7 +375,7 @@
       };
       function autocomplete(inp, arr) {
 	  inp = document.getElementById(inp);
-	  var currentFocus;
+	  var currentFocus = -1;
 	  function showlist()
 	  {
 	      closeAllLists();
@@ -390,7 +390,6 @@
 		  b.innerHTML += "<input type='hidden' value='" + arr[i] + "'>";
 		  a.appendChild(b);
 		  b.addEventListener("click", function(e) {
-		      debug_log("click1");
 		      var new_word = this.getElementsByTagName("input")[0].value;
 		      inp.value += new_word;
 		      const event = new Event('autocomplete');
@@ -412,7 +411,7 @@
 				   // // fill the respective input textarea
 				   if(e.relatedTarget.tagName)
 				   {
-				       closeAllLists();   
+				       closeAllLists();
 				   }
 			       });
 	  inp.addEventListener("input", function(e) {
@@ -458,8 +457,7 @@
 		      b.innerHTML += arr[i].substr(comp_index+cur_word.length);
 		      b.innerHTML += "<input type='hidden' value='" + arr[i] + "'>";
 		      a.appendChild(b);
-			      b.addEventListener("click", function(e) {
-			      debug_log("click");
+		      b.addEventListener("click", function(e) {
 			  var new_word = this.getElementsByTagName("input")[0].value;
 			  var old_word = words[word_index];
 			  var replacement = "";
@@ -490,7 +488,7 @@
 	      var x = document.getElementById(this.id + "autocomplete-list");
 	      if (x) x = x.getElementsByTagName("div");
 	      if (e.keyCode == 40) { //down
-		    e.preventDefault();
+		  e.preventDefault();
 		  currentFocus++;
 		  addActive(x);
 	      } else if (e.keyCode == 38) { //up
