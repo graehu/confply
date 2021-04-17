@@ -169,6 +169,7 @@
 			  button.setAttribute("onclick", "run_alias('"+key+"')");
 			  button.setAttribute("class", "run_button");
 			  button.setAttribute("id", key+"_button");
+			  button.setAttribute("tabindex", "0");
 			  button.innerHTML = key;
 			  run_buttons.appendChild(button);
 		      }
@@ -273,7 +274,9 @@
 			      var button = document.createElement("button");
 			      button.setAttribute("onclick", "submit_form()");
 			      button.setAttribute("class", "run_button");
+			      button.setAttribute("style", "width: 120px;");
 			      button.setAttribute("id", "form_button");
+			      button.setAttribute("tabindex", "0");
 			      button.innerHTML = "run config";
 			      form.appendChild(button);
 			      for(var [k,v] of Object.entries(completions))
@@ -372,38 +375,41 @@
 	  var currentFocus;
 	  function showlist()
 	  {
+	      debug_log("showlist");
 	      closeAllLists();
 	      a = document.createElement("div");
 	      a.setAttribute("id", inp.id + "autocomplete-list");
 	      a.setAttribute("class", "autocomplete-items");
 	      inp.parentNode.appendChild(a);
 	      for (i = 0; i < arr.length; i++) {
-		  if(typeof(arr[i]) !== "string") {continue;}
+		  if(typeof(arr[i]) !== "string") { continue; }
 		  b = document.createElement("div");
 		  b.innerHTML = "<strong>"+arr[i]+"</strong>"
 		  b.innerHTML += "<input type='hidden' value='" + arr[i] + "'>";
 		  b.addEventListener("click", function(e) {
 		      var new_word = this.getElementsByTagName("input")[0].value;
 		      inp.value += new_word;
-		      closeAllLists();
 		      const event = new Event('autocomplete');
 		      inp.dispatchEvent(event);
+		      closeAllLists();
+		      inp.focus();
 		  });
 		  a.appendChild(b);
 	      }
 	  };
 	  inp.addEventListener("focusin", function()
 			       {
+				   debug_log("focus in");
 				   var a, b, i, val = this.value;
 				   if (!val) { showlist(); }
 			       });
+	  inp.addEventListener("blur", function(e)
+			       {
+				   debug_log(e.relatedTarget.tagName);
+				   closeAllLists();
+			       });
 	  inp.addEventListener("input", function(e) {
 	      var a, b, i, val = this.value;
-	      if (!val)
-	      {
-		  showlist();
-		  return true;
-	      }
 	      closeAllLists();
 	      var cursor_pos = this.selectionStart;
 	      val = val.replace(/[\u2018\u2019]/g, "'");
@@ -458,11 +464,12 @@
 			  cur_len += new_pos;
 			  cursor_pos = cur_len;
 			  inp.value = words.join(",");
-			  closeAllLists();
 			  inp.selectionStart = cursor_pos;
 			  inp.selectionEnd = cursor_pos;
 			  const event = new Event('autocomplete');
 			  inp.dispatchEvent(event);
+			  closeAllLists();
+			  inp.focus();
 		      });
 		      a.appendChild(b);
 		  }
@@ -511,9 +518,6 @@
 		  }
 	      }
 	  }
-	  document.addEventListener("click", function (e) {
-	      closeAllLists(e.target);
-	  });
       }
       </script>
     <div id="run_buttons" class="run_buttons_div"></div>

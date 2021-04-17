@@ -81,6 +81,22 @@ a:focus {
     outline: thin dotted;
 }
 
+input:focus, details:focus, summary:focus {
+    outline-color: #F0F0F0;
+    outline: dashed thin;
+}
+
+button
+{
+    transition: all 0.1s ease;
+}
+
+button:focus
+{
+  outline: none;
+  transform: scale(1.08);
+}
+
 *::-moz-selection {
     background: rgba(255, 255, 0, 0.3);
     color: #000;
