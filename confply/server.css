@@ -85,6 +85,10 @@ input:focus, details:focus, summary:focus {
     outline-color: #F0F0F0;
     outline: dashed thin;
 }
+details:focus, summary:focus
+{
+    outline-offset: 3px;
+}
 
 button
 {

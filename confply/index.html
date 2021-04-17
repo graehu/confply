@@ -11,12 +11,15 @@
     <div class="autocomplete" style="padding: 5px;">
       <input type="text" id="id_config_input" name="id_config_input" placeholder="path/to/config.py"/>
     </div>
-    <details> <summary>debug</summary>
-      <div id="debug_div" class="logbox"></div>
+    <div id="run_buttons" class="run_buttons_div"></div>
+    <details style="padding: 5px;" class="logbox"> <summary>debug</summary>
+      <div id="debug_div"></div>
     </details>
+    <span style="display: block; margin-top: 5px;"/>
+    <div id="logs" class="logbox">waiting for logs...</div>
     <script>
+      // #todo: try to modularise parts of this
       // #todo: httpget add failure handling
-      // for the various gets below.
       var currentrun = null;
       var running_button = null;
       var run_queue = [];
@@ -375,7 +378,6 @@
 	  var currentFocus;
 	  function showlist()
 	  {
-	      debug_log("showlist");
 	      closeAllLists();
 	      a = document.createElement("div");
 	      a.setAttribute("id", inp.id + "autocomplete-list");
@@ -386,7 +388,9 @@
 		  b = document.createElement("div");
 		  b.innerHTML = "<strong>"+arr[i]+"</strong>"
 		  b.innerHTML += "<input type='hidden' value='" + arr[i] + "'>";
+		  a.appendChild(b);
 		  b.addEventListener("click", function(e) {
+		      debug_log("click1");
 		      var new_word = this.getElementsByTagName("input")[0].value;
 		      inp.value += new_word;
 		      const event = new Event('autocomplete');
@@ -394,19 +398,22 @@
 		      closeAllLists();
 		      inp.focus();
 		  });
-		  a.appendChild(b);
 	      }
 	  };
 	  inp.addEventListener("focusin", function()
 			       {
-				   debug_log("focus in");
 				   var a, b, i, val = this.value;
 				   if (!val) { showlist(); }
 			       });
 	  inp.addEventListener("blur", function(e)
 			       {
-				   debug_log(e.relatedTarget.tagName);
-				   closeAllLists();
+				   // // #todo: this is a hack, not sure why it works.
+				   // // fixes an issue where autocompletion doesn't
+				   // // fill the respective input textarea
+				   if(e.relatedTarget.tagName)
+				   {
+				       closeAllLists();   
+				   }
 			       });
 	  inp.addEventListener("input", function(e) {
 	      var a, b, i, val = this.value;
@@ -443,12 +450,16 @@
 	      for (i = 0; i < arr.length; i++) {
 		  // #todo: deal with non strings?
 		  if(typeof(arr[i]) !== "string") {continue;}
-		  if (arr[i].substr(0, cur_word.length).toUpperCase() == cur_word.toUpperCase()) {
+		  if (arr[i].toUpperCase().includes(cur_word.toUpperCase())) {
 		      b = document.createElement("div");
-		      b.innerHTML = "<strong>" + arr[i].substr(0, cur_word.length) + "</strong>";
-		      b.innerHTML += arr[i].substr(cur_word.length);
+		      var comp_index = arr[i].toUpperCase().indexOf(cur_word.toUpperCase());
+		      b.innerHTML = arr[i].substr(0, comp_index);
+		      b.innerHTML += "<strong>" + arr[i].substr(comp_index, cur_word.length) + "</strong>";
+		      b.innerHTML += arr[i].substr(comp_index+cur_word.length);
 		      b.innerHTML += "<input type='hidden' value='" + arr[i] + "'>";
-		      b.addEventListener("click", function(e) {
+		      a.appendChild(b);
+			      b.addEventListener("click", function(e) {
+			      debug_log("click");
 			  var new_word = this.getElementsByTagName("input")[0].value;
 			  var old_word = words[word_index];
 			  var replacement = "";
@@ -471,7 +482,6 @@
 			  closeAllLists();
 			  inp.focus();
 		      });
-		      a.appendChild(b);
 		  }
 	      }
 	  });
@@ -492,7 +502,7 @@
 		  if (currentFocus > -1) {
 		      if (x) x[currentFocus].click();
 		  }
-		  else if(x && x.length == 1)
+		  else if(x)
 		  {
 		      x[0].click();
 		  }
@@ -520,7 +530,5 @@
 	  }
       }
       </script>
-    <div id="run_buttons" class="run_buttons_div"></div>
-    <div id="logs" class="logbox">waiting for logs...</div>
   <body>
 </html>
