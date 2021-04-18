@@ -59,12 +59,12 @@ jobs:
         if: ${{ always() }}
       # Test --new_tool
       - name: --new_tool
-        run: python confply.py --new_tool new_tool
+        run: python confply.py --new_tool my_tool
         if: ${{ always() }}
       - name: --new_config
-        run: python confply.py --new_config new_tool new_tool.py
+        run: python confply.py --new_config my_tool my_tool.py
         if: ${{ always() }}
       - name: Run new_tool
-        run: python confply.py new_tool.py
+        run: python confply.py my_tool.py
         if: ${{ always() }}
 
