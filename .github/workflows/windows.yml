@@ -56,5 +56,5 @@ jobs:
         run: python confply.py --new_config my_tool my_tool.py
         if: ${{ always() }}
       - name: Run my_tool
-        run: python confply.py my_tool.py
+        run: python confply.py --in my_tool.py
         if: ${{ always() }}

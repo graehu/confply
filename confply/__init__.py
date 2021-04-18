@@ -124,34 +124,40 @@ def run_commandline(in_args):
 
     usage: run_commandline(["path_to_config", "optional", "arguements"])
     """
+
     in_args = __strip_confply_args(in_args)
-    if len(in_args) == 0:
-        return 0
-    log.linebreak()
-    log.header("run config")
-    log.linebreak()
-
-    # setup config run
-    confply.config.config_path = in_args.pop(0)
-    file_path = confply.config.config_path
     confply.config.args = in_args
-    should_run = confply.config.run
+    if hasattr(confply.config, "config_path"):
+        log.linebreak()
+        log.header("run config")
+        log.linebreak()
+        # setup config run
+        file_path = confply.config.config_path
+        should_run = confply.config.run
+        config_locals, config_modules = load_config(file_path)
+        if not config_locals:
+            log.error("failed to load: "+file_path)
+            return -1
 
-    config_locals, config_modules = load_config(file_path)
-    if not config_locals:
-        log.error("failed to load: "+file_path)
-        return -1
+        if("config" not in config_locals):
+            log.error("confply config incorrectly imported")
+            log.normal("\tuse: 'import confply.[config_type].config as config'")
+            clean_modules(config_modules)
+            return -1
 
-    if("config" not in config_locals):
-        log.error("confply config incorrectly imported")
-        log.normal("\tuse: 'import confply.[config_type].config as config'")
-        clean_modules(config_modules)
-        return -1
+        # ensure we don't run if should_run was EVER false
+        if should_run is not True:
+            confply.config.run = should_run
+        return __run_config(config_locals, config_modules)
 
-    # ensure we don't run if should_run was EVER false
-    if should_run is not True:
-        confply.config.run = should_run
-    return __run_config(config_locals, config_modules)
+    elif hasattr(confply.config, "json_path"):
+        if os.path.exists(confply.config.json_path):
+            with open(confply.config.json_path) as in_json:
+                in_json = json.loads(in_json.read())
+                return run_json(in_json)
+    else:
+        return 0
+        pass
 
 
 def run_json(json):
@@ -349,7 +355,7 @@ if __name__ == "__main__":
     launcher(sys.argv[1:], aliases)
 """
 
-__new_config_str = """#!{confply_dir}/confply.py
+__new_config_str = """#!{confply_dir}/confply.py --in
 # generated using:
 # python {confply_dir}/confply.py --config {config_type_arg} {config_file}
 import sys
@@ -896,6 +902,9 @@ def __strip_confply_args(in_args):
             elif option == "--no_header":
                 # #todo: need to find a way to take headers out of logs
                 pass
+            elif option == "--in":
+                confply.__handle_in_arg(in_args)
+                pass
             elif option == "--":
                 break
             else:
@@ -937,6 +946,27 @@ def __handle_version_arg(in_args):
                "you are free to change and redistribute it.")
     log.normal("There is NO WARRANTY, to the extent permitted by law.")
 
+
+def __handle_in_arg(in_args):
+    if len(in_args) < 1:
+        log.error("--in requires a value.")
+        log.normal("\t--in [config_path]")
+        return
+    in_path = in_args.pop(0)
+    if(os.path.exists(in_path)):
+        if (in_path.endswith(".py")):
+            confply.config.config_path = in_path
+        elif (in_path.endswith(".json")):
+            confply.config.json_path = in_path
+        # #todo: add xml support
+        else:
+            log.error("invalid file arguement.")
+            log.normal("\t--in "+in_path)
+        return
+    else:
+        log.error("--in file not found.")
+        log.normal("\t--in "+in_path)
+        return
 
 def __handle_new_tool_arg(in_args):
     if len(in_args) < 1:

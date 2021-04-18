@@ -1,7 +1,7 @@
 Confply
 ----------
 
-Essentially, confply translates config files into shell commands. The config files are written in python and executed when confply loads them. This allows them to be dynamically populated. The config files can be shared between multiple command-line tools with the same functionality. e.g. c++ compilers.
+Confply translates config files into shell commands. The config files are written in python and executed when confply loads them. This allows them to be dynamically populated. The config files can be shared between multiple command-line tools with the same functionality. e.g. c++ compilers.
 
 For now compilers are the focus, but confply is extendable.
 
@@ -68,8 +68,8 @@ Look at `/confply/cpp_compiler/` as an example you can copy.
 You can override any field within a config from the command-line using `--config.{field}`. It's very easy to modify the behaviour of your config externally. Here's an example:
 
 ``` bash
-python confply.py --config.confply.tool g++ examples/cpp_compiler.cpp.py
-python confply.py --config.confply.tool cl examples/cpp_compiler.cpp.py
+python confply.py --config.confply.tool g++ --in examples/cpp_compiler.cpp.py
+python confply.py --config.confply.tool cl --in examples/cpp_compiler.cpp.py
 ```
 
 Which generates:
@@ -144,42 +144,41 @@ Below are the config files that are run and their outputs.
 #### Main Config
 ##### examples/compile_cpp.cpp.py
 ``` python
-#!./confply.py
+#!../confply.py --in
 # generated using:
-# python confply.py --config cpp_compiler confply.cpp.py
+# python ../confply.py --config cpp_compiler cpp_compiler.cpp.py
 import sys
-import ast
-import os
-sys.path.append('.')
+sys.path.append('..')
 import confply.cpp_compiler.config as config
 import confply.cpp_compiler.options as options
 import confply.log as log
 ############# modify_below ################
-# set the default compiler
-config.confply.tool = options.tools.clangpp
 
-# set debug_info from commandline args
-debug = False
-if "debug" in config.confply.args:
-    debug = True
-    config.object_path = "objects/debug"
-    log.normal("set to debug config")
+config.confply.log_topic = "cpp_compiler"
+log.normal("loading cpp_compiler with confply_args: "+str(config.confply.args))
 
-config.debug_info = debug
-config.confply.mail_to = "graehu@gmail.com"
-config.confply.mail_from = "confply.dev@gmail.com"
-config.confply.log_file = "confply.log"
-mail_login = None
-if os.path.exists("details.py"):
-    with open("details.py") as details_file:
-        mail_login = ast.literal_eval(details_file.read())
-config.confply.mail_login = mail_login
+config.source_files = ["main.cpp"]
+config.output_file = "hello_confply"
+config.link_libraries = ["stdc++"]
+config.standard = options.standard.cpp17
+config.warnings = options.warnings.all_warnings
+config.confply.log_config = True
+def post_run():
+    import subprocess
+    import sys
+    subprocess.run("./hello_confply",
+                   stdout=sys.stdout,
+                   stderr=subprocess.STDOUT,
+                   shell=True)
+    pass
+
+config.confply.post_run = post_run
 
 ```
 #### Group Config
 ##### confply.cpp.py
 ``` python
-#!./confply.py
+#!./confply.py --in
 # generated using:
 # python confply.py --config cpp_compiler confply.cpp.py
 import sys
@@ -191,7 +190,7 @@ import confply.cpp_compiler.options as options
 import confply.log as log
 ############# modify_below ################
 # set the default compiler
-config.confply.tool = options.tools.clangpp
+config.confply.tool = options.tool.clangpp
 
 # set debug_info from commandline args
 debug = False
@@ -204,7 +203,6 @@ config.debug_info = debug
 config.confply.mail_to = "graehu@gmail.com"
 config.confply.mail_from = "confply.dev@gmail.com"
 config.confply.log_file = "confply.log"
-config.confply.slack_send = "all"
 mail_login = None
 slack_bot = None
 if os.path.exists("mail_details.py"):
@@ -213,8 +211,10 @@ if os.path.exists("mail_details.py"):
 if os.path.exists("slack_details.py"):
     with open("slack_details.py") as details_file:
         slack_bot = ast.literal_eval(details_file.read())
-config.confply.mail_login = mail_login
-config.confply.slack_bot_token = slack_bot
+config.confply.__mail_login = mail_login
+config.confply.__slack_bot_token = slack_bot
+config.confply.log_echo_file = True
+
 ```
 #### Output
 

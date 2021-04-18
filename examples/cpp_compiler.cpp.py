@@ -1,4 +1,4 @@
-#!../confply.py
+#!../confply.py --in
 # generated using:
 # python ../confply.py --config cpp_compiler cpp_compiler.cpp.py
 import sys
