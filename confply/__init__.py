@@ -172,7 +172,12 @@ def run_json(json):
 
     # setup config run
     should_run = confply.config.run
-    path = json["confply"]["config_path"]
+    if("config_path" in json["confply"]):
+        path = json["confply"]["config_path"]
+    elif (hasattr(confply.config, "json_path")):
+        path = confply.config.json_path
+    else:
+        path = None
     confply.config.config_path = path
     config_name = os.path.basename(path)
     confply.config.config_name = config_name
@@ -684,7 +689,8 @@ def __get_group_configs(path):
 
 
 def apply_to_config(json):
-    module = importlib.import_module(json["__package__"])
+    module = "confply."+json["confply"]["__config_type"]+".config"
+    module = importlib.import_module(module)
     confply_config = importlib.import_module("confply.config")
     config_modules = []
     config_locals = {"config": module}
@@ -697,6 +703,7 @@ def apply_to_config(json):
         elif key in json:
             setattr(module, key, json[key])
     return config_locals, config_modules
+
 
 # #todo: this can be simplified
 def __validate_config(config_modules):
