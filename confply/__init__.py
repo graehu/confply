@@ -155,9 +155,49 @@ def run_commandline(in_args):
             with open(confply.config.json_path) as in_json:
                 in_json = json.loads(in_json.read())
                 return run_json(in_json)
+    # elif hasattr(confply.config, "xml_path"):
+    #     log.error("xml files not supported")
+    #     return -1
+        # from xml.etree import ElementTree as ET
+        # found = []
+        # def xml_to_json(in_xml):
+        #     nonlocal found
+        #     response = {}
+        #     for child in in_xml.iter():
+        #         if child == in_xml or child in found:
+        #             continue
+        #         found.append(child)
+        #         if len(list(child)) > 0:
+        #             response[child.tag] = xml_to_json(child)
+        #         else:
+        #             response[child.tag] = child.text or ''
+
+        #     return response
+
+        # if os.path.exists(confply.config.xml_path):
+        #     in_xml = ET.parse(confply.config.xml_path)
+        #     in_json = xml_to_json(in_xml.getroot())
+        #     return run_json(in_json)
+    elif hasattr(confply.config, "ini_path"):
+        if os.path.exists(confply.config.ini_path):
+            import configparser
+
+            def parse_lit(in_val):
+                try:
+                    return ast.literal_eval(in_val)
+                except Exception:
+                    return in_val
+
+            conf = configparser.ConfigParser()
+            conf.read(confply.config.ini_path)
+            in_json = {"confply": {}}
+            for (key, val) in conf["config"].items():
+                in_json[key] = parse_lit(val)
+            for (key, val) in conf["confply"].items():
+                in_json["confply"][key] = parse_lit(val)
+            return run_json(in_json)
     else:
         return 0
-        pass
 
 
 def run_json(json):
@@ -176,6 +216,10 @@ def run_json(json):
         path = json["confply"]["config_path"]
     elif (hasattr(confply.config, "json_path")):
         path = confply.config.json_path
+    # elif (hasattr(confply.config, "xml_path")):
+    #     path = confply.config.xml_path
+    elif (hasattr(confply.config, "ini_path")):
+        path = confply.config.ini_path
     else:
         path = None
     confply.config.config_path = path
@@ -965,7 +1009,11 @@ def __handle_in_arg(in_args):
             confply.config.config_path = in_path
         elif (in_path.endswith(".json")):
             confply.config.json_path = in_path
-        # #todo: add xml support
+        # elif (in_path.endswith(".xml")):
+        #     # #todo: add xml support
+        #     confply.config.xml_path = in_path
+        elif (in_path.endswith(".ini")):
+            confply.config.ini_path = in_path
         else:
             log.error("invalid file arguement.")
             log.normal("\t--in "+in_path)
@@ -974,6 +1022,7 @@ def __handle_in_arg(in_args):
         log.error("--in file not found.")
         log.normal("\t--in "+in_path)
         return
+
 
 def __handle_new_tool_arg(in_args):
     if len(in_args) < 1:
