@@ -111,6 +111,8 @@ class ConfplyServer(SimpleHTTPRequestHandler):
                 parsed = json.loads(parsed)
                 response["ran"] = parsed
                 server_log = os.path.abspath(os.path.dirname(__file__))
+                server_log = "/".join(server_log.split("/")[0:-1])+"/logs/"
+                os.makedirs(server_log, exist_ok=True)
                 unique_str = time.strftime("%Y%m%d-%H%M%S")
                 unique_str += "-"+threading.currentThread().name.split("-")[1]
                 server_log = os.path.join(server_log, "server_"+unique_str+".log")
@@ -144,6 +146,8 @@ class ConfplyServer(SimpleHTTPRequestHandler):
                 try:
                     run_lock.acquire()
                     server_log = os.path.abspath(os.path.dirname(__file__))
+                    server_log = "/".join(server_log.split("/")[0:-1])+"/logs/"
+                    os.makedirs(server_log, exist_ok=True)
                     unique_str = time.strftime("%Y%m%d-%H%M%S")
                     unique_str += "-"+threading.currentThread().name.split("-")[1]
                     server_log = os.path.join(server_log, "server_"+unique_str+".log")

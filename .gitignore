@@ -2,3 +2,4 @@ __pycache__/
 *.*~
 examples/objects
 examples/hello_confply
+logs/*
