@@ -1,5 +1,7 @@
 # Python 3 server example
-from http.server import SimpleHTTPRequestHandler, HTTPServer
+from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
+import time
+import threading
 import json
 import os
 import socket
@@ -17,6 +19,8 @@ __all__ = [
     "start_server",
     "aliases",
 ]
+
+run_lock = threading.Lock()
 
 
 class ConfplyServer(SimpleHTTPRequestHandler):
@@ -68,29 +72,6 @@ class ConfplyServer(SimpleHTTPRequestHandler):
             elif "/api/get.configs" == self.path:
                 response["ok"] = True
                 response["configs"] = list(configs)
-            elif "/api/run.alias" == self.path:
-                response["ok"] = True
-                headers["Cache-Control"] = "no-store, must-revalidate"
-                server_log = os.path.abspath(os.path.dirname(__file__))
-                server_log = os.path.join(server_log, "server.log")
-                with open(server_log, "w") as sf:
-                    sf.write("failed to write server log\n")
-                    cmd = "python "
-                    cmd += launcher_path + " "
-                    cmd += queries["alias"]
-                    cmd += " --config.confply.log_file "
-                    cmd += server_log
-                if os.name == 'nt':
-                    system_code = os.system(cmd)
-                else:
-                    system_code = os.WEXITSTATUS(os.system(cmd))
-
-                if system_code != 0:
-                    response["status"] = "failure"
-                else:
-                    response["status"] = "success"
-                with open(server_log) as sf:
-                    response["log"] = sf.read()
             else:
                 self.send_response(404)
                 for k, v in headers.items():
@@ -122,30 +103,78 @@ class ConfplyServer(SimpleHTTPRequestHandler):
             from confply import run_json
             from confply import pushd
             # #todo: check that the passed config is in the valid configs passed by get.configs
-            response["ok"] = True
-            data_string = self.rfile.read(int(self.headers['Content-Length']))
-            parsed = data_string.decode("utf-8")
-            parsed = json.loads(parsed)
-            response["ran"] = parsed
-            server_log = os.path.abspath(os.path.dirname(__file__))
-            server_log = os.path.join(server_log, "server.log")
-            with open(server_log, "w") as sf:
-                sf.write("failed to write server log\n")
-                pass
-            parsed["confply"]["log_file"] = server_log
-            with pushd(os.path.dirname(launcher_path)):
-                return_code = run_json(parsed)
+            try:
+                run_lock.acquire()
+                response["ok"] = True
+                data_string = self.rfile.read(int(self.headers['Content-Length']))
+                parsed = data_string.decode("utf-8")
+                parsed = json.loads(parsed)
+                response["ran"] = parsed
+                server_log = os.path.abspath(os.path.dirname(__file__))
+                unique_str = time.strftime("%Y%m%d-%H%M%S")
+                unique_str += "-"+threading.currentThread().name.split("-")[1]
+                server_log = os.path.join(server_log, "server_"+unique_str+".log")
+                with open(server_log, "w") as sf:
+                    sf.write("failed to write server log\n")
+                    pass
+                parsed["confply"]["log_file"] = server_log
+                with pushd(os.path.dirname(launcher_path)):
+                    return_code = run_json(parsed)
 
-            if return_code != 0:
-                response["status"] = "failure"
-            else:
-                response["status"] = "success"
-            with open(server_log) as sf:
-                response["log"] = sf.read()
+                if return_code != 0:
+                    response["status"] = "failure"
+                else:
+                    response["status"] = "success"
+                with open(server_log) as sf:
+                    response["log"] = sf.read()
+                    pass
+            finally:
+                run_lock.release()
                 pass
             self.send_response(200)
             self.end_headers()
             self.wfile.write(bytes(json.dumps(response), "utf-8"))
+            pass
+        elif "/api/run.alias" == self.path:
+            data_string = self.rfile.read(int(self.headers['Content-Length']))
+            parsed = data_string.decode("utf-8")
+            parsed = json.loads(parsed)
+            if "alias" in parsed:
+                response["ok"] = True
+                try:
+                    run_lock.acquire()
+                    server_log = os.path.abspath(os.path.dirname(__file__))
+                    unique_str = time.strftime("%Y%m%d-%H%M%S")
+                    unique_str += "-"+threading.currentThread().name.split("-")[1]
+                    server_log = os.path.join(server_log, "server_"+unique_str+".log")
+                    with open(server_log, "w") as sf:
+                        sf.write("failed to write server log\n")
+                        cmd = "python "
+                        cmd += launcher_path + " "
+                        cmd += parsed["alias"]
+                        cmd += " --config.confply.log_file "
+                        cmd += server_log
+                    if os.name == 'nt':
+                        system_code = os.system(cmd)
+                    else:
+                        system_code = os.WEXITSTATUS(os.system(cmd))
+
+                    if system_code != 0:
+                        response["status"] = "failure"
+                    else:
+                        response["status"] = "success"
+                    with open(server_log) as sf:
+                        response["log"] = sf.read()
+                finally:
+                    run_lock.release()
+                pass
+            else:
+                response["ok"] = False
+                response["error"] = "alias not in post request: "+self.path
+            self.send_response(200)
+            self.end_headers()
+            self.wfile.write(bytes(json.dumps(response), "utf-8"))
+            pass
         else:
             self.send_response(404)
             self.end_headers()
@@ -167,7 +196,7 @@ def start_server(port=8000, launcher=None):
     global aliases
     global configs
     # this is required to work with safari for some reason.
-    HTTPServer.address_family, addr = _get_best_family(None, port)
+    ThreadingHTTPServer.address_family, addr = _get_best_family(None, port)
     if launcher is not None:
         launcher_path = os.path.abspath(launcher)
         with open(launcher_path) as launcher_file:
@@ -179,8 +208,7 @@ def start_server(port=8000, launcher=None):
                     if elem.endswith(".py"):
                         configs.add(elem)
 
-
-    webServer = HTTPServer(addr, ConfplyServer)
+    webServer = ThreadingHTTPServer(addr, ConfplyServer)
     print("Server started http://%s:%s" % (addr))
     try:
         webServer.serve_forever()

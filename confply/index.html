@@ -303,7 +303,7 @@
 	      running_button = document.getElementById(alias+"_button");
 	      running_button.setAttribute("class", "run_button running");
 	      currentrun = alias +" - "+ new Date().toLocaleString();
-	      httpGet("/api/run.alias?alias="+alias, run_complete);
+	      httpPost("/api/run.alias", JSON.stringify({"alias": alias}), run_complete)
 	  }
 	  else if(running_button.id !== (alias+"_button"))
 	  {
