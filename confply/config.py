@@ -29,6 +29,10 @@ __override_list = []
 # usage: tool = "clang"
 tool = "default"
 
+# path to the config file, used internally
+# usage: don't use it
+config_path = ""
+
 # sets whether to run the resulting commands or not
 # usage: run = True
 run = True

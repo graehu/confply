@@ -18,7 +18,6 @@ if __name__ == "__main__":
         log.linebreak()
         exit(1)
 
-    log.normal("called with args: "+str(in_args))
     return_code = -999999
     if len(in_args) != 0:
         while len(in_args) > 0:

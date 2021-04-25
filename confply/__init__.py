@@ -36,11 +36,13 @@ class pushd:
 
     def __enter__(self):
         os.chdir(self.path)
+        log.normal("push "+self.path)
         return self
         pass
 
     def __exit__(self, type, value, traceback):
         os.chdir(self.old_path)
+        log.normal("pop "+self.old_path)
         pass
 
 
@@ -124,78 +126,61 @@ def run_commandline(in_args):
 
     usage: run_commandline(["path_to_config", "optional", "arguements"])
     """
-
+    log.normal("called with args: "+str(in_args))
     in_args = __strip_confply_args(in_args)
     confply.config.args = in_args
-    if hasattr(confply.config, "config_path"):
-        log.linebreak()
-        log.header("run config")
-        log.linebreak()
-        # setup config run
-        file_path = confply.config.config_path
-        should_run = confply.config.run
-        config_locals, config_modules = load_config(file_path)
-        if not config_locals:
-            log.error("failed to load: "+file_path)
+    if confply.config.config_path:
+        config_path = confply.config.config_path
+        if not os.path.exists(config_path):
+            log.error("couldn't find: "+config_path)
             return -1
+        if config_path.endswith(".py"):
+            log.linebreak()
+            log.header("run config")
+            log.linebreak()
+            # setup config run
+            should_run = confply.config.run
+            config_locals, config_modules = load_config(config_path)
+            if not config_locals:
+                log.error("failed to load: "+config_path)
+                return -1
 
-        if("config" not in config_locals):
-            log.error("confply config incorrectly imported")
-            log.normal("\tuse: 'import confply.[config_type].config as config'")
-            clean_modules(config_modules)
-            return -1
+            if("config" not in config_locals):
+                log.error("confply config incorrectly imported")
+                log.normal("\tuse: 'import confply.[config_type].config as config'")
+                clean_modules(config_modules)
+                return -1
 
-        # ensure we don't run if should_run was EVER false
-        if should_run is not True:
-            confply.config.run = should_run
-        return __run_config(config_locals, config_modules)
+            # ensure we don't run if should_run was EVER false
+            if should_run is not True:
+                confply.config.run = should_run
+            return __run_config(config_locals, config_modules)
 
-    elif hasattr(confply.config, "json_path"):
-        if os.path.exists(confply.config.json_path):
-            with open(confply.config.json_path) as in_json:
-                in_json = json.loads(in_json.read())
+        elif config_path.endswith.endswith(".js"):
+            if os.path.exists(confply.config.json_path):
+                with open(confply.config.json_path) as in_json:
+                    in_json = json.loads(in_json.read())
+                    return run_json(in_json)
+        elif config_path.endswith.endswith(".ini"):
+            if os.path.exists(confply.config.ini_path):
+                import configparser
+
+                def parse_lit(in_val):
+                    try:
+                        return ast.literal_eval(in_val)
+                    except Exception:
+                        return in_val
+
+                conf = configparser.ConfigParser()
+                conf.read(confply.config.ini_path)
+                in_json = {"confply": {}}
+                for (key, val) in conf["config"].items():
+                    in_json[key] = parse_lit(val)
+                for (key, val) in conf["confply"].items():
+                    in_json["confply"][key] = parse_lit(val)
                 return run_json(in_json)
-    # elif hasattr(confply.config, "xml_path"):
-    #     log.error("xml files not supported")
-    #     return -1
-        # from xml.etree import ElementTree as ET
-        # found = []
-        # def xml_to_json(in_xml):
-        #     nonlocal found
-        #     response = {}
-        #     for child in in_xml.iter():
-        #         if child == in_xml or child in found:
-        #             continue
-        #         found.append(child)
-        #         if len(list(child)) > 0:
-        #             response[child.tag] = xml_to_json(child)
-        #         else:
-        #             response[child.tag] = child.text or ''
-
-        #     return response
-
-        # if os.path.exists(confply.config.xml_path):
-        #     in_xml = ET.parse(confply.config.xml_path)
-        #     in_json = xml_to_json(in_xml.getroot())
-        #     return run_json(in_json)
-    elif hasattr(confply.config, "ini_path"):
-        if os.path.exists(confply.config.ini_path):
-            import configparser
-
-            def parse_lit(in_val):
-                try:
-                    return ast.literal_eval(in_val)
-                except Exception:
-                    return in_val
-
-            conf = configparser.ConfigParser()
-            conf.read(confply.config.ini_path)
-            in_json = {"confply": {}}
-            for (key, val) in conf["config"].items():
-                in_json[key] = parse_lit(val)
-            for (key, val) in conf["confply"].items():
-                in_json["confply"][key] = parse_lit(val)
-            return run_json(in_json)
+        else:
+            log.error("unsupported config type: "+config_path)
     else:
         return 0
 
@@ -269,7 +254,6 @@ def config_to_dict(config, has_privates=True):
     return module_to_dict(config)
 
 
-
 def load_config(path):
     if os.name == "nt":
         confply.config.platform = "windows"
@@ -306,9 +290,9 @@ def load_config(path):
         if dir_path is None:
             continue
         if os.path.exists(dir_path) and os.path.isfile(dir_path):
-            config_name = os.path.basename(path)
+            config_name = os.path.basename(dir_path)
             confply.config.config_name = config_name
-            confply.config.modified = os.path.getmtime(path).real
+            confply.config.modified = os.path.getmtime(dir_path).real
             with open(dir_path) as config_file:
                 with pushd(os.path.dirname(dir_path)):
                     try:
@@ -347,7 +331,7 @@ def load_config(path):
                         return None, None
 
         else:
-            log.error("failed to find " + dir_path)
+            log.error("failed to find: " + str(dir_path))
             return None, None
 
     return config_locals, config_modules
@@ -673,7 +657,7 @@ def __run_dependencies(config, config_modules, should_run):
                 confply.config.log_topic = "confply"
                 log.linebreak()
                 __configs_run.append(d)
-                depends_return = run_commandline([d])
+                depends_return = run_commandline(["--in", d])
                 if depends_return < 0:
                     confply.config.log_topic = store["log_topic"]
                     confply.config.log_file = store["log_file"]
@@ -1004,24 +988,8 @@ def __handle_in_arg(in_args):
         log.normal("\t--in [config_path]")
         return
     in_path = in_args.pop(0)
-    if(os.path.exists(in_path)):
-        if (in_path.endswith(".py")):
-            confply.config.config_path = in_path
-        elif (in_path.endswith(".json")):
-            confply.config.json_path = in_path
-        # elif (in_path.endswith(".xml")):
-        #     # #todo: add xml support
-        #     confply.config.xml_path = in_path
-        elif (in_path.endswith(".ini")):
-            confply.config.ini_path = in_path
-        else:
-            log.error("invalid file arguement.")
-            log.normal("\t--in "+in_path)
-        return
-    else:
-        log.error("--in file not found.")
-        log.normal("\t--in "+in_path)
-        return
+    confply.config.config_path = in_path
+
 
 
 def __handle_new_tool_arg(in_args):
