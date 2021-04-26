@@ -36,13 +36,13 @@ class pushd:
 
     def __enter__(self):
         os.chdir(self.path)
-        log.normal("push "+self.path)
+        log.debug("push "+self.path)
         return self
         pass
 
     def __exit__(self, type, value, traceback):
         os.chdir(self.old_path)
-        log.normal("pop "+self.old_path)
+        log.debug("pop "+self.old_path)
         pass
 
 
@@ -353,6 +353,7 @@ import sys
 import os
 sys.path.append("{confply_dir}")
 from confply import launcher
+from confply import run_commandline
 
 # fill this with your configs
 aliases = {comment}
@@ -361,10 +362,13 @@ aliases = {comment}
 aliases["all"] = " -- ".join([val for key, val in aliases.items()])
 
 if __name__ == "__main__":
-    dir_name = os.path.dirname(__file__)
-    if not dir_name == "":
-        os.chdir(dir_name)
-    launcher(sys.argv[1:], aliases)
+    if "--listen" in sys.argv:
+        return run_commandline(["--listen", __file__])
+    else:
+        dir_name = os.path.dirname(__file__)
+        if not dir_name == "":
+            os.chdir(dir_name)
+        launcher(sys.argv[1:], aliases)
 """
 
 __new_config_str = """#!{confply_dir}/confply.py --in
@@ -583,7 +587,7 @@ def __run_config(config_locals, config_modules):
                         log_str = out_log.read()
                         log_str = log_str.split("confply logging to " +
                                                 confply.config.log_file)[1]
-                        log.normal("wrote:\n"+log_str)
+                        log.normal("wrote:"+log_str)
 
             if (confply.config.mail_send == report["status"] or
                     confply.config.mail_send == "all"):

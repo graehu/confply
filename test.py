@@ -13,6 +13,7 @@ import sys
 import os
 sys.path.append(".")
 from confply import launcher
+from confply import run_commandline
 
 # fill this with your commands
 aliases = {
@@ -30,7 +31,10 @@ aliases = {
 aliases["all"] = " -- ".join([val for key, val in aliases.items()])
 
 if __name__ == "__main__":
-    dir_name = os.path.dirname(__file__)
-    if not dir_name == "":
-        os.chdir(dir_name)
-    launcher(sys.argv[1:], aliases)
+    if "--listen" in sys.argv:
+        run_commandline(["--listen", __file__])
+    else:
+        dir_name = os.path.dirname(__file__)
+        if not dir_name == "":
+            os.chdir(dir_name)
+        launcher(sys.argv[1:], aliases)

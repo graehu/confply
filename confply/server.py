@@ -110,16 +110,19 @@ class ConfplyServer(SimpleHTTPRequestHandler):
                 parsed = data_string.decode("utf-8")
                 parsed = json.loads(parsed)
                 response["ran"] = parsed
-                server_log = os.path.abspath(os.path.dirname(__file__))
-                server_log = "/".join(server_log.split("/")[0:-1])+"/logs/"
-                os.makedirs(server_log, exist_ok=True)
-                unique_str = time.strftime("%Y%m%d-%H%M%S")
-                unique_str += "-"+threading.currentThread().name.split("-")[1]
-                server_log = os.path.join(server_log, "server_"+unique_str+".log")
-                with open(server_log, "w") as sf:
+                log_path = os.path.abspath(os.path.dirname(__file__))
+                log_path = "/".join(log_path.split("/")[0:-1])+"/logs/"
+                os.makedirs(log_path, exist_ok=True)
+                log_name = parsed["confply"]["config_path"]
+                log_name = os.path.basename(log_name).split(".")[0]
+                log_name += "_"+time.strftime("%Y%m%d-%H%M%S")
+                log_name += "-"+threading.currentThread().name.split("-")[1]
+                log_name += ".log"
+                log_path = os.path.join(log_path, log_name)
+                with open(log_path, "w") as sf:
                     sf.write("failed to write server log\n")
                     pass
-                parsed["confply"]["log_file"] = server_log
+                parsed["confply"]["log_file"] = log_path
                 with pushd(os.path.dirname(launcher_path)):
                     return_code = run_json(parsed)
 
@@ -127,7 +130,7 @@ class ConfplyServer(SimpleHTTPRequestHandler):
                     response["status"] = "failure"
                 else:
                     response["status"] = "success"
-                with open(server_log) as sf:
+                with open(log_path) as sf:
                     response["log"] = sf.read()
                     pass
             finally:
@@ -145,19 +148,22 @@ class ConfplyServer(SimpleHTTPRequestHandler):
                 response["ok"] = True
                 try:
                     run_lock.acquire()
-                    server_log = os.path.abspath(os.path.dirname(__file__))
-                    server_log = "/".join(server_log.split("/")[0:-1])+"/logs/"
-                    os.makedirs(server_log, exist_ok=True)
-                    unique_str = time.strftime("%Y%m%d-%H%M%S")
-                    unique_str += "-"+threading.currentThread().name.split("-")[1]
-                    server_log = os.path.join(server_log, "server_"+unique_str+".log")
-                    with open(server_log, "w") as sf:
+                    log_path = os.path.abspath(os.path.dirname(__file__))
+                    log_path = "/".join(log_path.split("/")[0:-1])+"/logs/"
+                    os.makedirs(log_path, exist_ok=True)
+                    log_name = parsed["alias"]
+                    log_name += "_"+time.strftime("%Y%m%d-%H%M%S")
+                    log_name += "-"+threading.currentThread().name.split("-")[1]
+                    log_name += ".log"
+                    log_path = os.path.join(log_path, log_name)
+                    with open(log_path, "w") as sf:
                         sf.write("failed to write server log\n")
-                        cmd = "python "
-                        cmd += launcher_path + " "
-                        cmd += parsed["alias"]
-                        cmd += " --config.confply.log_file "
-                        cmd += server_log
+                        pass
+                    cmd = "python "
+                    cmd += launcher_path + " "
+                    cmd += parsed["alias"]
+                    cmd += " --config.confply.log_file "
+                    cmd += log_path
                     if os.name == 'nt':
                         system_code = os.system(cmd)
                     else:
@@ -167,7 +173,7 @@ class ConfplyServer(SimpleHTTPRequestHandler):
                         response["status"] = "failure"
                     else:
                         response["status"] = "success"
-                    with open(server_log) as sf:
+                    with open(log_path) as sf:
                         response["log"] = sf.read()
                 finally:
                     run_lock.release()

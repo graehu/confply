@@ -69,6 +69,10 @@ def centered(in_string, fill_string = " "):
 def normal(in_string, end = "\n", flush=False):
     topic = get_log_topic()
     print(topic+in_string, end=end, flush=flush)
+
+def debug(in_string, end = "\n", flush=False):
+    if confply.config.log_debug:
+        normal(in_string, end=end, flush=flush)
     
 def error(in_string):
     topic = get_log_topic()

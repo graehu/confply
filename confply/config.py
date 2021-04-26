@@ -41,6 +41,10 @@ run = True
 # usage: log_topic = "my command"
 log_topic = "confply"
 
+# enable debug logging
+# usage: log_debug = True
+log_debug = False
+
 # if true, confply will log it's config.
 # default behaviour is as if true.
 # usage: log_config = False
