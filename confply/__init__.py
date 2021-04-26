@@ -156,13 +156,14 @@ def run_commandline(in_args):
                 confply.config.run = should_run
             return __run_config(config_locals, config_modules)
 
-        elif config_path.endswith.endswith(".js"):
-            if os.path.exists(confply.config.json_path):
-                with open(confply.config.json_path) as in_json:
+        elif config_path.endswith(".json"):
+            if os.path.exists(config_path):
+                with open(config_path) as in_json:
                     in_json = json.loads(in_json.read())
+                    in_json["confply"].update({"config_path": config_path})
                     return run_json(in_json)
-        elif config_path.endswith.endswith(".ini"):
-            if os.path.exists(confply.config.ini_path):
+        elif config_path.endswith(".ini"):
+            if os.path.exists(config_path):
                 import configparser
 
                 def parse_lit(in_val):
@@ -172,8 +173,8 @@ def run_commandline(in_args):
                         return in_val
 
                 conf = configparser.ConfigParser()
-                conf.read(confply.config.ini_path)
-                in_json = {"confply": {}}
+                conf.read(config_path)
+                in_json = {"confply": {"config_path": config_path}}
                 for (key, val) in conf["config"].items():
                     in_json[key] = parse_lit(val)
                 for (key, val) in conf["confply"].items():
@@ -181,8 +182,10 @@ def run_commandline(in_args):
                 return run_json(in_json)
         else:
             log.error("unsupported config type: "+config_path)
+            return -1
     else:
         return 0
+    return 0
 
 
 def run_json(json):
@@ -199,14 +202,9 @@ def run_json(json):
     should_run = confply.config.run
     if("config_path" in json["confply"]):
         path = json["confply"]["config_path"]
-    elif (hasattr(confply.config, "json_path")):
-        path = confply.config.json_path
-    # elif (hasattr(confply.config, "xml_path")):
-    #     path = confply.config.xml_path
-    elif (hasattr(confply.config, "ini_path")):
-        path = confply.config.ini_path
     else:
         path = None
+    __load_vcs_info(path)
     confply.config.config_path = path
     config_name = os.path.basename(path)
     confply.config.config_name = config_name
@@ -260,26 +258,7 @@ def load_config(path):
     elif os.name == "posix":
         confply.config.platform = "linux"
 
-    # find the git root
-    # #todo: extend this to other version control?
-    # move this to a config_type
-    if confply.config.vcs == "git":
-        try:
-            git_cmd = 'git rev-parse --show-toplevel'
-            git_cmd = subprocess.check_output(git_cmd, shell=True)
-            confply.config.vcs_root = git_cmd.decode('utf-8').strip()
-            git_cmd = 'git branch --show-current'
-            git_cmd = subprocess.check_output(git_cmd, shell=True)
-            confply.config.vcs_branch = git_cmd.decode('utf-8').strip()
-            git_cmd = "git log -1 --pretty=format:'%an'"
-            git_cmd = subprocess.check_output(git_cmd, shell=True)
-            confply.config.vcs_author = git_cmd.decode("utf-8").strip()
-            git_cmd = "git log -1"
-            git_cmd = subprocess.check_output(git_cmd, shell=True)
-            confply.config.vcs_log = git_cmd.decode("utf-8").strip()
-        except subprocess.CalledProcessError:
-            log.warning('failed to fill git vcs information')
-
+    __load_vcs_info(path)
     # find group config in parent directories
     directory_paths = __get_group_configs(path)
     directory_paths.append(path)
@@ -404,6 +383,29 @@ log.normal("loading {config_file} with confply_args: "+str(config.confply.args))
 # list of configs that have already been run
 __configs_run = []
 __directory_stack = []
+
+
+def __load_vcs_info(path):
+    with pushd(os.path.dirname(path)):
+        # find the git root
+        # #todo: extend this to other version control?
+        # move this to a config_type
+        if confply.config.vcs == "git":
+            try:
+                git_cmd = 'git rev-parse --show-toplevel'
+                git_cmd = subprocess.check_output(git_cmd, shell=True)
+                confply.config.vcs_root = git_cmd.decode('utf-8').strip()
+                git_cmd = 'git branch --show-current'
+                git_cmd = subprocess.check_output(git_cmd, shell=True)
+                confply.config.vcs_branch = git_cmd.decode('utf-8').strip()
+                git_cmd = "git log -1 --pretty=format:'%an'"
+                git_cmd = subprocess.check_output(git_cmd, shell=True)
+                confply.config.vcs_author = git_cmd.decode("utf-8").strip()
+                git_cmd = "git log -1"
+                git_cmd = subprocess.check_output(git_cmd, shell=True)
+                confply.config.vcs_log = git_cmd.decode("utf-8").strip()
+            except subprocess.CalledProcessError:
+                log.warning('failed to fill git vcs information')
 
 
 def __run_config(config_locals, config_modules):
