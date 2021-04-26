@@ -1,6 +1,12 @@
 import confply.cpp_compiler as cpp_compiler
 
-tool_name = cpp_compiler.os.path.basename(__file__)[:-3]
+fallbacks = ["cl", "clang++",  "g++", "gcc", "clang"]
+tool_name = None
+
+for tool in fallbacks:
+    if cpp_compiler.is_found(tool):
+        tool_name = tool
+        break
 
 
 def generate():
@@ -17,4 +23,4 @@ def handle_args():
 
 
 def is_found():
-    return cpp_compiler.is_found(tool_name)
+    return bool(tool_name)
