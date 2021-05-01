@@ -160,9 +160,9 @@ def run_commandline(in_args):
         elif config_path.endswith(".json"):
             if os.path.exists(config_path):
                 with open(config_path) as in_json:
-                    in_json = json.loads(in_json.read())
-                    in_json["confply"].update({"config_path": config_path})
-                    return run_json(in_json)
+                    in_dict = json.loads(in_json.read())
+                    in_dict["confply"].update({"config_path": config_path})
+                    return run_dict(in_dict)
         elif config_path.endswith(".ini"):
             if os.path.exists(config_path):
                 import configparser
@@ -175,12 +175,12 @@ def run_commandline(in_args):
 
                 conf = configparser.ConfigParser()
                 conf.read(config_path)
-                in_json = {"confply": {"config_path": config_path}}
+                in_dict = {"confply": {"config_path": config_path}}
                 for (key, val) in conf["config"].items():
-                    in_json[key] = parse_lit(val)
+                    in_dict[key] = parse_lit(val)
                 for (key, val) in conf["confply"].items():
-                    in_json["confply"][key] = parse_lit(val)
-                return run_json(in_json)
+                    in_dict["confply"][key] = parse_lit(val)
+                return run_dict(in_dict)
         else:
             log.error("unsupported config type: "+config_path)
             return -1
@@ -189,11 +189,11 @@ def run_commandline(in_args):
     return 0
 
 
-def run_json(json):
+def run_dict(in_dict):
     """
-    runs the confply json for the supplied config_type
+    runs the confply dict for the supplied config_type
 
-    usage: run_json(json, config_type)
+    usage: run_dict(in_dict)
     """
     log.linebreak()
     log.header("run config")
@@ -201,8 +201,8 @@ def run_json(json):
 
     # setup config run
     should_run = confply.config.run
-    if("config_path" in json["confply"]):
-        path = json["confply"]["config_path"]
+    if("config_path" in in_dict["confply"]):
+        path = in_dict["confply"]["config_path"]
     else:
         path = None
     __load_vcs_info(path)
@@ -210,7 +210,7 @@ def run_json(json):
     config_name = os.path.basename(path)
     confply.config.config_name = config_name
     confply.config.modified = os.path.getmtime(path).real
-    config_locals = apply_to_config(json)
+    config_locals = apply_to_config(in_dict)
     if not config_locals:
         log.error("failed to load:  json")
         return -1
@@ -385,7 +385,7 @@ config.confply.log_topic = "{config_type_arg}"
 log.normal("loading {config_file} with confply_args: "+str(config.confply.args))
 """
 # list of configs that have already been run
-__configs_run = []
+__configs_run = set()
 __directory_stack = []
 
 
@@ -641,39 +641,36 @@ def __run_shell_cmd(shell_cmd, cmd_env, tool):
 
 
 def __run_dependencies(config, should_run):
-    store = vars(confply.config)
-    store = {k: v for k, v in store.items() if not (k.startswith("__") and k.endswith("__"))}
+    store = config_to_dict(config)
     clean_modules()
     confply.config.run = should_run
-    if len(store["dependencies"]) > 0:
-        for d in store["dependencies"]:
+    depends_return = 0
+    if len(store["confply"]["dependencies"]) > 0:
+        for d in store["confply"]["dependencies"]:
             if d not in __configs_run:
-                confply.config.log_topic = store["log_topic"]
+                confply.config.log_topic = store["confply"]["log_topic"]
                 log.normal("running dependency: "+str(d))
                 confply.config.log_topic = "confply"
                 log.linebreak()
-                __configs_run.append(d)
+                __configs_run.add(d)
                 depends_return = run_commandline(["--in", d])
                 if depends_return < 0:
-                    confply.config.log_topic = store["log_topic"]
-                    confply.config.log_file = store["log_file"]
+                    confply.config.log_topic = store["confply"]["log_topic"]
+                    confply.config.log_file = store["confply"]["log_file"]
                     log.error("failed to run: "+str(d))
                     if not input_prompt("continue execution?"):
                         log.normal("aborting final commands")
-                        # #todo: make this jump to the mail section
-                        return depends_return
+                        break
                     else:
                         log.normal("continuing execution.")
         pass
     # reset confply.config
-    for k, v in store.items():
-        setattr(confply.config, k, v)
+    apply_to_config(store)
+    # #todo: make this jump to the mail section
+    return depends_return
+
 
 def __apply_overrides(config):
-    # attempting to stop people calling builtin functions
-    if "__builtins__" in config.__dict__:
-        del config.__dict__["__builtins__"]
-
     # update the config and confply.config dictionaries with overrides
     if isinstance(confply.config.__override_dict, dict):
         confply_dict = confply.config.__override_dict
@@ -713,20 +710,20 @@ def __get_group_configs(path):
     return directory_paths
 
 
-def apply_to_config(json):
+def apply_to_config(in_dict):
     global config_modules
-    module = importlib.import_module(json["__package__"])
+    module = importlib.import_module(in_dict["__package__"])
     config_locals = {"config": module}
     config_modules.add(module)
 
-    def apply_to_module(module, json):
+    def apply_to_module(module, in_dict):
         for key in dir(module):
-            if key in json:
+            if key in in_dict:
                 if inspect.ismodule(getattr(module, key)):
-                    apply_to_module(getattr(module, key), json[key])
+                    apply_to_module(getattr(module, key), in_dict[key])
                 else:
-                    setattr(module, key, json[key])
-    apply_to_module(module, json)
+                    setattr(module, key, in_dict[key])
+    apply_to_module(module, in_dict)
     return config_locals
 
 

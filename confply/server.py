@@ -100,7 +100,7 @@ class ConfplyServer(SimpleHTTPRequestHandler):
     def do_POST(self):
         response = {"ok": False}
         if "/api/run.config" == self.path:
-            from confply import run_json
+            from confply import run_dict
             from confply import pushd
             # #todo: check that the passed config is in the valid configs passed by get.configs
             try:
@@ -124,7 +124,7 @@ class ConfplyServer(SimpleHTTPRequestHandler):
                     pass
                 parsed["confply"]["log_file"] = log_path
                 with pushd(os.path.dirname(launcher_path)):
-                    return_code = run_json(parsed)
+                    return_code = run_dict(parsed)
 
                 if return_code != 0:
                     response["status"] = "failure"
