@@ -152,6 +152,9 @@ def run_commandline(in_args):
                 clean_modules()
                 return -1
 
+            if(not __validate_types(config_locals["config"])):
+                log.error("failed to run config")
+                return -1
             # ensure we don't run if should_run was EVER false
             if should_run is not True:
                 confply.config.run = should_run
@@ -216,9 +219,13 @@ def run_dict(in_dict):
         return -1
 
     if("config" not in config_locals):
-        log.error("confply config incorrectly imported")
-        log.normal("\tuse: 'import confply.[config_type].config as config'")
+        log.error("confply failed import")
+        log.normal("\tuse: '__package__': 'confply.[config_type].config' in json/ini")
         clean_modules()
+        return -1
+
+    if(not __validate_types(config_locals["config"])):
+        log.error("failed to run config")
         return -1
 
     # ensure we don't run if should_run was EVER false
@@ -229,7 +236,7 @@ def run_dict(in_dict):
 
 def config_to_dict(config, has_privates=True):
     def is_serialisable(obj):
-        return isinstance(obj, (int, float, str, dict, list, bool))
+        return isinstance(obj, (int, float, str, dict, list, bool, tuple))
 
     def module_to_dict(module):
         out = {}
@@ -418,7 +425,6 @@ def __run_config(config_locals):
     return_code = 0
     should_run = confply.config.run
     file_path = confply.config.config_path
-    confply_path = os.path.dirname(__file__) + "/"
     __apply_overrides(config)
     new_working_dir = os.path.dirname(file_path)
     old_stdout = sys.stdout
@@ -436,6 +442,7 @@ def __run_config(config_locals):
                     log.confply_header()
                     log.linebreak()
                     log.normal("python"+str(version))
+                    log.normal("confply "+str(__version__))
                     log.normal("date: "+str(datetime.now()))
                     log.linebreak()
                 log.normal("confply logging to "+confply.config.log_file)
@@ -642,7 +649,8 @@ def __run_shell_cmd(shell_cmd, cmd_env, tool):
 
 def __run_dependencies(config, should_run):
     store = config_to_dict(config)
-    clean_modules()
+    importlib.reload(config)
+    importlib.reload(config.confply)
     confply.config.run = should_run
     depends_return = 0
     if len(store["confply"]["dependencies"]) > 0:
@@ -725,6 +733,25 @@ def apply_to_config(in_dict):
                     setattr(module, key, in_dict[key])
     apply_to_module(module, in_dict)
     return config_locals
+
+
+def __validate_types(config):
+    d1 = config_to_dict(config)
+    importlib.reload(config)
+    importlib.reload(config.confply)
+    d2 = config_to_dict(config)
+    apply_to_config(d1)
+
+    def validate_dict(d1, d2):
+        valid = True
+        for k, v in d1.items():
+            if isinstance(v, dict) and isinstance(d2[k], dict):
+                valid = valid and validate_dict(v, d2[k])
+            elif not isinstance(v, type(d2[k])):
+                valid = False
+                log.error(k+": expected '"+type(d2[k]).__name__+"' got '"+type(v).__name__+"'")
+        return valid
+    return validate_dict(d1, d2)
 
 
 # #todo: this can be simplified
