@@ -688,6 +688,7 @@ def __apply_overrides(config):
         config.confply.__dict__.update(confply_dict["confply"])
         del confply_dict["confply"]
         config.__dict__.update(confply_dict)
+        confply.config.__override_dict = {"confply": {}}
 
     # update the configs with further overrides
     if isinstance(confply.config.__override_list, list):
@@ -722,18 +723,20 @@ def __get_group_configs(path):
 
 def apply_to_config(json):
     global config_modules
+    #todo just store the __package__ for the config
     module = "confply."+json["confply"]["__config_type"]+".config"
     module = importlib.import_module(module)
-    confply_config = importlib.import_module("confply.config")
     config_locals = {"config": module}
     config_modules.add(module)
-    for key in dir(module):
-        if key == "confply":
-            for k in dir(confply_config):
-                if k in json[key]:
-                    setattr(confply_config, k, json[key][k])
-        elif key in json:
-            setattr(module, key, json[key])
+
+    def apply_to_module(module, json):
+        for key in dir(module):
+            if key in json:
+                if inspect.ismodule(getattr(module, key)):
+                    apply_to_module(getattr(module, key), json[key])
+                else:
+                    setattr(module, key, json[key])
+    apply_to_module(module, json)
     return config_locals
 
 
@@ -784,24 +787,29 @@ def __validate_config(config):
 
 def __print_config(config_name, config):
     diff_config = __get_diff_config(config)
-    confply_path = os.path.dirname(__file__) + "/"
     config_type_path = config.__file__
 
     if(os.path.exists(config_type_path)):
         log.normal(config_name+" configuration:")
-        log.normal("{")
+        log.normal("")
 
-        for k, v in diff_config.items():
-            if isinstance(v, list):
-                log.normal("\t"+str(k)+": ")
-                for i in v:
-                    log.normal("\t\t"+str(i))
-            elif inspect.isfunction(v):
-                log.normal("\t"+str(k)+": "+v.__name__)
-            else:
-                log.normal("\t"+str(k)+": "+str(v))
-
-        log.normal("}")
+        def print_dict(d1, depth=0):
+            for k, v in d1.items():
+                if isinstance(v, list):
+                    log.normal("\t"*depth+str(k)+": ")
+                    for i in v:
+                        log.normal("\t"*(depth+1)+str(i))
+                elif isinstance(v, dict):
+                    log.normal("\t"*depth+k+":")
+                    print_dict(v, depth=depth+1)
+                    pass
+                elif inspect.isfunction(v):
+                    log.normal("\t"*depth+str(k)+": "+v.__name__)
+                else:
+                    log.normal("\t"*depth+str(k)+": "+str(v))
+        if "confply" in diff_config:
+            del diff_config["confply"]
+        print_dict(diff_config)
         log.normal("")
     else:
         log.error(confply.config_config_type +
@@ -825,39 +833,27 @@ def __get_confply_dir(rel_path=True):
     return confply_dir
 
 
-def __get_diff_config(config):
-    base_config = {}
-    compare_config = {}
-    diff_config = {}
-    confply_path = os.path.dirname(__file__) + "/"
-    config_type_path = config.__file__
-
-    if(os.path.exists(config_type_path)):
-        with open(config_type_path) as config_file:
-            exec(config_file.read(), {}, base_config)
-        with open(confply_path+"config.py") as config_file:
-            exec(config_file.read(), {}, compare_config)
-
-        for k, v in compare_config.items():
-            base_config["confply."+k] = v
-
-        compare_config = {
-            **{"confply." +
-                k: v for k, v in confply.config.__dict__.items()},
-            **config.__dict__
-        }
-        for k, v in compare_config.items():
-            if (k.startswith("__") or
-                    k.startswith("confply.__") or
-                    k.startswith("confply.mail") or
-                    k.startswith("confply.vcs") or
-                    k.startswith("confply.log") or
-                    k.startswith("confply.slack")):
+def __get_diff_config(config, has_privates=False):
+    config_dict = config_to_dict(config, has_privates=has_privates)
+    importlib.reload(config)
+    importlib.reload(config.confply)
+    base_dict = config_to_dict(config, has_privates=has_privates)
+    def diff_dict(d1, d2):
+        d3 = {}
+        for k in d1:
+            if k not in d2:
                 continue
-
-            if k in base_config and v != base_config[k] and not inspect.isfunction(v):
-                diff_config[k] = v
-    return diff_config
+            if isinstance(d1[k], dict):
+                d3[k] = diff_dict(d1[k], d2[k])
+                if not d3[k]:
+                    del d3[k]
+            elif d1[k] != d2[k]:
+                d3[k] = d2[k]
+        return d3
+    #todo: once again lets store out the __package__ instead
+    config_dict["confply"]["__config_type"] = config.__package__.split(".")[1]
+    apply_to_config(config_dict)
+    return diff_dict(base_dict, config_dict)
 
 
 def __tool_select(in_tools):
