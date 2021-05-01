@@ -9,14 +9,6 @@ _/ ___\/  _ \ /    \   __\\____ \|  |<   |  |
      \/           \/      |__|        \/
 """
 
-# the tool type to run with after loading the config
-# usage: don't set this, it's set on config import
-__config_type = ""
-
-# the number of configs imported so far
-# usage: don't set this, it's set on config import
-__imported_configs = []
-
 # config elements overriden by the commandline
 # usage: don't set this from configs see --config in help
 __override_dict = {"confply": {}}

@@ -248,8 +248,10 @@ def config_to_dict(config, has_privates=True):
             elif is_serialisable(value):
                 out[key] = value
         return out
-
-    return module_to_dict(config)
+    out = module_to_dict(config)
+    if "confply" in out:
+        out["confply"]["__config_type"] = config.__package__.split(".")[1]
+    return out
 
 
 def load_config(path):
@@ -290,9 +292,9 @@ def load_config(path):
                                 config_modules.append(v)
 
                         # validate there are less than 2 imported configs
-                        if len(confply.config.__imported_configs) > 1:
+                        if len(config_modules) > 1:
                             log.error("too many confply configs imported:")
-                            for c in confply.config.__imported_configs:
+                            for c in config_modules:
                                 log.normal("\t "+c)
                             log.normal(
                                 "confply only supports one config import."
@@ -318,8 +320,7 @@ def load_config(path):
 
 def clean_modules(config_modules):
     for m in config_modules:
-        if m.__name__ in sys.modules:
-            del sys.modules[m.__name__]
+        importlib.reload(m)
     importlib.reload(confply.config)
     importlib.reload(confply.mail)
     importlib.reload(confply.slack)
@@ -459,15 +460,14 @@ def __run_config(config_locals, config_modules):
             log.normal("traceback:\n\n"+trace)
             pass
 
-        if(not os.path.exists(confply_path+str(confply.config.__config_type))):
-            log.error(str(confply.config.__config_type) +
-                      " is not a valid _config_type and should not be set directly.")
-            log.normal("\tuse: 'import confply.[config_type].config as config'" +
-                       " to import _config_type.")
+        # if(not os.path.exists(confply_path+str(confply.config.__config_type))):
+        #     log.error(str(confply.config.__config_type) +
+        #               " is not a valid _config_type and should not be set directly.")
+        #     log.normal("\tuse: 'import confply.[config_type].config as config'" +
+        #                " to import _config_type.")
 
-            clean_modules(config_modules)
-            return -1
-
+        #     clean_modules(config_modules)
+        #     return -1
         diff_config = __get_diff_config(config)
         should_run = confply.config.run
         report = {
@@ -489,13 +489,13 @@ def __run_config(config_locals, config_modules):
             try:
                 time_start = timeit.default_timer()
                 # #todo: tool selection phase should happen first.
-                tools = __validate_config(config_modules)
-                config_type = confply.config.__config_type
+                tools = __validate_config(config, config_modules)
+                config_type = config.__package__
                 tool = confply.config.tool
                 report["tool"] = tool
                 report["config_type"] = config_type
                 if tools:
-                    shell_cmd = tools[config_type][tool]
+                    shell_cmd = tools[tool]
                     shell_cmd.handle_args()
                     # #todo: rename generate to gen_config_type.
                     shell_cmd = shell_cmd.generate() if tools else None
@@ -505,7 +505,7 @@ def __run_config(config_locals, config_modules):
                 __run_dependencies(config, config_modules, should_run)
 
                 if shell_cmd is not None:
-                    cmd_env = tools[config_type][tool].get_environ()
+                    cmd_env = tools[tool].get_environ()
                     if len(shell_cmd) > 0:
                         if isinstance(shell_cmd, list):
                             log.normal("final commands:\n")
@@ -740,47 +740,44 @@ def apply_to_config(json):
 
 
 # #todo: this can be simplified
-def __validate_config(config_modules):
+def __validate_config(config, config_modules):
     tools = {}
-    config_type = confply.config.__config_type
-    tool_dir = os.path.dirname(__file__) + "/" + config_type
+    tool_dir = config.__file__.replace("/config/__init__.py", "")
     if os.path.exists(tool_dir):
         files = os.listdir(tool_dir)
     else:
-        log.error(config_type+" is not a valid confply_config_type" +
+        log.error(config.__package__+" is not a valid confply_config_type" +
                   " and should not be set by users.")
         log.normal("\tuse: " +
                    "'import confply.[config_type].config as config'" +
                    " to import confply_config_type.")
         return None
 
-    tools[config_type] = {}
-    module_path = "confply."+config_type+"."
-    config_modules.append(
-        importlib.import_module("confply."+config_type)
-    )
+    tools = {}
+    module_path = config.__package__.rsplit(".", 1)[0]
     for py in files:
         if py.endswith(".py") and not py == "__init__.py":
             tool = py[0:-3]
-            tools[config_type][tool] = \
-                importlib.import_module(module_path + tool)
+            print("importing: "+module_path+"."+tool)
+            tools[tool] = \
+                importlib.import_module(module_path+"."+tool)
 
     tool = confply.config.tool
     pass
 
     #######
-    if tool in tools[config_type]:
-        if not tools[config_type][tool].is_found():
+    if tool in tools:
+        if not tools[tool].is_found():
             log.error("'"+tool+"' could not be found, is it installed?")
-            if __tool_select(tools[config_type]):
+            if __tool_select(tools):
                 return tools
             else:
                 return None
         else:
             return tools
     else:
-        log.error("'"+str(tool)+"' is not a valid "+config_type+" tool.")
-        if __tool_select(tools[config_type]):
+        log.error("'"+str(tool)+"' is not a valid tool.")
+        if __tool_select(tools):
             return tools
         else:
             return None
@@ -791,7 +788,7 @@ def __validate_config(config_modules):
 def __print_config(config_name, config):
     diff_config = __get_diff_config(config)
     confply_path = os.path.dirname(__file__) + "/"
-    config_type_path = confply_path+confply.config.__config_type
+    config_type_path = config.__file__
 
     if(os.path.exists(config_type_path)):
         log.normal(config_name+" configuration:")
@@ -836,10 +833,9 @@ def __get_diff_config(config):
     compare_config = {}
     diff_config = {}
     confply_path = os.path.dirname(__file__) + "/"
-    config_type_path = confply_path+confply.config.__config_type
+    config_type_path = config.__file__
 
     if(os.path.exists(config_type_path)):
-        config_type_path += "/config/__init__.py"
         with open(config_type_path) as config_file:
             exec(config_file.read(), {}, base_config)
         with open(confply_path+"config.py") as config_file:
