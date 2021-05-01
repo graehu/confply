@@ -748,6 +748,9 @@ def __validate_types(config):
             if isinstance(v, dict) and isinstance(d2[k], dict):
                 valid = valid and validate_dict(v, d2[k])
             elif not isinstance(v, type(d2[k])):
+                # edge case, allow tuples as lists & vice versa
+                if isinstance(v, (tuple, list)) and isinstance(d2[k], (tuple, list)):
+                    continue
                 valid = False
                 log.error(k+": expected '"+type(d2[k]).__name__+"' got '"+type(v).__name__+"'")
         return valid
@@ -848,6 +851,7 @@ def __get_confply_dir(rel_path=True):
 
 
 def __get_diff_config(config, has_privates=False):
+    store = config_to_dict(config)
     config_dict = config_to_dict(config, has_privates=has_privates)
     importlib.reload(config)
     importlib.reload(config.confply)
@@ -864,8 +868,7 @@ def __get_diff_config(config, has_privates=False):
             elif d1[k] != d2[k]:
                 d3[k] = d2[k]
         return d3
-    config_dict["__package__"] = config.__package__
-    apply_to_config(config_dict)
+    apply_to_config(store)
     return diff_dict(base_dict, config_dict)
 
 
