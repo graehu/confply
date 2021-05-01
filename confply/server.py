@@ -233,16 +233,18 @@ def get_config_dict(path):
     from confply import load_config
     from confply import clean_modules
     from confply import config_to_dict
-    config_locals, config_modules = load_config(path)
+    config_locals = load_config(path)
     if config_locals:
         config = config_locals["config"]
+        config_type = config.__package__.split(".")[1]
         config = config_to_dict(config)
         config["confply"]["config_path"] = path
+        config["confply"]["__config_type"] = config_type
         options = {}
         if "options" in config_locals:
             options = config_locals["options"]
             options = config_to_dict(options, False)
-        clean_modules(config_modules)
+        clean_modules()
         return {"config": config, "options": options}
 
     return None

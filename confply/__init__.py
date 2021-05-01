@@ -18,6 +18,7 @@ import confply.mail as mail
 import confply.slack as slack
 from datetime import datetime
 
+config_modules = set()
 
 class pushd:
     """
@@ -140,7 +141,7 @@ def run_commandline(in_args):
             log.linebreak()
             # setup config run
             should_run = confply.config.run
-            config_locals, config_modules = load_config(config_path)
+            config_locals = load_config(config_path)
             if not config_locals:
                 log.error("failed to load: "+config_path)
                 return -1
@@ -148,13 +149,13 @@ def run_commandline(in_args):
             if("config" not in config_locals):
                 log.error("confply config incorrectly imported")
                 log.normal("\tuse: 'import confply.[config_type].config as config'")
-                clean_modules(config_modules)
+                clean_modules()
                 return -1
 
             # ensure we don't run if should_run was EVER false
             if should_run is not True:
                 confply.config.run = should_run
-            return __run_config(config_locals, config_modules)
+            return __run_config(config_locals)
 
         elif config_path.endswith(".json"):
             if os.path.exists(config_path):
@@ -209,7 +210,7 @@ def run_json(json):
     config_name = os.path.basename(path)
     confply.config.config_name = config_name
     confply.config.modified = os.path.getmtime(path).real
-    config_locals, config_modules = apply_to_config(json)
+    config_locals = apply_to_config(json)
     if not config_locals:
         log.error("failed to load:  json")
         return -1
@@ -217,13 +218,13 @@ def run_json(json):
     if("config" not in config_locals):
         log.error("confply config incorrectly imported")
         log.normal("\tuse: 'import confply.[config_type].config as config'")
-        clean_modules(config_modules)
+        clean_modules()
         return -1
 
     # ensure we don't run if should_run was EVER false
     if should_run is not True:
         confply.config.run = should_run
-    return __run_config(config_locals, config_modules)
+    return __run_config(config_locals)
 
 
 def config_to_dict(config, has_privates=True):
@@ -248,13 +249,11 @@ def config_to_dict(config, has_privates=True):
             elif is_serialisable(value):
                 out[key] = value
         return out
-    out = module_to_dict(config)
-    if "confply" in out:
-        out["confply"]["__config_type"] = config.__package__.split(".")[1]
-    return out
+    return module_to_dict(config)
 
 
 def load_config(path):
+    global config_modules
     if os.name == "nt":
         confply.config.platform = "windows"
     elif os.name == "posix":
@@ -265,7 +264,6 @@ def load_config(path):
     directory_paths = __get_group_configs(path)
     directory_paths.append(path)
     config_locals = {}
-    config_modules = []
     # load and execute the config files
     for dir_path in directory_paths:
         if dir_path is None:
@@ -289,7 +287,7 @@ def load_config(path):
                             m_valid = m_valid and v_name.startswith("confply.")
                             m_valid = m_valid and v_name.endswith(".config")
                             if m_valid:
-                                config_modules.append(v)
+                                config_modules.add(v)
 
                         # validate there are less than 2 imported configs
                         if len(config_modules) > 1:
@@ -299,7 +297,7 @@ def load_config(path):
                             log.normal(
                                 "confply only supports one config import."
                             )
-                            clean_modules(config_modules)
+                            clean_modules()
                             return None, None
 
                         log.linebreak()
@@ -315,10 +313,11 @@ def load_config(path):
             log.error("failed to find: " + str(dir_path))
             return None, None
 
-    return config_locals, config_modules
+    return config_locals
 
 
-def clean_modules(config_modules):
+def clean_modules():
+    global config_modules
     for m in config_modules:
         importlib.reload(m)
     importlib.reload(confply.config)
@@ -413,7 +412,7 @@ def __load_vcs_info(path):
                 log.warning('failed to fill git vcs information')
 
 
-def __run_config(config_locals, config_modules):
+def __run_config(config_locals):
     in_args = confply.config.args
     config = config_locals["config"]
     return_code = 0
@@ -466,7 +465,7 @@ def __run_config(config_locals, config_modules):
         #     log.normal("\tuse: 'import confply.[config_type].config as config'" +
         #                " to import _config_type.")
 
-        #     clean_modules(config_modules)
+        #     clean_modules()
         #     return -1
         diff_config = __get_diff_config(config)
         should_run = confply.config.run
@@ -489,7 +488,7 @@ def __run_config(config_locals, config_modules):
             try:
                 time_start = timeit.default_timer()
                 # #todo: tool selection phase should happen first.
-                tools = __validate_config(config, config_modules)
+                tools = __validate_config(config)
                 config_type = config.__package__
                 tool = confply.config.tool
                 report["tool"] = tool
@@ -502,7 +501,7 @@ def __run_config(config_locals, config_modules):
                 else:
                     shell_cmd = None
 
-                __run_dependencies(config, config_modules, should_run)
+                __run_dependencies(config, should_run)
 
                 if shell_cmd is not None:
                     cmd_env = tools[tool].get_environ()
@@ -616,7 +615,7 @@ def __run_config(config_locals, config_modules):
                     ))
                 if slack.bot_token:
                     slack.send_report(report)
-    clean_modules(config_modules)
+    clean_modules()
     return return_code
 
 
@@ -649,11 +648,10 @@ def __run_shell_cmd(shell_cmd, cmd_env, tool):
         return -2
 
 
-
-def __run_dependencies(config, config_modules, should_run):
+def __run_dependencies(config, should_run):
     store = vars(confply.config)
     store = {k: v for k, v in store.items() if not (k.startswith("__") and k.endswith("__"))}
-    clean_modules(config_modules)
+    clean_modules()
     confply.config.run = should_run
     if len(store["dependencies"]) > 0:
         for d in store["dependencies"]:
@@ -723,12 +721,12 @@ def __get_group_configs(path):
 
 
 def apply_to_config(json):
+    global config_modules
     module = "confply."+json["confply"]["__config_type"]+".config"
     module = importlib.import_module(module)
     confply_config = importlib.import_module("confply.config")
-    config_modules = []
     config_locals = {"config": module}
-    config_modules.append(module)
+    config_modules.add(module)
     for key in dir(module):
         if key == "confply":
             for k in dir(confply_config):
@@ -736,11 +734,11 @@ def apply_to_config(json):
                     setattr(confply_config, k, json[key][k])
         elif key in json:
             setattr(module, key, json[key])
-    return config_locals, config_modules
+    return config_locals
 
 
 # #todo: this can be simplified
-def __validate_config(config, config_modules):
+def __validate_config(config):
     tools = {}
     tool_dir = config.__file__.replace("/config/__init__.py", "")
     if os.path.exists(tool_dir):
@@ -758,7 +756,6 @@ def __validate_config(config, config_modules):
     for py in files:
         if py.endswith(".py") and not py == "__init__.py":
             tool = py[0:-3]
-            print("importing: "+module_path+"."+tool)
             tools[tool] = \
                 importlib.import_module(module_path+"."+tool)
 
