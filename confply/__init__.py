@@ -459,14 +459,6 @@ def __run_config(config_locals):
             log.normal("traceback:\n\n"+trace)
             pass
 
-        # if(not os.path.exists(confply_path+str(confply.config.__config_type))):
-        #     log.error(str(confply.config.__config_type) +
-        #               " is not a valid _config_type and should not be set directly.")
-        #     log.normal("\tuse: 'import confply.[config_type].config as config'" +
-        #                " to import _config_type.")
-
-        #     clean_modules()
-        #     return -1
         diff_config = __get_diff_config(config)
         should_run = confply.config.run
         report = {
@@ -723,9 +715,7 @@ def __get_group_configs(path):
 
 def apply_to_config(json):
     global config_modules
-    #todo just store the __package__ for the config
-    module = "confply."+json["confply"]["__config_type"]+".config"
-    module = importlib.import_module(module)
+    module = importlib.import_module(json["__package__"])
     config_locals = {"config": module}
     config_modules.add(module)
 
@@ -850,8 +840,7 @@ def __get_diff_config(config, has_privates=False):
             elif d1[k] != d2[k]:
                 d3[k] = d2[k]
         return d3
-    #todo: once again lets store out the __package__ instead
-    config_dict["confply"]["__config_type"] = config.__package__.split(".")[1]
+    config_dict["__package__"] = config.__package__
     apply_to_config(config_dict)
     return diff_dict(base_dict, config_dict)
 

@@ -236,10 +236,8 @@ def get_config_dict(path):
     config_locals = load_config(path)
     if config_locals:
         config = config_locals["config"]
-        config_type = config.__package__.split(".")[1]
         config = config_to_dict(config)
         config["confply"]["config_path"] = path
-        config["confply"]["__config_type"] = config_type
         options = {}
         if "options" in config_locals:
             options = config_locals["options"]
