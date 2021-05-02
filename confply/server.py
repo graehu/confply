@@ -98,10 +98,10 @@ class ConfplyServer(SimpleHTTPRequestHandler):
         pass
 
     def do_POST(self):
+        from confply import run_dict
+        from confply import pushd
         response = {"ok": False}
         if "/api/run.config" == self.path:
-            from confply import run_dict
-            from confply import pushd
             # #todo: check that the passed config is in the valid configs passed by get.configs
             try:
                 run_lock.acquire()
@@ -159,22 +159,23 @@ class ConfplyServer(SimpleHTTPRequestHandler):
                     with open(log_path, "w") as sf:
                         sf.write("failed to write server log\n")
                         pass
-                    cmd = "python "
-                    cmd += launcher_path + " "
-                    cmd += parsed["alias"]
-                    cmd += " --config.confply.log_file "
-                    cmd += log_path
-                    if os.name == 'nt':
-                        system_code = os.system(cmd)
-                    else:
-                        system_code = os.WEXITSTATUS(os.system(cmd))
+                    with pushd(os.path.dirname(launcher_path)):
+                        cmd = "python "
+                        cmd += os.path.basename(launcher_path) + " "
+                        cmd += parsed["alias"]
+                        cmd += " --config.confply.log_file "
+                        cmd += log_path
+                        if os.name == 'nt':
+                            system_code = os.system(cmd)
+                        else:
+                            system_code = os.WEXITSTATUS(os.system(cmd))
 
-                    if system_code != 0:
-                        response["status"] = "failure"
-                    else:
-                        response["status"] = "success"
-                    with open(log_path) as sf:
-                        response["log"] = sf.read()
+                        if system_code != 0:
+                            response["status"] = "failure"
+                        else:
+                            response["status"] = "success"
+                        with open(log_path) as sf:
+                            response["log"] = sf.read()
                 finally:
                     run_lock.release()
                 pass
@@ -202,6 +203,7 @@ def _get_best_family(*address):
 
 
 def start_server(port=8000, launcher=None):
+    from confply import pushd
     global launcher_path
     global aliases
     global configs
@@ -209,14 +211,15 @@ def start_server(port=8000, launcher=None):
     ThreadingHTTPServer.address_family, addr = _get_best_family(None, port)
     if launcher is not None:
         launcher_path = os.path.abspath(launcher)
-        with open(launcher_path) as launcher_file:
-            config = {"aliases": {}, "__file__": launcher_path}
-            exec(launcher_file.read(), config, config)
-            aliases = config["aliases"]
-            for k, v in aliases.items():
-                for elem in shlex.split(v):
-                    if elem.endswith(".py"):
-                        configs.add(elem)
+        with pushd(os.path.dirname(launcher_path)):
+            with open(os.path.basename(launcher_path)) as launcher_file:
+                config = {"aliases": {}, "__file__": launcher_path}
+                exec(launcher_file.read(), config, config)
+                aliases = config["aliases"]
+                for k, v in aliases.items():
+                    for elem in shlex.split(v):
+                        if elem.endswith(".py"):
+                            configs.add(elem)
 
     webServer = ThreadingHTTPServer(addr, ConfplyServer)
     print("Server started http://%s:%s" % (addr))
