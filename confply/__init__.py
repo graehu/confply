@@ -760,7 +760,8 @@ def __validate_types(config):
 # #todo: this can be simplified
 def __validate_config(config):
     tools = {}
-    tool_dir = config.__file__.replace("/config/__init__.py", "")
+    tool_dir = os.path.dirname(config.__file__)
+    tool_dir = os.path.join(tool_dir, "..")
     if os.path.exists(tool_dir):
         files = os.listdir(tool_dir)
     else:
