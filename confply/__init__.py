@@ -234,7 +234,7 @@ def run_dict(in_dict):
     return __run_config(config_locals)
 
 
-def config_to_dict(config, has_privates=True):
+def config_to_dict(config, has_privates=True, is_json=False):
     def is_serialisable(obj):
         return isinstance(obj, (int, float, str, dict, list, bool, tuple))
 
@@ -249,11 +249,11 @@ def config_to_dict(config, has_privates=True):
             if inspect.ismodule(value):
                 out[key] = module_to_dict(value)
                 continue
-            elif inspect.isfunction(value):
+            # elif inspect.isfunction(value):
                 # #todo: handle functions in a better way
                 # out[key] = value.__name__
-                pass
-            elif is_serialisable(value):
+                # pass
+            elif is_serialisable(value) or not is_json:
                 out[key] = value
         return out
     return module_to_dict(config)
@@ -853,10 +853,10 @@ def __get_confply_dir(rel_path=True):
 
 def __get_diff_config(config, has_privates=False):
     store = config_to_dict(config)
-    config_dict = config_to_dict(config, has_privates=has_privates)
+    config_dict = config_to_dict(config, has_privates, True)
     importlib.reload(config)
     importlib.reload(config.confply)
-    base_dict = config_to_dict(config, has_privates=has_privates)
+    base_dict = config_to_dict(config, has_privates, True)
     def diff_dict(d1, d2):
         d3 = {}
         for k in d1:

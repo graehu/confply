@@ -239,12 +239,12 @@ def get_config_dict(path):
     config_locals = load_config(path)
     if config_locals:
         config = config_locals["config"]
-        config = config_to_dict(config)
+        config = config_to_dict(config, is_json=True)
         config["confply"]["config_path"] = path
         options = {}
         if "options" in config_locals:
             options = config_locals["options"]
-            options = config_to_dict(options, False)
+            options = config_to_dict(options, False, True)
         clean_modules()
         return {"config": config, "options": options}
 
