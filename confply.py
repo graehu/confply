@@ -12,7 +12,7 @@ if __name__ == "__main__":
         log.confply_header()
         log.linebreak()
         log.normal("python"+str(version))
-        log.normal("confply "+str(confply.__version__))
+        log.normal("confply "+confply.get_version())
         log.normal("date: "+str(confply.datetime.now()))
     if(version[0] < 3 or (version[0] == 3 and version[1] < 8)):
         log.error("python version must be 3.8 or above")

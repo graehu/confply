@@ -333,6 +333,15 @@ def clean_modules():
     pass
 
 
+def get_version():
+    global __version__
+    version = __version__+" #"
+    git_cmd = "git rev-parse --short HEAD"
+    git_cmd = subprocess.check_output(git_cmd, shell=True)
+    git_cmd = git_cmd.decode('utf-8').strip()
+    version += git_cmd
+    return version
+
 # private section
 
 
@@ -442,7 +451,7 @@ def __run_config(config_locals):
                     log.confply_header()
                     log.linebreak()
                     log.normal("python"+str(version))
-                    log.normal("confply "+str(__version__))
+                    log.normal("confply "+get_version())
                     log.normal("date: "+str(datetime.now()))
                     log.linebreak()
                 log.normal("confply logging to "+confply.config.log_file)
@@ -814,17 +823,17 @@ def __print_config(config_name, config):
         def print_dict(d1, depth=0):
             for k, v in d1.items():
                 if isinstance(v, list):
-                    log.normal("\t"*depth+str(k)+": ")
+                    log.bold("\t"*depth+log.format.bold(str(k))+": ")
                     for i in v:
                         log.normal("\t"*(depth+1)+str(i))
                 elif isinstance(v, dict):
-                    log.normal("\t"*depth+k+":")
+                    log.normal("\t"*depth+log.format.bold(k)+":")
                     print_dict(v, depth=depth+1)
                     pass
                 elif inspect.isfunction(v):
-                    log.normal("\t"*depth+str(k)+": "+v.__name__)
+                    log.normal("\t"*depth+log.format.bold(str(k))+": "+v.__name__)
                 else:
-                    log.normal("\t"*depth+str(k)+": "+str(v))
+                    log.normal("\t"*depth+log.format.bold(str(k))+": "+str(v))
         if "confply" in diff_config:
             del diff_config["confply"]
         print_dict(diff_config)
@@ -986,7 +995,7 @@ def __handle_help_config_arg(option, in_args):
 
 def __handle_version_arg(in_args):
     log.linebreak()
-    log.normal("Confply "+confply.__version__)
+    log.normal("Confply "+get_version())
     log.normal("Copyright (C) 2021 Graham Hughes.")
     log.normal("License MIT.")
     log.normal("This is free software; " +
