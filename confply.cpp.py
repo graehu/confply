@@ -24,8 +24,8 @@ config.confply.mail_to = "graehu@gmail.com"
 config.confply.mail_from = "confply.dev@gmail.com"
 # config.confply.log_file = "confply.log"
 config.confply.log_debug = True
-mail_login = None
-slack_bot = None
+mail_login = ()
+slack_bot = ""
 if os.path.exists("mail_details.py"):
     with open("mail_details.py") as details_file:
         mail_login = ast.literal_eval(details_file.read())
