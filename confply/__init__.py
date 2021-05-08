@@ -517,11 +517,15 @@ def __run_config(config_locals):
                         if isinstance(shell_cmd, list):
                             log.normal("final commands:\n")
                             for shell_str in shell_cmd:
-                                print(shell_str)
+                                cmd = confply.config.command_prepend+shell_str
+                                cmd = cmd+confply.config.command_append
+                                print(cmd)
                             print("")
                         else:
+                            cmd = confply.config.command_prepend+shell_cmd
+                            cmd = shell_cmd+confply.config.command_append
                             log.normal("final command:\n\n" +
-                                       str(shell_cmd) +
+                                       str(cmd) +
                                        "\n")
                         if should_run:
                             log.header("begin "+tool)
@@ -532,6 +536,8 @@ def __run_config(config_locals):
                             cmd_time_start = timeit.default_timer()
                             sys.stdout.flush()
                             log.linebreak()
+                            cmd = confply.config.command_prepend+cmd
+                            cmd = cmd+confply.config.command_append
                             log.normal(cmd)
                             log.normal("", flush=True)
                             return_code = __run_shell_cmd(cmd, cmd_env, tool)

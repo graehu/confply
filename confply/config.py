@@ -73,6 +73,14 @@ args = []
 # usage: dependencies = ["config.py"]
 dependencies = []
 
+# appends to the end of the command
+# usage: command_append = "-something-unsupported"
+command_append = ""
+
+# prepend to the start of the command
+# usage: command_prepend_with = "-something-unsupported"
+command_prepend = ""
+
 # version control system
 # usage: vcs = "git"
 vcs = "git"
