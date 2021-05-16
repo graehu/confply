@@ -8,6 +8,7 @@ import timeit
 import select
 import inspect
 import pathlib
+import hashlib
 import traceback
 import importlib
 import subprocess
@@ -19,6 +20,7 @@ import confply.slack as slack
 from datetime import datetime
 
 config_modules = set()
+
 
 class pushd:
     """
@@ -152,12 +154,22 @@ def run_commandline(in_args):
                 clean_modules()
                 return -1
 
-            if(not __validate_types(config_locals["config"])):
+            config = config_locals["config"]
+            if(not __validate_types(config)):
                 log.error("failed to run config")
                 return -1
             # ensure we don't run if should_run was EVER false
             if should_run is not True:
                 confply.config.run = should_run
+            # config
+            config_hash = md5_file(config.__file__)
+            if ("config_hash" not in config_locals or
+                    config_hash != config_locals["config_hash"]):
+                log.warning("warning: config_hash doesn't match expected hash")
+                log.normal("\tconfig file might not function correctly")
+                log.normal("\texpected:")
+                log.normal("\t\t"+"config_hash='"+config_hash+"'")
+                log.normal("")
             return __run_config(config_locals)
 
         elif config_path.endswith(".json"):
@@ -342,6 +354,15 @@ def get_version():
     version += git_cmd
     return version
 
+
+def md5_file(in_file):
+    hash_md5 = hashlib.md5()
+    with open(in_file, "rb") as read_file:
+        for chunk in iter(lambda: read_file.read(4096), b""):
+            hash_md5.update(chunk)
+    return hash_md5.hexdigest()
+
+
 # private section
 
 
@@ -395,6 +416,7 @@ sys.path.append('{confply_dir}')
 import confply.{config_type_arg}.config as config
 import confply.{config_type_arg}.options as options
 import confply.log as log
+config_hash = '{config_hash}'
 ############# modify_below ################
 
 config.confply.log_topic = "{config_type_arg}"
@@ -549,7 +571,7 @@ def __run_config(config_locals):
                             # time formating via format specifiers
                             # https://docs.python.org/3.8/library/string.html#formatspec
                             time = f"{h:0>2.0f}:{m:0>2.0f}:{s:0>5.2f}"
-                            log.normal("time elapsed: "+time)
+                            log.normal("time elapsed "+time)
                     elif should_run:
                         return_code = __run_shell_cmd(shell_cmd, cmd_env, tool)
                     else:
@@ -565,7 +587,7 @@ def __run_config(config_locals):
                 # time formating via format specifiers
                 # https://docs.python.org/3.8/library/string.html#formatspec
                 time = f"{h:0>2.0f}:{m:0>2.0f}:{s:0>5.2f}"
-                log.normal("total time elapsed: "+time)
+                log.normal("total time elapsed "+time)
                 report["time_taken"] = time
                 report["status"] = "success" if return_code == 0 else "failure"
 
@@ -631,7 +653,6 @@ def __run_config(config_locals):
                     slack.send_report(report)
     clean_modules()
     return return_code
-
 
 
 def __run_shell_cmd(shell_cmd, cmd_env, tool):
@@ -872,6 +893,7 @@ def __get_diff_config(config, has_privates=False):
     importlib.reload(config)
     importlib.reload(config.confply)
     base_dict = config_to_dict(config, has_privates, True)
+
     def diff_dict(d1, d2):
         d3 = {}
         for k in d1:
@@ -1018,7 +1040,6 @@ def __handle_in_arg(in_args):
     confply.config.config_path = in_path
 
 
-
 def __handle_new_tool_arg(in_args):
     if len(in_args) < 1:
         log.error("--new_tool requires a value.")
@@ -1123,13 +1144,16 @@ def __handle_new_config_arg(in_args):
                     log.normal("\t"+dir_file)
         return
 
+    hash_file = os.path.join(config_type_dir, "config/__init__.py")
+    config_hash = md5_file(hash_file)
     if not os.path.exists(config_path):
         with open(config_path, "w") as config_file:
             config_str = __new_config_str.format_map(
                 {
                     "confply_dir": confply_dir,
                     "config_type_arg": config_type_arg,
-                    "config_file": config_arg
+                    "config_file": config_arg,
+                    "config_hash": config_hash
                 })
             config_file.write(config_str)
         st = os.stat(config_path)
