@@ -388,7 +388,7 @@ __new_launcher_str = r"""#!/usr/bin/env python
 
 import sys
 import os
-sys.path.append("{confply_dir}")
+sys.path.append(os.path.abspath("{confply_dir}"))
 from confply import launcher
 from confply import run_commandline
 

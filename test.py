@@ -11,7 +11,7 @@
 
 import sys
 import os
-sys.path.append(".")
+sys.path.append(os.path.abspath("."))
 from confply import launcher
 from confply import run_commandline
 
