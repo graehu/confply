@@ -1,5 +1,6 @@
 # Python 3 server example
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
+import contextlib
 import time
 import threading
 import json
@@ -207,8 +208,18 @@ def start_server(port=8000, launcher=None):
     global launcher_path
     global aliases
     global configs
+
+    # ensure dual-stack is not disabled; ref #38907
+    class DualStackServer(ThreadingHTTPServer):
+        def server_bind(self):
+            # suppress exception when protocol is IPv4
+            with contextlib.suppress(Exception):
+                self.socket.setsockopt(
+                    socket.IPPROTO_IPV6, socket.IPV6_V6ONLY, 0)
+            return super().server_bind()
+
     # this is required to work with safari for some reason.
-    ThreadingHTTPServer.address_family, addr = _get_best_family(None, port)
+    DualStackServer.address_family, addr = _get_best_family(None, port)
     if launcher is not None:
         launcher_path = os.path.abspath(launcher)
         with pushd(os.path.dirname(launcher_path)):
@@ -221,7 +232,7 @@ def start_server(port=8000, launcher=None):
                         if elem.endswith(".py"):
                             configs.add(elem)
 
-    webServer = ThreadingHTTPServer(addr, ConfplyServer)
+    webServer = DualStackServer(addr, ConfplyServer)
     print("Server started http://%s:%s" % (addr))
     try:
         webServer.serve_forever()
