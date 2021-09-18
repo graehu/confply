@@ -399,13 +399,17 @@ aliases = {comment}
 aliases["all"] = " -- ".join([val for key, val in aliases.items()])
 
 if __name__ == "__main__":
-    if "--listen" in sys.argv:
-        return run_commandline(["--listen", __file__])
+    args = sys.argv[1:]
+    if "--listen" in args:
+        run_commandline(["--listen", __file__])
     else:
         dir_name = os.path.dirname(__file__)
         if not dir_name == "":
             os.chdir(dir_name)
-        launcher(sys.argv[1:], aliases)
+        if args:
+            launcher(sys.argv[1:], aliases)
+        else:
+            launcher(["default"], aliases)
 """
 
 __new_config_str = """#!{confply_dir}/confply.py --in
@@ -1090,7 +1094,7 @@ def __handle_launcher_arg(in_args):
                 {
                     "confply_dir": confply_dir,
                     "launcher": arguement,
-                    "comment": "{\n    # 'myconfig':'path/to/config.py'\n}"
+                    "comment": "{\n    # 'default': '--in path/to/config.py'\n}"
                 })
             launcher_file.write(launcher_str)
         st = os.stat(launcher_path)

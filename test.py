@@ -17,7 +17,7 @@ from confply import run_commandline
 
 # fill this with your commands
 aliases = {
-    # 'mycommand':'path/to/command.py'
+    # 'default': '--in path/to/command.py'
     "g++": "--config.confply.tool g++ --in examples/cpp_compiler.cpp.py --cpp_clean",
     "gcc": "--config.confply.tool gcc --in examples/cpp_compiler.cpp.py --cpp_clean",
     "clang": "--config.confply.tool clang --in examples/cpp_compiler.cpp.py --cpp_clean",
@@ -31,10 +31,14 @@ aliases = {
 aliases["all"] = " -- ".join([val for key, val in aliases.items()])
 
 if __name__ == "__main__":
-    if "--listen" in sys.argv:
+    args = sys.argv[1:]
+    if "--listen" in args:
         run_commandline(["--listen", __file__])
     else:
         dir_name = os.path.dirname(__file__)
         if not dir_name == "":
             os.chdir(dir_name)
-        launcher(sys.argv[1:], aliases)
+        if args:
+            launcher(sys.argv[1:], aliases)
+        else:
+            launcher(["default"], aliases)
