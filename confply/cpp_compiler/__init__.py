@@ -15,6 +15,7 @@ standard = "-std="
 warnings = "-W"
 no_warnings = "-w"
 optimisation = "-O"
+fPIC = "-fPIC"
 link = "-l"
 library = "-L "
 build_object = "-c"
@@ -55,6 +56,7 @@ def generate():
         command += standard+config.standard+" " if config.standard else ""
         command += gen_warnings()
         command += optimisation+str(config.optimisation)+" " if config.optimisation else ""
+        command += fPIC+" " if config.position_independent else ""
         if source is None:
             command += " ".join(config.source_files)+" " if config.source_files else ""
             command += output_exe+config.output_file+" " if config.output_file else output_exe+"app.bin"

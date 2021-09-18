@@ -31,6 +31,10 @@ debug_info = False
 # usage: optimisation = 0
 optimisation = 0
 
+# position independent code
+# usage: position_independent = True
+position_independent = False
+
 # sets c++ standard
 # usage: cpp_standard="c++11"
 standard = ""
