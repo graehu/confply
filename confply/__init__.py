@@ -546,7 +546,7 @@ def __run_config(config_locals):
                                 cmd = [confply.config.command_prepend]+shell_str
                                 cmd = cmd+[confply.config.command_append]
                                 cmd = [c for c in cmd if c]
-                                print(cmd)
+                                print(" ".join(cmd))
                             print("")
                         else:
                             cmd = [confply.config.command_prepend]+shell_cmd
@@ -567,7 +567,7 @@ def __run_config(config_locals):
                             cmd = [confply.config.command_prepend]+cmd
                             cmd = cmd+[confply.config.command_append]
                             cmd = [c for c in cmd if c]
-                            log.normal(str(cmd))
+                            log.normal(" ".join(cmd))
                             log.normal("", flush=True)
                             return_code = __run_shell_cmd(cmd, cmd_env, tool)
                             cmd_time_end = timeit.default_timer()
