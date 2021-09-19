@@ -22,6 +22,7 @@ if "debug" in config.confply.args:
 config.debug_info = debug
 config.confply.mail_to = "graehu@gmail.com"
 config.confply.mail_from = "confply.dev@gmail.com"
+config.compile_commands = True
 # config.confply.log_file = "confply.log"
 config.confply.log_debug = True
 mail_login = ()

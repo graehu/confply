@@ -537,19 +537,20 @@ def __run_config(config_locals):
 
                 __run_dependencies(config, should_run)
 
-                if shell_cmd is not None:
+                if shell_cmd:
                     cmd_env = tools[tool].get_environ()
                     if len(shell_cmd) > 0:
-                        if isinstance(shell_cmd, list):
+                        if isinstance(shell_cmd[0], list):
                             log.normal("final commands:\n")
                             for shell_str in shell_cmd:
-                                cmd = confply.config.command_prepend+shell_str
-                                cmd = cmd+confply.config.command_append
+                                cmd = [confply.config.command_prepend]+shell_str
+                                cmd = cmd+[confply.config.command_append]
+                                cmd = [c for c in cmd if c]
                                 print(cmd)
                             print("")
                         else:
-                            cmd = confply.config.command_prepend+shell_cmd
-                            cmd = shell_cmd+confply.config.command_append
+                            cmd = [confply.config.command_prepend]+shell_cmd
+                            cmd = shell_cmd+[confply.config.command_append]
                             log.normal("final command:\n\n" +
                                        str(cmd) +
                                        "\n")
@@ -557,14 +558,15 @@ def __run_config(config_locals):
                             log.header("begin "+tool)
                     sys.stdout.flush()
 
-                    if should_run and isinstance(shell_cmd, list):
+                    if should_run and isinstance(shell_cmd[0], list):
                         for cmd in shell_cmd:
                             cmd_time_start = timeit.default_timer()
                             sys.stdout.flush()
                             log.linebreak()
-                            cmd = confply.config.command_prepend+cmd
-                            cmd = cmd+confply.config.command_append
-                            log.normal(cmd)
+                            cmd = [confply.config.command_prepend]+cmd
+                            cmd = cmd+[confply.config.command_append]
+                            cmd = [c for c in cmd if c]
+                            log.normal(str(cmd))
                             log.normal("", flush=True)
                             return_code = __run_shell_cmd(cmd, cmd_env, tool)
                             cmd_time_end = timeit.default_timer()
@@ -667,11 +669,11 @@ def __run_shell_cmd(shell_cmd, cmd_env, tool):
                                 stdout=sys.stdout,
                                 stderr=subprocess.STDOUT,
                                 text=True,
-                                shell=True,
+                                # shell=True,
                                 env=cmd_env)
     else:
         result = subprocess.run(shell_cmd,
-                                shell=True,
+                                # shell=True,
                                 env=cmd_env)
 
     if result.returncode == 0:

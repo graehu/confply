@@ -71,6 +71,10 @@ output_executable = True
 # usage: output_file = "my_app.bin"
 output_file = ""
 
+# output compile_commands.json
+# usage: compile_commands = True
+compile_commands = False
+
 # appends to the end of the command
 # usage: command_append = "-something-unsupported"
 command_append = ""

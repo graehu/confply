@@ -19,8 +19,8 @@ fPIC = "-fPIC"
 link = "-l"
 library = "-L "
 build_object = "-c"
-output_obj = "-o "
-output_exe = "-o "
+output_obj = "-o"
+output_exe = "-o"
 object_ext = ".o"
 dependencies = "-MMD"
 dependencies_output = "-MF"
@@ -28,47 +28,46 @@ exception_handling = ""
 pass_to_linker = ""
 parse_deps = lambda x: shlex.split(x)
 
-
-def gen_warnings():
-    command = ""
-    conf_warnings = config.warnings
-    if isinstance(conf_warnings, list):
-        for w in config.warnings:
-            command += warnings+w+" "
-    elif isinstance(conf_warnings, bool):
-        if(not conf_warnings):
-            command += no_warnings+" "
-    elif isinstance(conf_warnings, str):
-        command += warnings+conf_warnings+" "
-    return command
-
-
 def generate():
     object_path = config.object_path
     object_path = os.path.join(object_path, tool)
 
     def gen_command(config, source=None):
-        command = ""
-        command += tool+" "+config.command_prepend+" "
-        command += include+" "+(" "+include+" ").join(config.include_paths) + " " if config.include_paths else ""
-        command += define+" "+(" "+define+" ").join(config.defines)+" " if config.defines else ""
-        command += debug+" " if config.debug_info else ""
-        command += standard+config.standard+" " if config.standard else ""
-        command += gen_warnings()
-        command += optimisation+str(config.optimisation)+" " if config.optimisation else ""
-        command += fPIC+" " if config.position_independent else ""
+        command = [tool]
+        command += [config.command_prepend]
+        command += [[include, path] for path in config.include_paths]
+        command += [[define, d] for d in config.defines]
+        command += [debug] if config.debug_info else []
+        command += [standard+config.standard] if config.standard else []
+        command += [warnings+w for w in config.warnings]
+        command += [optimisation+str(config.optimisation)] if config.optimisation else []
+        command += [fPIC] if config.position_independent else []
+
         if source is None:
-            command += " ".join(config.source_files)+" " if config.source_files else ""
-            command += output_exe+config.output_file+" " if config.output_file else output_exe+"app.bin"
-            command += pass_to_linker+" "
-            command += library+(" "+library).join(config.library_paths)+" " if config.library_paths else ""
-            command += link+" "+(" "+link+" ").join(config.link_libraries)+" " if config.link_libraries else ""
+            command += [src for src in config.source_files]
+            command += [output_exe]
+            command += [config.output_file] if config.output_file else ["app.bin"]
+            command += [pass_to_linker] if pass_to_linker else []
+            command += [[library, path] for path in config.library_paths]
+            command += [[link, lib] for lib in config.link_libraries]
         else:
-            command += build_object+" "+source+" "+output_obj+os.path.join(object_path, os.path.basename(source)+object_ext+" ")
-            command += exception_handling+" "
+            command += [build_object]
+            command += [source]
+            command += [output_obj, os.path.join(object_path, os.path.basename(source)+object_ext)]
+            command += [exception_handling] if exception_handling else []
             if config.track_dependencies:
-                command += dependencies+" "+dependencies_output+ " "+os.path.join(object_path, os.path.basename(source)+".d ")
-        return command+" "+config.command_append
+                command += [dependencies, dependencies_output, os.path.join(object_path, os.path.basename(source)+".d")]
+        command += [config.command_append]
+        # flatten / sanitise command
+        flat = []
+        for arg in command:
+            if isinstance(arg, list):
+                flat += arg
+            else:
+                flat += [arg]
+        command = flat
+        command = [c for c in command if c]
+        return command
 
     if config.build_objects:
         os.makedirs(object_path, exist_ok=True)
@@ -95,7 +94,7 @@ def generate():
 
         if tracking_md5 or tracking_depends:
             if os.path.exists(tracking_path):
-                with open(tracking_path, "r") as tracking_file:
+                with open(tracking_path) as tracking_file:
                     tracking = ast.literal_eval(tracking_file.read())
 
         def update_tracking(file_path):
@@ -125,6 +124,38 @@ def generate():
 
         compile_all = update_tracking(config_name) if config.rebuild_on_change else False
 
+        commands_db = []
+        commands_db_path = os.path.join(config.confply.vcs_root, "compile_commands.json")
+
+        if config.compile_commands:
+            if os.path.exists(commands_db_path):
+                with open(commands_db_path) as commands_db_file:
+                    commands_db = ast.literal_eval(commands_db_file.read())
+
+        def update_command_db(file_path, args):
+            nonlocal commands_db
+            nonlocal object_path
+            dir_path = os.path.dirname(file_path)
+            out_path = os.path.join(object_path, os.path.basename(file_path+object_ext))
+            dir_path = os.path.abspath(dir_path)
+            out_path = os.path.abspath(out_path)
+            file_path = os.path.abspath(file_path)
+            for entry in commands_db:
+                if entry["file"] == file_path \
+                   and entry["output"] == out_path \
+                   and entry["directory"] == dir_path:
+                    entry["arguments"] = args
+                    return
+            commands_db.append(
+                {
+                    "arguments": args,
+                    "directory": dir_path,
+                    "file": file_path,
+                    "output": out_path
+                }
+            )
+            pass
+
         for source_path in sources:
             should_compile = compile_all
             if os.path.exists(source_path):
@@ -143,6 +174,8 @@ def generate():
 
                 if should_compile or obj_time == 0:
                     commands.append(gen_command(config, source_path))
+                    if config.compile_commands:
+                        update_command_db(source_path, commands[-1])
                     should_link = True
                 elif obj_time > output_time:
                     should_link = True
@@ -158,11 +191,16 @@ def generate():
             log.normal(str(num_commands)+" files to compile")
         else:
             log.normal("no files to compile")
-
+        
         if tracking_md5 or tracking_depends:
             with open(tracking_path, "w") as tracking_file:
                 tracking_file.write("# do not edit this file.\n")
                 tracking_file.write(json.dumps(tracking, indent=4))
+
+        if config.compile_commands:
+            with open(commands_db_path, "w") as commands_db_file:
+                commands_db_file.write(json.dumps(commands_db, indent=4))
+
         return commands
     else:
         return gen_command(config)
