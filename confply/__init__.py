@@ -551,6 +551,7 @@ def __run_config(config_locals):
                         else:
                             cmd = [confply.config.command_prepend]+shell_cmd
                             cmd = shell_cmd+[confply.config.command_append]
+                            cmd = [c for c in cmd if c]
                             log.normal("final command:\n\n" +
                                        str(cmd) +
                                        "\n")
@@ -665,15 +666,15 @@ def __run_shell_cmd(shell_cmd, cmd_env, tool):
     if confply.config.log_file:
         sys.stdout.flush()
         # #todo: check if this can be ansi-coloured
-        result = subprocess.run(shell_cmd,
+        result = subprocess.run(" ".join(shell_cmd),
                                 stdout=sys.stdout,
                                 stderr=subprocess.STDOUT,
                                 text=True,
-                                # shell=True,
+                                shell=True,
                                 env=cmd_env)
     else:
-        result = subprocess.run(shell_cmd,
-                                # shell=True,
+        result = subprocess.run(" ".join(shell_cmd),
+                                shell=True,
                                 env=cmd_env)
 
     if result.returncode == 0:

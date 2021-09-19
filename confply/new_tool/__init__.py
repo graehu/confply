@@ -9,7 +9,7 @@ tool = None
 
 # return the final command string or an array of commands
 def generate():
-    return str(tool)+" no tool specific implementation"
+    return [tool, "no tool specific implementation"]
 
 
 # return a dictionary of environment variables

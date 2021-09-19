@@ -12,7 +12,10 @@ config.confply.log_topic = "cpp_compiler"
 log.normal("loading cpp_compiler with confply_args: "+str(config.confply.args))
 
 config.source_files = ["main.cpp"]
-config.output_file = "hello_confply"
+if config.confply.platform == "windows":
+    config.output_file = "hello_confply.exe"
+else:
+    config.output_file = "hello_confply"
 config.link_libraries = ["stdc++"]
 config.standard = options.standard.cpp17
 config.warnings = options.warnings.all_warnings
@@ -20,10 +23,13 @@ config.confply.log_config = True
 def post_run():
     import subprocess
     import sys
-    subprocess.run("./hello_confply",
+    if config.confply.platform == "windows":
+        cmd = ["hello_confply.exe"]
+    else:
+        cmd = ["./hello_confply"]
+    subprocess.run(cmd,
                    stdout=sys.stdout,
-                   stderr=subprocess.STDOUT,
-                   shell=True)
+                   stderr=subprocess.STDOUT)
     pass
 
 config.confply.post_run = post_run

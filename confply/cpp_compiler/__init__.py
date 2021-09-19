@@ -29,7 +29,7 @@ pass_to_linker = ""
 parse_deps = lambda x: shlex.split(x)
 
 def generate():
-    object_path = config.object_path
+    object_path = os.path.dirname(config.object_path)
     object_path = os.path.join(object_path, tool)
 
     def gen_command(config, source=None):
@@ -45,15 +45,14 @@ def generate():
 
         if source is None:
             command += [src for src in config.source_files]
-            command += [output_exe]
-            command += [config.output_file] if config.output_file else ["app.bin"]
+            command += [output_exe+config.output_file] if config.output_file else [output_exe+"app.bin"]
             command += [pass_to_linker] if pass_to_linker else []
             command += [[library, path] for path in config.library_paths]
             command += [[link, lib] for lib in config.link_libraries]
         else:
             command += [build_object]
             command += [source]
-            command += [output_obj, os.path.join(object_path, os.path.basename(source)+object_ext)]
+            command += [output_obj+os.path.join(object_path, os.path.basename(source)+object_ext)]
             command += [exception_handling] if exception_handling else []
             if config.track_dependencies:
                 command += [dependencies, dependencies_output, os.path.join(object_path, os.path.basename(source)+".d")]
@@ -159,8 +158,8 @@ def generate():
         for source_path in sources:
             should_compile = compile_all
             if os.path.exists(source_path):
-                deps_path = os.path.join(object_path,os.path.basename(source_path+".d"))
-                obj_path = os.path.join(object_path,os.path.basename(source_path+object_ext))
+                deps_path = os.path.join(object_path, os.path.basename(source_path+".d"))
+                obj_path = os.path.join(object_path, os.path.basename(source_path+object_ext))
                 obj_time = os.path.getmtime(obj_path).real if os.path.exists(obj_path) else 0
                 objects.append(obj_path)
                 # dependency tracking
