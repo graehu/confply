@@ -20,6 +20,7 @@ config.link_libraries = ["stdc++"]
 config.standard = options.standard.cpp17
 config.warnings = options.warnings.all_warnings
 config.confply.log_config = True
+config.position_independent = True
 def post_run():
     import subprocess
     import sys

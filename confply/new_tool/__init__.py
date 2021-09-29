@@ -1,6 +1,7 @@
 # fill this with common implementation details.
 import confply.log as log
 import confply.{config_type}.config as config
+import confply.{config_type}.options as options
 import os
 import shutil
 

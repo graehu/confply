@@ -11,6 +11,7 @@ import pathlib
 import hashlib
 import traceback
 import importlib
+import importlib.util
 import subprocess
 import confply.config
 import confply.server
@@ -287,46 +288,83 @@ def load_config(path):
     for dir_path in directory_paths:
         if dir_path is None:
             continue
+        dir_path = os.path.abspath(dir_path)
         if os.path.exists(dir_path) and os.path.isfile(dir_path):
             config_name = os.path.basename(dir_path)
             confply.config.config_name = config_name
             confply.config.modified = os.path.getmtime(dir_path).real
-            with open(dir_path) as config_file:
+
+            try:
                 with pushd(os.path.dirname(dir_path)):
-                    try:
-                        exec(config_file.read(), {}, config_locals)
-                        # find imported confply configs for cleanup
-                        for k, v in config_locals.items():
-                            m_valid = isinstance(v, types.ModuleType)
-                            if not m_valid:
-                                continue
+                    config_locals = __import_module(config_name)
+                    # find imported confply configs for cleanup
+                    for k, v in config_locals.items():
+                        m_valid = isinstance(v, types.ModuleType)
+                        if not m_valid:
+                            continue
 
-                            v_name = v.__name__
-                            m_valid = m_valid and v not in config_modules
-                            m_valid = m_valid and v_name.startswith("confply.")
-                            m_valid = m_valid and v_name.endswith(".config")
-                            if m_valid:
-                                config_modules.add(v)
+                        v_name = v.__name__
+                        m_valid = m_valid and v not in config_modules
+                        m_valid = m_valid and v_name.startswith("confply.")
+                        m_valid = m_valid and v_name.endswith(".config")
+                        if m_valid:
+                            config_modules.add(v)
 
-                        # validate there are less than 2 imported configs
-                        if len(config_modules) > 1:
-                            log.error("too many confply configs imported:")
-                            for c in config_modules:
-                                log.normal("\t "+c)
-                            log.normal(
-                                "confply only supports one config import."
-                            )
-                            clean_modules()
-                            return None, None
-
-                        log.linebreak()
-                        log.success("loaded: "+str(dir_path))
-                    except Exception:
-                        log.error("failed to exec: "+str(dir_path))
-                        trace = traceback.format_exc().replace("<string>",
-                                                               str(dir_path))
-                        log.normal("traceback:\n\n"+trace)
+                    # validate there are less than 2 imported configs
+                    if len(config_modules) > 1:
+                        log.error("too many confply configs imported:")
+                        for c in config_modules:
+                            log.normal("\t "+c)
+                        log.normal(
+                            "confply only supports one config import."
+                        )
+                        clean_modules()
                         return None, None
+
+                    log.linebreak()
+                    log.success("loaded: "+str(dir_path))
+            except Exception:
+                log.error("failed to exec: "+str(dir_path))
+                trace = traceback.format_exc().replace("<string>",
+                                                       str(dir_path))
+                log.normal("traceback:\n\n"+trace)
+                return None, None
+            # with open(dir_path) as config_file:
+            #     with pushd(os.path.dirname(dir_path)):
+            #         try:
+            #             exec(config_file.read(), {}, config_locals)
+            #             # find imported confply configs for cleanup
+            #             for k, v in config_locals.items():
+            #                 m_valid = isinstance(v, types.ModuleType)
+            #                 if not m_valid:
+            #                     continue
+
+            #                 v_name = v.__name__
+            #                 m_valid = m_valid and v not in config_modules
+            #                 m_valid = m_valid and v_name.startswith("confply.")
+            #                 m_valid = m_valid and v_name.endswith(".config")
+            #                 if m_valid:
+            #                     config_modules.add(v)
+
+            #             # validate there are less than 2 imported configs
+            #             if len(config_modules) > 1:
+            #                 log.error("too many confply configs imported:")
+            #                 for c in config_modules:
+            #                     log.normal("\t "+c)
+            #                 log.normal(
+            #                     "confply only supports one config import."
+            #                 )
+            #                 clean_modules()
+            #                 return None, None
+
+            #             log.linebreak()
+            #             log.success("loaded: "+str(dir_path))
+            #         except Exception:
+            #             log.error("failed to exec: "+str(dir_path))
+            #             trace = traceback.format_exc().replace("<string>",
+            #                                                    str(dir_path))
+            #             log.normal("traceback:\n\n"+trace)
+            #             return None, None
 
         else:
             log.error("failed to find: " + str(dir_path))
@@ -492,11 +530,12 @@ def __run_config(config_locals):
                 log.normal("running post load script: " +
                            confply.config.post_load.__name__)
                 sys.stdout.flush()
-                exec(confply.config.post_load.__code__, config_locals, {})
+                # exec(confply.config.post_load.__code__, config_locals, {})
+                confply.config.post_load()
                 log.linebreak()
 
         except Exception:
-            log.error("failed to exec "+confply.config.post_load.__name__)
+            log.error("failed to run "+confply.config.post_load.__name__)
             trace = traceback.format_exc()
             log.normal("traceback:\n\n"+trace)
             pass
@@ -569,7 +608,7 @@ def __run_config(config_locals):
                             cmd = [c for c in cmd if c]
                             log.normal(" ".join(cmd))
                             log.normal("", flush=True)
-                            return_code = __run_shell_cmd(cmd, cmd_env, tool)
+                            return_code = __run_shell_cmd(cmd, cmd_env)
                             cmd_time_end = timeit.default_timer()
                             # #todo: this can be tidied with format var capture
                             s = cmd_time_end-cmd_time_start
@@ -580,7 +619,7 @@ def __run_config(config_locals):
                             time = f"{h:0>2.0f}:{m:0>2.0f}:{s:0>5.2f}"
                             log.normal("time elapsed "+time)
                     elif should_run:
-                        return_code = __run_shell_cmd(shell_cmd, cmd_env, tool)
+                        return_code = __run_shell_cmd(shell_cmd, cmd_env)
                     else:
                         log.warning("no commands run")
                 else:
@@ -610,10 +649,11 @@ def __run_config(config_locals):
                     log.normal("running post run script: " +
                                confply.config.post_run.__name__)
                     sys.stdout.flush()
-                    exec(confply.config.post_run.__code__, config_locals, {})
+                    # exec(confply.config.post_run.__code__, config_locals, {})
+                    confply.config.post_run()
                     log.linebreak()
                 except Exception:
-                    log.error("failed to exec " +
+                    log.error("failed to run " +
                               confply.config.post_run.__name__)
                     trace = traceback.format_exc()
                     log.normal("traceback:\n\n"+trace)
@@ -662,7 +702,15 @@ def __run_config(config_locals):
     return return_code
 
 
-def __run_shell_cmd(shell_cmd, cmd_env, tool):
+def __import_module(file_path):
+    spec = importlib.util.spec_from_file_location("confply.imported", file_path)
+    imp = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(imp)
+    return vars(imp)
+
+
+
+def __run_shell_cmd(shell_cmd, cmd_env):
     if confply.config.log_file:
         sys.stdout.flush()
         # #todo: check if this can be ansi-coloured
@@ -679,12 +727,12 @@ def __run_shell_cmd(shell_cmd, cmd_env, tool):
 
     if result.returncode == 0:
         log.linebreak()
-        log.success(tool+" succeeded!")
+        log.success(shell_cmd[0]+" succeeded!")
         return 0
     else:
         log.linebreak()
-        log.error(tool+" failed.")
-        log.error(tool +
+        log.error(shell_cmd[0]+" failed.")
+        log.error(shell_cmd[0] +
                   " return code: " +
                   str(result.returncode))
         return -2

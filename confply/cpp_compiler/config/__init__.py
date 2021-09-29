@@ -43,6 +43,10 @@ standard = ""
 # usage: warnings=["all", "etc"]
 warnings = []
 
+# disables all warnings
+# usage: no_warnings = True
+no_warnings = False
+
 # enables building object files used for building incrementally
 # usage: build_objects = True
 build_objects = True
@@ -66,6 +70,10 @@ rebuild_on_change = True
 # if true, an executable will be generated.
 # usage: output_executable = True
 output_executable = True
+
+# if true, an executable will be generated.
+# usage: output_executable = True
+output_type = "exe"
 
 # the final result of the build. Builds executables by default.
 # usage: output_file = "my_app.bin"
