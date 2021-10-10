@@ -527,17 +527,22 @@ def __run_config(config_locals):
         try:
             if (confply.config.post_load and
                     inspect.isfunction(confply.config.post_load)):
-                log.normal("running post load script: " +
-                           confply.config.post_load.__name__)
+                func_name = confply.config.post_load.__name__
+                log.normal("running " + func_name)
                 sys.stdout.flush()
-                # exec(confply.config.post_load.__code__, config_locals, {})
-                confply.config.post_load()
+                success = confply.config.post_load()
+                if success is not None and not success:
+                    log.error(func_name + " unsuccessful")
+                    return_code = -2
+                else:
+                    log.normal(func_name + " successful")
                 log.linebreak()
 
         except Exception:
-            log.error("failed to run "+confply.config.post_load.__name__)
+            log.error("failed to run "+func_name)
             trace = traceback.format_exc()
             log.normal("traceback:\n\n"+trace)
+            return_code = -2
             pass
 
         diff_config = __get_diff_config(config)
@@ -643,20 +648,26 @@ def __run_config(config_locals):
                 log.normal("traceback:\n\n"+trace)
                 return_code = -1
             sys.stdout.flush()
-            if (confply.config.post_run and inspect.isfunction(confply.config.post_run)):
-                try:
-                    log.linebreak()
-                    log.normal("running post run script: " +
-                               confply.config.post_run.__name__)
+            try:
+                if (confply.config.post_run and
+                        inspect.isfunction(confply.config.post_run)):
+                    func_name = confply.config.post_run.__name__
+                    log.normal("running " + func_name)
                     sys.stdout.flush()
-                    # exec(confply.config.post_run.__code__, config_locals, {})
-                    confply.config.post_run()
+                    success = confply.config.post_run()
+                    if success is not None and not success:
+                        log.error(func_name + " unsuccessful")
+                        return_code = -2
+                    else:
+                        log.normal(func_name + " successful")
                     log.linebreak()
-                except Exception:
-                    log.error("failed to run " +
-                              confply.config.post_run.__name__)
-                    trace = traceback.format_exc()
-                    log.normal("traceback:\n\n"+trace)
+
+            except Exception:
+                log.error("failed to run "+func_name)
+                trace = traceback.format_exc()
+                log.normal("traceback:\n\n"+trace)
+                return_code = -2
+                pass
             log.normal("date: "+str(datetime.now()))
             log.linebreak()
             sys.stdout.flush()
