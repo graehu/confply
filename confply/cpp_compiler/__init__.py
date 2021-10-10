@@ -138,7 +138,7 @@ def generate():
         def update_command_db(file_path, args):
             nonlocal commands_db
             nonlocal object_path
-            dir_path = os.path.dirname(file_path)
+            dir_path = os.path.dirname(commands_db_path)
             out_path = os.path.join(object_path, os.path.basename(file_path+object_ext))
             dir_path = os.path.abspath(dir_path)
             out_path = os.path.abspath(out_path)
