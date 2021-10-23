@@ -35,7 +35,7 @@ def generate():
     object_path = os.path.dirname(config.object_path)
     object_path = os.path.join(object_path, tool)
 
-    def gen_command(config, source=None):
+    def gen_command(config, source=None, should_link=False):
         command = [tool]
         command += [config.command_prepend]
         command += [[include, path] for path in config.include_paths]
@@ -49,10 +49,19 @@ def generate():
 
         if source is None:
             command += [src for src in config.source_files]
-            command += [output_exe+config.output_file] if config.output_file else [output_exe+"app.bin"]
-            command += [pass_to_linker] if pass_to_linker else []
-            command += [[library, path] for path in config.library_paths]
-            command += [[link, lib] for lib in config.link_libraries]
+            if config.output_type == options.output_type.exe:
+                command += [output_exe+config.output_file] if config.output_file else [output_exe+"app.bin"]
+            elif config.output_type == options.output_type.dll:
+                #todo: add windows lib support.
+                #todo: get rid of hardcoded strings.
+                command += ["-rdynamic"]
+                command += ["-shared"]
+                out = config.output_file
+                out = out if out.endswith(dll_extension) else out+dll_extension
+                command += [output_exe, out]
+            elif config.output_type == options.output_type.lib:
+                pass
+            should_link = True
         else:
             command += [build_object]
             command += [source]
@@ -60,6 +69,11 @@ def generate():
             command += [exception_handling] if exception_handling else []
             if config.track_dependencies:
                 command += [dependencies, dependencies_output, os.path.join(object_path, os.path.basename(source)+".d")]
+
+        if should_link:
+            command += [pass_to_linker] if pass_to_linker else []
+            command += [[library, path] for path in config.library_paths]
+            command += [[link, lib] for lib in config.link_libraries]
         command += [config.command_append]
         # flatten / sanitise command
         flat = []
@@ -77,6 +91,7 @@ def generate():
         commands = []
         sources = config.source_files
         objects = []
+        #todo: this wont be correct for dlls / libs
         output_time = config.output_file if config.output_file else "app.bin"
         output_time = os.path.getmtime(output_time).real if os.path.exists(output_time) else 0
         should_link = False
@@ -185,25 +200,18 @@ def generate():
             else:
                 log.warning(source_path+" could not be found")
 
-        if should_link and config.output_type == options.output_type.exe:
-            config.source_files = objects
-            commands.append(gen_command(config))
-            config.source_files = sources
-            num_commands = len(commands)
-            log.normal(str(num_commands)+" files to compile")
-        elif should_link and config.output_type == options.output_type.dll:
-            #todo: add windows dll support.
-            #todo: replace strings
-            out = config.output_file
-            out = out if out.endswith(dll_extension) else out+dll_extension
-            commands.append([tool, "-rdynamic", "-shared", *objects, output_exe, out])
-            pass
-        elif should_link and config.output_type == options.output_type.lib:
+        if should_link and config.output_type == options.output_type.lib:
             #todo: add windows lib support.
             out = config.output_file
             out = out if out.endswith(lib_extension) else out+lib_extension
             commands.append(["ar", "rcs", out, *objects])
             pass
+        elif should_link:
+            config.source_files = objects
+            commands.append(gen_command(config))
+            config.source_files = sources
+            num_commands = len(commands)
+            log.normal(str(num_commands)+" files to compile")
 
         if tracking_md5 or tracking_depends:
             with open(tracking_path, "w") as tracking_file:
