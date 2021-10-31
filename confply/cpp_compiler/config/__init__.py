@@ -23,6 +23,10 @@ library_paths = []
 # usage: ["opengl", "etc."]
 link_libraries = []
 
+# paths searched for dynamic librairies
+# usage: ["path/to/libs", "other/path/to/libs"]
+run_paths = []
+
 # causes debug info to be generated, like -g in clang
 # usage: debug_info = True
 debug_info = False

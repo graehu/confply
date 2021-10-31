@@ -50,12 +50,15 @@ def generate():
         if source is None:
             command += [src for src in config.source_files]
             if config.output_type == options.output_type.exe:
+                command += ["-rpath "+x for x in config.run_paths]
                 command += [output_exe+config.output_file] if config.output_file else [output_exe+"app.bin"]
             elif config.output_type == options.output_type.dll:
                 #todo: add windows lib support.
                 #todo: get rid of hardcoded strings.
                 command += ["-rdynamic"]
                 command += ["-shared"]
+                command += ["-Wl"]
+                command += ["-rpath "+x for x in config.run_paths]
                 out = config.output_file
                 out = out if out.endswith(dll_extension) else out+dll_extension
                 command += [output_exe, out]
