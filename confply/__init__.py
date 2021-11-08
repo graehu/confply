@@ -625,6 +625,8 @@ def __run_config(config_locals):
                             log.normal("time elapsed "+time)
                     elif should_run:
                         return_code = __run_shell_cmd(shell_cmd, cmd_env)
+                    elif shell_cmd == []:
+                        pass
                     else:
                         log.warning("no commands run")
                 else:
