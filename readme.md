@@ -5,13 +5,14 @@ Confply translates config files into shell commands. The config files are writte
 
 For now compilers are the focus, but confply is extendable.
 
+**note:** this document is out of date, a variety of features have improved.
+
 ## Key Features
 
 ### Python Configs
 
-Write python to fill your config or branch in specific conditions. The python files are [exec][exec]'d to populate the config_type/config prior to command generation and run.
+Write python to fill your config or branch in specific conditions. The python files are imported into confply to populate the config_type/config prior to command generation and run.
 
-[exec]: https://docs.python.org/3.8/library/functions.html#exec
 
 ### Auto completion
 
