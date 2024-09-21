@@ -73,10 +73,6 @@ rebuild_on_change = True
 
 # if true, an executable will be generated.
 # usage: output_executable = True
-output_executable = True
-
-# if true, an executable will be generated.
-# usage: output_executable = True
 output_type = "exe"
 
 # the final result of the build. Builds executables by default.

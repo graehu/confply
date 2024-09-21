@@ -8,6 +8,7 @@ sys.path.append('.')
 import confply.cpp_compiler.config as config
 import confply.cpp_compiler.options as options
 import confply.log as log
+config.version_hash='77a83ef65a5e032b989b8a76ac0083e9'
 ############# modify_below ################
 # set the default compiler
 config.confply.tool = options.tool.clangpp

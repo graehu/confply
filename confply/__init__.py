@@ -91,7 +91,7 @@ def launcher(in_args, aliases):
 
         if alias in aliases:
             system_code = 0
-            cmd = ("python "+confply_dir+"/confply.py ")
+            cmd = ("python3 "+confply_dir+"/confply.py ")
             cmd += (aliases[alias]+" "+args)
             cmd = cmd.replace(" -- ", " "+args+" -- ")
             # windows doesn't support os.WEXITSTATUS
@@ -164,12 +164,11 @@ def run_commandline(in_args):
                 confply.config.run = should_run
             # config
             config_hash = md5_file(config.__file__)
-            if ("config_hash" not in config_locals or
-                    config_hash != config_locals["config_hash"]):
+            if (config_hash != getattr(config_locals["config"], "version_hash", "")):
                 log.warning("warning: config_hash doesn't match expected hash")
                 log.normal("\tconfig file might not function correctly")
                 log.normal("\texpected:")
-                log.normal("\t\t"+"config_hash='"+config_hash+"'")
+                log.normal("\t\t"+"config.version_hash='"+config_hash+"' # add to silence")
                 log.normal("")
             return __run_config(config_locals)
 
@@ -458,7 +457,7 @@ sys.path.append('{confply_dir}')
 import confply.{config_type_arg}.config as config
 import confply.{config_type_arg}.options as options
 import confply.log as log
-config_hash = '{config_hash}'
+config.version_hash = '{config_hash}'
 ############# modify_below ################
 
 config.confply.log_topic = "{config_type_arg}"
@@ -771,11 +770,15 @@ def __run_dependencies(config, should_run):
                     confply.config.log_topic = store["confply"]["log_topic"]
                     confply.config.log_file = store["confply"]["log_file"]
                     log.error("failed to run: "+str(d))
-                    if not input_prompt("continue execution?"):
-                        log.normal("aborting final commands")
-                        break
-                    else:
-                        log.normal("continuing execution.")
+                    log.normal("stopping dependency execution")
+                    break
+                    # #todo: make this configurable rather than prompting the user, the 10s stall crashes emacs.
+                    # or make this work better with emacs at least
+                    # if not input_prompt("continue execution?"):
+                    #     log.normal("aborting final commands")
+                    #     break
+                    # else:
+                    #     log.normal("continuing execution.")
         pass
     # reset confply.config
     apply_to_config(store)

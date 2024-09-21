@@ -32,7 +32,7 @@ dll_extension = ".so"
 parse_deps = lambda x: shlex.split(x)
 
 def generate():
-    object_path = os.path.dirname(config.object_path)
+    object_path = config.object_path
     object_path = os.path.join(object_path, tool)
 
     def gen_command(config, source=None, should_link=False):
