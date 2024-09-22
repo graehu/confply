@@ -28,16 +28,16 @@ jobs:
 
     # Steps represent a sequence of tasks that will be executed as part of the job
     steps:
-      # Setup python 3.8
-      - name: Set up Python 3.8
+      # Setup python 3.10
+      - name: Set up Python 3.10
         uses: actions/setup-python@v2
         with:
           # Semantic version range syntax or exact version of a Python version
-          python-version: '3.8'
+          python-version: '3.10'
           architecture: 'x64'
-      # Install xorg-dev libgl1-mesa-dev clang-9
+      # Install xorg-dev libgl1-mesa-dev clang-11
       - name: Install Dependencies
-        run: sudo apt-get update -qq && sudo apt-get install -y -qq clang-9 gcc-10 g++-10
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq clang-11 gcc-10 g++-10
       # Checkout Confply
       - name: Checkout code
         uses: actions/checkout@v2
