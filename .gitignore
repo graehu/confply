@@ -4,3 +4,4 @@ examples/objects
 examples/hello_confply
 compile_commands.json
 logs/*
+.tdb/db_archive.txt

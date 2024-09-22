@@ -1,0 +1,11 @@
+# path to database
+db_file = "/home/graehu/Projects/framework/tools/confply/.tdb/db.txt"
+db_archive = "/home/graehu/Projects/framework/tools/confply/.tdb/db_archive.txt"
+edit_ext = ".md"
+# options: ['notepad', 'gedit -w', 'code -w', 'emacsclient -a "" -c', 'subl -w']
+editor = 'emacsclient -a "" -c' # command for editor
+addons = ["addon.py"]
+
+[tags]
+bug = {colour = "red"}
+task = {colour = "green"}
