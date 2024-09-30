@@ -5,6 +5,11 @@ import confply.log as log
 import confply.cpp_compiler as cpp_compiler
 import confply.cpp_compiler.config as config
 
+
+def validate():
+    return cpp_compiler.validate()
+
+
 def generate():
     def __parse_deps(deps_string):
         deps_json = json.loads(deps_string)

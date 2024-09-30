@@ -9,6 +9,10 @@ for tool in fallbacks:
         break
 
 
+def validate():
+    return cpp_compiler.validate()
+
+
 def generate():
     cpp_compiler.tool = tool_name
     return cpp_compiler.generate()

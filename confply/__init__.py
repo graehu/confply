@@ -437,14 +437,15 @@ aliases["all"] = " -- ".join([val for key, val in aliases.items()])
 
 if __name__ == "__main__":
     args = sys.argv[1:]
+    file_path = os.path.relpath(__file__)
+    dir_name = os.path.dirname(__file__)
     if "--listen" in args:
-        run_commandline(["--listen", __file__])
+        run_commandline(["--listen", file_path])
     else:
-        dir_name = os.path.dirname(__file__)
         if not dir_name == "":
             os.chdir(dir_name)
         if args:
-            launcher(sys.argv[1:], aliases)
+            launcher(args, aliases)
         else:
             launcher(["default"], aliases)
 """
@@ -574,7 +575,10 @@ def __run_config(config_locals):
                     shell_cmd = tools[tool]
                     shell_cmd.handle_args()
                     # #todo: rename generate to gen_config_type.
-                    shell_cmd = shell_cmd.generate() if tools else None
+                    if shell_cmd.validate():
+                        shell_cmd = shell_cmd.generate()
+                    else:
+                        shell_cmd = None
                 else:
                     shell_cmd = None
 
@@ -630,7 +634,8 @@ def __run_config(config_locals):
                 elif shell_cmd == []:
                     log.normal("no commands to run.")
                 else:
-                    log.error("failed to generate a valid command.")
+                    log.error("failed to generate a valid command.\n\n"+
+                              file_path+":1:1: error: broken config\n")
                     return_code = -1
 
                 time_end = timeit.default_timer()

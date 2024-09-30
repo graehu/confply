@@ -7,6 +7,9 @@ import shutil
 
 tool = None
 
+# return if the current config is valid
+def validate():
+    return True;
 
 # return the final command string or an array of commands
 def generate():

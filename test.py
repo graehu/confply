@@ -32,13 +32,14 @@ aliases["all"] = " -- ".join([val for key, val in aliases.items()])
 
 if __name__ == "__main__":
     args = sys.argv[1:]
+    file_path = os.path.relpath(__file__)
+    dir_name = os.path.dirname(__file__)
     if "--listen" in args:
-        run_commandline(["--listen", __file__])
+        run_commandline(["--listen", file_path])
     else:
-        dir_name = os.path.dirname(__file__)
         if not dir_name == "":
             os.chdir(dir_name)
         if args:
-            launcher(sys.argv[1:], aliases)
+            launcher(args, aliases)
         else:
             launcher(["default"], aliases)

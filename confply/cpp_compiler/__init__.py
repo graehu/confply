@@ -31,6 +31,13 @@ lib_extension = ".a"
 dll_extension = ".so"
 parse_deps = lambda x: shlex.split(x)
 
+def validate():
+    for s in config.source_files:
+        if not os.path.exists(s):
+            log.error("error: couldn't find '"+s+"'")
+            return False
+    return True
+
 def generate():
     object_path = config.object_path
     object_path = os.path.join(object_path, tool)
@@ -48,7 +55,7 @@ def generate():
         command += [fPIC] if config.position_independent else []
 
         if source is None:
-            command += [src for src in config.source_files]
+            command += config.source_files
             if config.output_type == options.output_type.exe:
                 command += ["-rpath "+x for x in config.run_paths]
                 command += [output_exe+config.output_file] if config.output_file else [output_exe+"app.bin"]

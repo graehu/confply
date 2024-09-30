@@ -154,21 +154,23 @@ class ConfplyServer(SimpleHTTPRequestHandler):
                     os.makedirs(log_path, exist_ok=True)
                     log_name = parsed["alias"]
                     log_name += "_"+time.strftime("%Y%m%d-%H%M%S")
-                    log_name += "-"+threading.currentThread().name.split("-")[1]
+                    log_name += "-"+str(threading.currentThread().native_id)
                     log_name += ".log"
                     log_path = os.path.join(log_path, log_name)
                     with open(log_path, "w") as sf:
                         sf.write("failed to write server log\n")
                         pass
                     with pushd(os.path.dirname(launcher_path)):
-                        cmd = "python "
+                        cmd = "python3 "
                         cmd += os.path.basename(launcher_path) + " "
                         cmd += parsed["alias"]
                         cmd += " --config.confply.log_file "
                         cmd += log_path
                         if os.name == 'nt':
+                            print("running: "+cmd)
                             system_code = os.system(cmd)
                         else:
+                            print("running: "+cmd)
                             system_code = os.WEXITSTATUS(os.system(cmd))
 
                         if system_code != 0:
