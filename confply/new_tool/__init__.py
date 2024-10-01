@@ -11,6 +11,7 @@ tool = None
 def validate():
     return True;
 
+
 # return the final command string or an array of commands
 def generate():
     return [tool, "no tool specific implementation"]

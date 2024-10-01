@@ -3,6 +3,11 @@ import confply.{config_type} as {config_type}
 tool_name = "echo"
 
 
+def validate():
+    {config_type}.tool = tool_name
+    return {config_type}.validate()
+
+
 def generate():
     {config_type}.tool = tool_name
     return {config_type}.generate()
