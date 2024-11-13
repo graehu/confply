@@ -452,7 +452,7 @@ if __name__ == "__main__":
 
 __new_config_str = """#!{confply_dir}/confply.py --in
 # generated using:
-# python {confply_dir}/confply.py --config {config_type_arg} {config_file}
+# python {confply_dir}/confply.py --new_config {config_type_arg} {config_file}
 import sys
 sys.path.append('{confply_dir}')
 import confply.{config_type_arg}.config as config
