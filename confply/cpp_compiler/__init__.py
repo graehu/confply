@@ -214,11 +214,11 @@ def generate():
             #todo: add windows lib support.
             out = config.output_file
             out = out if out.endswith(lib_extension) else out+lib_extension
-            commands.append(["ar", "rcs", out, *objects])
+            commands = [commands, ["ar", "rcs", out, *objects]]
             pass
         elif should_link:
             config.source_files = objects
-            commands.append(gen_command(config))
+            commands = [commands, gen_command(config)]
             config.source_files = sources
             num_commands = len(commands)
             log.normal(str(num_commands)+" files to compile")

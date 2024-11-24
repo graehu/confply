@@ -19,6 +19,7 @@ import confply.log as log
 import confply.mail as mail
 import confply.slack as slack
 from datetime import datetime
+from datetime import timedelta
 
 config_modules = set()
 
@@ -584,48 +585,66 @@ def __run_config(config_locals):
 
                 __run_dependencies(config, should_run)
 
+                def print_cmd(in_cmd, depth=0):
+                    if len(in_cmd) > 0:
+                        if isinstance(in_cmd[0], list):
+                            depth = depth + 1
+                            for cmd in in_cmd:
+                                print_cmd(cmd, depth)
+                        else:
+                            cmd = [confply.config.command_prepend]+in_cmd
+                            cmd = in_cmd+[confply.config.command_append]
+                            cmd = [c for c in cmd if c]
+                            print(str(depth)+": "+" ".join(cmd))
+
+                def run_cmd(in_cmd, depth=0):
+                    if len(in_cmd) > 0:
+                        if isinstance(in_cmd[0], list):
+                            depth = depth + 1
+                            procs = []
+                            cmd_time_start = timeit.default_timer()
+                            for cmd in in_cmd:
+                                if proc := run_cmd(cmd, depth):
+                                    procs.append(proc)
+                            return_code = 0
+                            for proc in procs:
+                                if isinstance(proc, int): return_code += 1 if proc else 0
+                                else:
+                                    proc.wait()
+                                    return_code += 1 if proc.returncode else 0
+                                    if proc.returncode:
+                                        log.error(proc.args+" failed.")
+                                        log.error(f"return code: {proc.returncode}")
+                                    else:
+                                        log.success(proc.args+" succeeded!")
+                            if procs:
+                                cmd_time_end  = timeit.default_timer()
+                                time = f"{timedelta(seconds=cmd_time_end-cmd_time_start)}"
+                                log.normal("time elapsed "+time)
+                            return return_code
+                        else:
+                            sys.stdout.flush()
+                            log.linebreak()
+                            cmd = [confply.config.command_prepend]+in_cmd
+                            cmd = cmd+[confply.config.command_append]
+                            cmd = [c for c in cmd if c]
+                            log.normal(" ".join(cmd))
+                            log.normal("", flush=True)
+                            return __run_shell_cmd_parallel(cmd, cmd_env)
+                    
                 if shell_cmd:
                     cmd_env = tools[tool].get_environ()
+
                     if len(shell_cmd) > 0:
-                        if isinstance(shell_cmd[0], list):
-                            log.normal("final commands:\n")
-                            for shell_str in shell_cmd:
-                                cmd = [confply.config.command_prepend]+shell_str
-                                cmd = cmd+[confply.config.command_append]
-                                cmd = [c for c in cmd if c]
-                                print(" ".join(cmd))
-                            print("")
-                        else:
-                            cmd = [confply.config.command_prepend]+shell_cmd
-                            cmd = shell_cmd+[confply.config.command_append]
-                            cmd = [c for c in cmd if c]
-                            log.normal("final command:\n\n" +
-                                       str(cmd) +
-                                       "\n")
+                        log.normal("final commands:\n")
+                        print_cmd(shell_cmd)
+                        print("")
                         if should_run:
                             log.header("begin "+tool)
                     sys.stdout.flush()
 
                     if should_run and isinstance(shell_cmd[0], list):
-                        for cmd in shell_cmd:
-                            cmd_time_start = timeit.default_timer()
-                            sys.stdout.flush()
-                            log.linebreak()
-                            cmd = [confply.config.command_prepend]+cmd
-                            cmd = cmd+[confply.config.command_append]
-                            cmd = [c for c in cmd if c]
-                            log.normal(" ".join(cmd))
-                            log.normal("", flush=True)
-                            return_code = __run_shell_cmd(cmd, cmd_env)
-                            cmd_time_end = timeit.default_timer()
-                            # #todo: this can be tidied with format var capture
-                            s = cmd_time_end-cmd_time_start
-                            m = int(s/60)
-                            h = int(m/60)
-                            # time formating via format specifiers
-                            # https://docs.python.org/3.8/library/string.html#formatspec
-                            time = f"{h:0>2.0f}:{m:0>2.0f}:{s:0>5.2f}"
-                            log.normal("time elapsed "+time)
+                        return_code = run_cmd(shell_cmd)
                     elif should_run:
                         return_code = __run_shell_cmd(shell_cmd, cmd_env)
                     else:
@@ -639,12 +658,8 @@ def __run_config(config_locals):
                     return_code = -1
 
                 time_end = timeit.default_timer()
-                s = time_end-time_start
-                m = int(s/60)
-                h = int(m/60)
-                # time formating via format specifiers
-                # https://docs.python.org/3.8/library/string.html#formatspec
-                time = f"{h:0>2.0f}:{m:0>2.0f}:{s:0>5.2f}"
+                time = f"{timedelta(seconds=time_end-time_start)}"
+                log.normal("time elapsed "+time)
                 log.normal("total time elapsed "+time)
                 report["time_taken"] = time
                 report["status"] = "success" if return_code == 0 else "failure"
@@ -726,6 +741,22 @@ def __import_module(file_path):
     spec.loader.exec_module(imp)
     return vars(imp)
 
+
+def __run_shell_cmd_parallel(shell_cmd, cmd_env):
+    if confply.config.log_file:
+        sys.stdout.flush()
+        # #todo: check if this can be ansi-coloured
+        proc = subprocess.Popen(" ".join(shell_cmd),
+                                stdout=sys.stdout,
+                                stderr=subprocess.STDOUT,
+                                text=True,
+                                shell=True,
+                                env=cmd_env)
+    else:
+        proc = subprocess.Popen(" ".join(shell_cmd),
+                                shell=True,
+                                env=cmd_env)
+    return proc
 
 
 def __run_shell_cmd(shell_cmd, cmd_env):
