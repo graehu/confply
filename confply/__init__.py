@@ -585,17 +585,16 @@ def __run_config(config_locals):
 
                 __run_dependencies(config, should_run)
 
-                def print_cmd(in_cmd, depth=0):
+                def print_cmd(in_cmd):
                     if len(in_cmd) > 0:
                         if isinstance(in_cmd[0], list):
-                            depth = depth + 1
                             for cmd in in_cmd:
-                                print_cmd(cmd, depth)
+                                print_cmd(cmd)
                         else:
                             cmd = [confply.config.command_prepend]+in_cmd
                             cmd = in_cmd+[confply.config.command_append]
                             cmd = [c for c in cmd if c]
-                            print(str(depth)+": "+" ".join(cmd))
+                            print(" ".join(cmd))
 
                 def run_cmd(in_cmd, depth=0):
                     if len(in_cmd) > 0:
@@ -607,6 +606,7 @@ def __run_config(config_locals):
                                 if proc := run_cmd(cmd, depth):
                                     procs.append(proc)
                             return_code = 0
+                            if procs and not isinstance(proc, int): log.normal(f"starting {len(procs)} command/s")
                             for proc in procs:
                                 if isinstance(proc, int): return_code += 1 if proc else 0
                                 else:

@@ -163,6 +163,7 @@ def generate():
         def update_command_db(file_path, args):
             nonlocal commands_db
             nonlocal object_path
+            # todo: consider making paths in args absolute or relative to vcs root
             dir_path = os.path.dirname(commands_db_path)
             out_path = os.path.join(object_path, os.path.basename(file_path+object_ext))
             dir_path = os.path.abspath(dir_path)
@@ -208,6 +209,7 @@ def generate():
                 elif obj_time > output_time:
                     should_link = True
             else:
+                # todo: find a nice way to make this fatal.
                 log.warning(source_path+" could not be found")
 
         if should_link and config.output_type == options.output_type.lib:
