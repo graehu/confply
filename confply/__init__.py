@@ -845,7 +845,8 @@ def __apply_overrides(config):
 
 def __get_group_configs(path):
     directory_paths = []
-    with pathlib.Path(path).absolute() as temp_path:
+    temp_path = pathlib.Path(path).absolute()
+    if temp_path:
         path_split = temp_path.name.split(".")
         if path_split[1] != "py":
             def iter_path(path, paths):
